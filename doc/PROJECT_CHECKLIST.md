@@ -264,7 +264,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 
 ### 独立版本
 
+- [x] 本地仓库 （本地路径） 初始化（分支 `main`），按原样导入 1.0.17 基线到 `app/`（提交 `52e6243`）；提交作者使用 GitHub 隐私邮箱，不公开个人邮箱。
+- [ ] 清理后再创建公开仓库：私有信息、WebDesktop 依赖和上游专用文件处理完之前不推送。
 - [ ] 创建公开仓库，整理可公开源码与许可证。
+- [ ] 遵守上游 AGPL 附加条款：文档和关于页保留“CloudCLI UI (https://github.com/siteboon/claudecodeui)”署名；明确标注为修改版，不以原版名义发布；宣传中不使用“CloudCLI”“Siteboon”名称。
 - [ ] 完成命名、认证、用户、文件和终端独立化。
 - [ ] 完成浏览器独立运行，去掉 WebDesktop 前置依赖。
 - [ ] 在没有 WebDesktop、fa-build 的干净环境完整运行。
