@@ -8,16 +8,6 @@
   "bin": {
     "cloudcli": "dist-server/server/modules/cli/cli.js"
   },
-  "files": [
-    "electron/",
-    "server/",
-    "shared/",
-    "public/api-docs.html",
-    "dist/",
-    "dist-server/",
-    "scripts/",
-    "README.md"
-  ],
   "homepage": "https://cloudcli.ai",
   "repository": {
     "type": "git",
@@ -33,7 +23,6 @@
     "server:dev": "tsx --tsconfig server/tsconfig.json server/index.ts",
     "server:dev-watch": "tsx watch --tsconfig server/tsconfig.json server/index.ts",
     "client": "vite",
-    "server:bundle": "npm run build && node scripts/release/build-server-bundle.js",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "prebuild:server": "node -e \"require('node:fs').rmSync('dist-server.next', { recursive: true, force: true })\"",
@@ -48,9 +37,7 @@
     "lint:client": "oxlint src/",
     "lint:fix": "oxlint src/ server/ --fix",
     "start": "npm run build && npm run server",
-    "prepublishOnly": "npm run build",
-    "postinstall": "node scripts/fix-node-pty.js",
-    "update:platform": "./update-platform.sh"
+    "postinstall": "node scripts/fix-node-pty.js"
   },
   "keywords": [
     "claude code",
