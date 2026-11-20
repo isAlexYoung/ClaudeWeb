@@ -1,0 +1,1050 @@
+{
+  "title": "设置",
+  "tabs": {
+    "account": "账户",
+    "permissions": "权限",
+    "mcpServers": "MCP 服务器",
+    "skills": "技能",
+    "appearance": "外观"
+  },
+  "account": {
+    "title": "账户",
+    "language": "语言",
+    "languageLabel": "显示语言",
+    "languageDescription": "选择您偏好的界面语言",
+    "username": "用户名",
+    "email": "邮箱",
+    "profile": "个人资料",
+    "changePassword": "修改密码"
+  },
+  "mcp": {
+    "title": "MCP 服务器",
+    "addServer": "添加服务器",
+    "editServer": "编辑服务器",
+    "deleteServer": "删除服务器",
+    "serverName": "服务器名称",
+    "serverType": "服务器类型",
+    "config": "配置",
+    "testConnection": "测试连接",
+    "status": "状态",
+    "connected": "已连接",
+    "disconnected": "未连接",
+    "scope": {
+      "label": "范围",
+      "user": "用户",
+      "project": "项目"
+    }
+  },
+  "appearance": {
+    "title": "外观",
+    "theme": "主题",
+    "codeEditor": "代码编辑器",
+    "editorTheme": "编辑器主题",
+    "wordWrap": "自动换行",
+    "showMinimap": "显示缩略图",
+    "lineNumbers": "行号",
+    "fontSize": "字体大小"
+  },
+  "actions": {
+    "saveChanges": "保存更改",
+    "resetToDefaults": "重置为默认值",
+    "cancelChanges": "取消更改"
+  },
+  "quickSettings": {
+    "title": "快速设置",
+    "sections": {
+      "appearance": "外观",
+      "toolDisplay": "工具显示",
+      "inputSettings": "输入设置"
+    },
+    "darkMode": "深色模式",
+    "showRawParameters": "显示原始参数",
+    "showThinking": "显示思考过程",
+    "sendByCtrlEnter": "使用 Ctrl+Enter 发送",
+    "sendByCtrlEnterDescription": "启用后，按 Ctrl+Enter 发送消息，而不是仅按 Enter。这对于使用输入法的用户可以避免意外发送。",
+    "dragHandle": {
+      "dragging": "正在拖拽手柄",
+      "closePanel": "关闭设置面板",
+      "openPanel": "打开设置面板",
+      "draggingStatus": "正在拖拽...",
+      "toggleAndMove": "点击切换，拖拽移动"
+    },
+    "tabs": {
+      "settings": "设置",
+      "commands": "命令"
+    },
+    "pin": "固定面板",
+    "unpin": "取消固定面板",
+    "close": "关闭面板",
+    "commands": {
+      "searchPlaceholder": "搜索命令…",
+      "noProject": "选择一个项目以查看其命令。",
+      "loading": "正在加载命令…",
+      "empty": "此项目没有可用的命令。",
+      "noMatches": "没有与搜索匹配的命令。",
+      "loadError": "无法加载命令。",
+      "groups": {
+        "builtIn": "内置",
+        "custom": "自定义",
+        "skills": "技能"
+      },
+      "insertTitle": "将 {{command}} 插入聊天"
+    }
+  },
+  "terminalShortcuts": {
+    "title": "终端快捷键",
+    "sectionKeys": "按键",
+    "sectionNavigation": "导航",
+    "escape": "Escape",
+    "tab": "Tab",
+    "shiftTab": "Shift+Tab",
+    "arrowUp": "上箭头",
+    "arrowDown": "下箭头",
+    "scrollDown": "滚动到底部",
+    "handle": {
+      "closePanel": "关闭快捷键面板",
+      "openPanel": "打开快捷键面板"
+    }
+  },
+  "mainTabs": {
+    "label": "设置",
+    "agents": "通用",
+    "appearance": "外观",
+    "usage": "额度",
+    "yourClaude": "关于Claude",
+    "git": "Git",
+    "apiTokens": "API 和令牌",
+    "tasks": "任务与会话",
+    "notifications": "通知",
+    "plugins": "插件",
+    "backup": "备份与恢复",
+    "about": "关于"
+  },
+  "notifications": {
+    "title": "通知",
+    "description": "控制你希望接收的通知事件。",
+    "webPush": {
+      "title": "通知此浏览器",
+      "enable": "启用通知",
+      "disable": "关闭通知",
+      "enabled": "此浏览器已启用通知",
+      "loading": "更新中...",
+      "unsupported": "此浏览器或当前网址不支持推送通知。请使用 HTTPS 或本机 localhost 地址。",
+      "denied": "推送通知已被阻止，请在浏览器设置中允许。",
+      "failed": "通知更新失败：{{message}}",
+      "missingKey": "服务器尚未配置推送密钥。",
+      "unsubscribeFailed": "浏览器未能关闭推送订阅，请重试。"
+    },
+    "desktop": {
+      "title": "通知此桌面应用",
+      "enable": "启用通知",
+      "disable": "关闭通知",
+      "enabled": "此桌面应用已启用通知",
+      "unsupported": "此系统不支持桌面通知。"
+    },
+    "sound": {
+      "title": "声音",
+      "description": "聊天运行完成时播放短提示音。",
+      "enabled": "已启用",
+      "test": "测试声音"
+    },
+    "events": {
+      "title": "事件类型",
+      "actionRequired": "需要处理",
+      "stop": "运行已停止",
+      "error": "运行失败"
+    }
+  },
+  "appearanceSettings": {
+    "darkMode": {
+      "label": "深色模式",
+      "description": "切换浅色和深色主题"
+    },
+    "theme": {
+      "label": "主题",
+      "description": "选择浅色或深色外观，或跟随操作系统设置",
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统外观"
+    },
+    "projectSorting": {
+      "label": "项目排序",
+      "description": "项目在侧边栏中的排列方式",
+      "alphabetical": "按字母顺序",
+      "recentActivity": "最近活动"
+    },
+    "codeEditor": {
+      "title": "代码编辑器",
+      "theme": {
+        "label": "编辑器主题",
+        "description": "代码编辑器的默认主题"
+      },
+      "wordWrap": {
+        "label": "自动换行",
+        "description": "在编辑器中默认启用自动换行"
+      },
+      "showMinimap": {
+        "label": "显示缩略图",
+        "description": "在差异视图中显示缩略图以便于导航"
+      },
+      "lineNumbers": {
+        "label": "显示行号",
+        "description": "在编辑器中显示行号"
+      },
+      "fontSize": {
+        "label": "字体大小",
+        "description": "编辑器字体大小（px）"
+      }
+    },
+    "keepProjectsExpanded": {
+      "section": "侧边栏",
+      "label": "保持项目展开",
+      "description": "允许同时展开多个项目，并在刷新后记住展开状态。"
+    },
+    "fonts": {
+      "title": "字体",
+      "ui": {
+        "label": "界面字体",
+        "description": "中文始终使用系统字体。",
+        "inter": "Inter",
+        "system": "系统字体"
+      },
+      "chat": {
+        "label": "回复字体",
+        "description": "用于 Claude 的回复。中文始终使用系统字体。",
+        "serif": "衬线（Source Serif 4）",
+        "sans": "无衬线（Inter）",
+        "system": "系统字体"
+      }
+    },
+    "reading": {
+      "title": "阅读设置",
+      "textSize": "正文大小",
+      "lineSpacing": "行距",
+      "width": "对话宽度",
+      "options": {
+        "small": "小",
+        "medium": "中",
+        "large": "大",
+        "compact": "紧凑",
+        "standard": "标准",
+        "relaxed": "宽松",
+        "narrow": "窄",
+        "wide": "宽",
+        "auto": "比正文小一级"
+      },
+      "sideChatTextSize": "侧边聊天字体大小"
+    },
+    "transcriptView": {
+      "label": "默认对话视图",
+      "normal": "标准",
+      "thinking": "思考",
+      "verbose": "详细",
+      "normalDescription": "显示回复和工具步骤，隐藏 Claude 的思考过程。",
+      "thinkingDescription": "同时显示 Claude 的思考过程。",
+      "verboseDescription": "同时显示思考过程和每次工具调用的原始参数。"
+    }
+  },
+  "mcpForm": {
+    "title": {
+      "add": "添加 MCP 服务器",
+      "edit": "编辑 MCP 服务器"
+    },
+    "importMode": {
+      "form": "表单输入",
+      "json": "JSON 导入"
+    },
+    "scope": {
+      "label": "范围",
+      "userGlobal": "用户（全局）",
+      "projectLocal": "项目（本地）",
+      "userDescription": "用户范围：在您机器上的所有项目中可用",
+      "projectDescription": "本地范围：仅在选定项目中可用",
+      "cannotChange": "编辑现有服务器时无法更改范围"
+    },
+    "fields": {
+      "serverName": "服务器名称",
+      "transportType": "传输类型",
+      "command": "命令",
+      "arguments": "参数（每行一个）",
+      "jsonConfig": "JSON 配置",
+      "url": "URL",
+      "envVars": "环境变量（KEY=值，每行一个）",
+      "headers": "请求头（KEY=值，每行一个）",
+      "selectProject": "选择项目..."
+    },
+    "placeholders": {
+      "serverName": "我的服务"
+    },
+    "validation": {
+      "missingType": "缺少必填字段：type",
+      "stdioRequiresCommand": "stdio 类型需要 command 字段",
+      "httpRequiresUrl": "{{type}} 类型需要 url 字段",
+      "invalidJson": "无效的 JSON 格式",
+      "jsonHelp": "粘贴您的 MCP 服务器配置（JSON 格式）。示例格式：",
+      "jsonExampleStdio": "• stdio: {\"type\":\"stdio\",\"command\":\"npx\",\"args\":[\"@upstash/context7-mcp\"]}",
+      "jsonExampleHttp": "• http/sse: {\"type\":\"http\",\"url\":\"https://api.example.com/mcp\"}"
+    },
+    "configDetails": "配置详细信息（来自 {{configFile}}）",
+    "projectPath": "路径：{{path}}",
+    "actions": {
+      "cancel": "取消",
+      "saving": "保存中...",
+      "addServer": "添加服务器",
+      "updateServer": "更新服务器"
+    },
+    "scopes": {
+      "userGlobal": "用户（全局）",
+      "userAllProviders": "用户（所有提供方）",
+      "local": "Claude 本地",
+      "project": "项目",
+      "projectAllProviders": "项目（所有提供方）",
+      "userGlobalDesc": "可用于本机的所有项目",
+      "userAllProvidersDesc": "写入各提供方的用户配置，可用于本机的所有项目",
+      "localDesc": "保存在所选项目对应的 Claude 用户设置中",
+      "projectDesc": "保存在所选项目工作区中",
+      "projectAllProvidersDesc": "为所有提供方写入所选项目的工作区配置"
+    },
+    "unsupportedTransport": "添加通用 MCP 服务器仅支持 stdio 和 HTTP，不支持 {{transport}}。",
+    "addToProvider": "{{action}}到 {{provider}}",
+    "workingDirectory": "工作目录",
+    "envVarNames": "环境变量名称",
+    "bearerTokenEnvVar": "Bearer Token 环境变量"
+  },
+  "saveStatus": {
+    "success": "设置保存成功！",
+    "error": "保存设置失败",
+    "saving": "保存中..."
+  },
+  "footerActions": {
+    "save": "保存设置",
+    "cancel": "取消"
+  },
+  "git": {
+    "title": "Git 配置",
+    "description": "配置您的 git 提交身份。这些设置将通过 git config --global 全局应用",
+    "name": {
+      "label": "Git 名称",
+      "help": "您的 git 提交名称"
+    },
+    "email": {
+      "label": "Git 邮箱",
+      "help": "您的 git 提交邮箱"
+    },
+    "actions": {
+      "save": "保存配置",
+      "saving": "保存中..."
+    },
+    "status": {
+      "success": "保存成功"
+    }
+  },
+  "apiKeys": {
+    "title": "API 密钥",
+    "description": "生成 API 密钥以从其他应用访问外部 API。",
+    "newKey": {
+      "alertTitle": "⚠️ 保存您的 API 密钥",
+      "alertMessage": "这是您唯一一次看到此密钥。请妥善保存。",
+      "iveSavedIt": "我已保存"
+    },
+    "form": {
+      "placeholder": "API 密钥名称（例如：生产服务器）",
+      "createButton": "创建",
+      "cancelButton": "取消"
+    },
+    "newButton": "新建 API 密钥",
+    "empty": "尚未创建 API 密钥。",
+    "list": {
+      "created": "创建时间：",
+      "lastUsed": "最后使用："
+    },
+    "confirmDelete": "确定要删除此 API 密钥吗？",
+    "status": {
+      "active": "激活",
+      "inactive": "未激活"
+    },
+    "github": {
+      "title": "GitHub 令牌",
+      "description": "添加 GitHub 个人访问令牌以通过外部 API 克隆私有仓库。",
+      "descriptionAlt": "添加 GitHub 个人访问令牌以克隆私有仓库。您也可以直接在 API 请求中传递令牌而无需存储。",
+      "addButton": "添加令牌",
+      "form": {
+        "namePlaceholder": "令牌名称（例如：个人仓库）",
+        "tokenPlaceholder": "GitHub 个人访问令牌（ghp_...）",
+        "descriptionPlaceholder": "描述（可选）",
+        "addButton": "添加令牌",
+        "cancelButton": "取消",
+        "howToCreate": "如何创建 GitHub 个人访问令牌 →"
+      },
+      "empty": "尚未添加 GitHub 令牌。",
+      "added": "添加时间：",
+      "confirmDelete": "确定要删除此 GitHub 令牌吗？"
+    },
+    "apiDocsLink": "API 文档",
+    "documentation": {
+      "title": "外部 API 文档",
+      "description": "了解如何使用外部 API 从您的应用程序触发 Claude/Cursor 会话。",
+      "viewLink": "查看 API 文档 →"
+    },
+    "loading": "加载中...",
+    "version": {
+      "updateAvailable": "有可用更新：v{{version}}"
+    }
+  },
+  "tasks": {
+    "checking": "正在检查 TaskMaster 安装...",
+    "notInstalled": {
+      "title": "未安装 TaskMaster AI CLI",
+      "description": "需要 TaskMaster CLI 才能使用任务管理功能。安装它以开始使用：",
+      "installCommand": "npm install -g task-master-ai",
+      "viewOnGitHub": "在 GitHub 上查看",
+      "afterInstallation": "安装后：",
+      "steps": {
+        "restart": "重启此应用程序",
+        "autoAvailable": "TaskMaster 功能将自动可用",
+        "initCommand": "在项目目录中使用 task-master init"
+      }
+    },
+    "settings": {
+      "enableLabel": "启用 TaskMaster 集成",
+      "enableDescription": "在整个界面中显示 TaskMaster 任务、横幅和侧边栏指示器"
+    },
+    "sectionTitle": "任务",
+    "autoArchive": {
+      "label": "自动归档不活跃的会话",
+      "description": "超过所选时间没有新动态的会话会移到下方的归档中。正在运行、已置顶以及有待发送定时消息的会话不会被归档。每小时检查一次。",
+      "never": "从不",
+      "days_one": "{{count}} 天后",
+      "days_other": "{{count}} 天后"
+    },
+    "changeSummary": {
+      "label": "改动汇总卡片",
+      "description": "一轮对话改了文件后，在回复下方列出改了哪些文件和增减行数，点击文件可在右侧面板查看具体改动。"
+    }
+  },
+  "agents": {
+    "authStatus": {
+      "checking": "检查中...",
+      "connected": "已连接",
+      "notConnected": "未连接",
+      "disconnected": "已断开",
+      "checkingAuth": "正在检查认证状态...",
+      "loggedInAs": "登录为 {{email}}",
+      "authenticatedUser": "已认证用户"
+    },
+    "account": {
+      "claude": {
+        "description": "Anthropic Claude AI 助手"
+      },
+      "cursor": {
+        "description": "Cursor AI 驱动的代码编辑器"
+      },
+      "codex": {
+        "description": "OpenAI Codex AI 助手"
+      },
+      "opencode": {
+        "description": "OpenCode CLI 助手"
+      }
+    },
+    "connectionStatus": "连接状态",
+    "cli": {
+      "title": "CLI 版本",
+      "checking": "正在检查版本…",
+      "installed": "已安装：v{{version}}",
+      "installedUnknown": "已安装（版本未知）",
+      "versionUnavailable": "无法读取版本",
+      "updateAvailable": "有可用更新：v{{version}}",
+      "upToDate": "已是最新",
+      "bundled": "随 ClaudeWeb 一起提供，并随其一起更新。",
+      "platform": "由托管平台管理。",
+      "updateTo": "更新到 v{{version}}",
+      "runUpdater": "运行更新程序",
+      "updating": "正在更新…",
+      "updatingHint": "正在服务器上运行 {{command}}，可能需要几分钟。",
+      "runsCommand": "在服务器上运行 {{command}}",
+      "output": "{{command}} 的输出",
+      "result": {
+        "updated": "已更新到 v{{version}}。",
+        "alreadyUpToDate": "已是最新版本（v{{version}}）。",
+        "unchanged": "更新程序已结束，但版本仍为 v{{version}}。原因见下方输出。",
+        "unchangedUnknown": "更新程序已结束，输出见下方。",
+        "permissionDenied": "服务器用户无权写入此 CLI 的安装位置。请以该安装的所有者身份在服务器上运行 {{command}}（例如使用 sudo）。",
+        "timedOut": "更新未能按时完成，已被停止。请在服务器上运行 {{command}} 来完成更新。",
+        "failed": "更新失败（退出代码 {{exitCode}}），输出见下方。",
+        "failedQuietly": "更新程序报告了失败，输出见下方。",
+        "notStarted": "无法启动更新程序。",
+        "busy": "此智能体正在某个会话中工作。请等待其完成或将其停止，然后再更新。",
+        "requestFailed": "未执行更新：{{error}}",
+        "unconfirmed": "服务器没有返回响应（{{error}}）。更新可能已经运行；上方是服务器最后报告的版本。"
+      }
+    },
+    "login": {
+      "title": "登录",
+      "reAuthenticate": "重新认证",
+      "description": "登录您的 {{agent}} 账户以启用 AI 功能",
+      "reAuthDescription": "使用其他账户登录或刷新凭据",
+      "button": "登录",
+      "reLoginButton": "重新登录"
+    },
+    "error": "错误：{{error}}",
+    "subscriptionOverride": {
+      "title": "当前未使用订阅登录",
+      "description": "{{source}} 中设置了 {{variable}}，Claude Code 将使用该密钥按 API 用量计费，而不使用订阅登录。",
+      "descriptionWithEmail": "{{source}} 中设置了 {{variable}}，Claude Code 将使用该密钥按 API 用量计费，而不使用订阅登录（{{email}}）。",
+      "source": {
+        "process_env": "服务器环境",
+        "settings_file": "~/.claude/settings.json"
+      },
+      "fix": {
+        "process_env": "如需使用订阅，请在服务器启动配置（.env、Shell 配置或服务文件）中移除 {{variable}}，然后重启服务器。",
+        "settings_file": "如需使用订阅，请从 ~/.claude/settings.json 的 env 配置中移除 {{variable}}。"
+      }
+    }
+  },
+  "permissions": {
+    "title": "权限设置",
+    "skipPermissions": {
+      "label": "跳过权限提示（请谨慎使用）",
+      "claudeDescription": "等同于 --dangerously-skip-permissions 标志",
+      "cursorDescription": "等同于 Cursor CLI 中的 -f 标志"
+    },
+    "allowedTools": {
+      "title": "允许的工具",
+      "description": "无需权限提示即可自动使用的工具",
+      "placeholder": "例如：\"Bash(git log:*)\" 或 \"Write\"",
+      "quickAdd": "快速添加常用工具：",
+      "empty": "未配置允许的工具"
+    },
+    "blockedTools": {
+      "title": "禁用的工具",
+      "description": "无需权限提示即可自动禁用的工具",
+      "placeholder": "例如：\"Bash(rm:*)\"",
+      "empty": "未配置禁用的工具"
+    },
+    "settingsFiles": {
+      "title": "来自 Claude 设置文件的规则",
+      "description": "Claude CLI 会在上面的列表之外同时应用这些规则。拒绝规则无论设置在哪里都优先，但对于「允许的工具」中已允许的工具，询问规则不会再请求确认。这里仅供查看；请在文件中编辑。",
+      "sources": {
+        "user": "您的设置",
+        "managed": "托管设置（管理员）"
+      },
+      "groups": {
+        "allow": "允许",
+        "ask": "询问",
+        "deny": "拒绝"
+      },
+      "missing": "未找到文件，因此不会添加任何规则。",
+      "invalid": "无法读取此文件。请检查它是否为有效的 JSON。",
+      "empty": "此文件中没有权限规则。",
+      "loading": "正在加载规则…",
+      "loadFailed": "无法加载 Claude 设置文件中的规则。",
+      "projectNote": "项目自己的 .claude/settings.json 和 .claude/settings.local.json 也会应用于该项目中的聊天。在该文件夹被信任之前，Claude CLI 会忽略 .claude/settings.json 中的允许规则：请在该文件夹中以交互方式运行一次 Claude Code，并接受信任对话框。"
+    },
+    "allowedCommands": {
+      "title": "允许的 Shell 命令",
+      "description": "无需权限提示即可自动执行的 Shell 命令",
+      "placeholder": "例如：\"Shell(ls)\" 或 \"Shell(git status)\"",
+      "quickAdd": "快速添加常用命令：",
+      "empty": "未配置允许的命令"
+    },
+    "blockedCommands": {
+      "title": "阻止的 Shell 命令",
+      "description": "自动阻止的 Shell 命令",
+      "placeholder": "例如：\"Shell(rm -rf)\" 或 \"Shell(sudo)\"",
+      "empty": "未配置阻止的命令"
+    },
+    "toolExamples": {
+      "title": "工具模式示例：",
+      "bashGitLog": "- 允许所有 git log 命令",
+      "bashGitDiff": "- 允许所有 git diff 命令",
+      "write": "- 允许所有 Write 工具使用",
+      "bashRm": "- 阻止所有 rm 命令（危险）"
+    },
+    "shellExamples": {
+      "title": "Shell 命令示例：",
+      "ls": "- 允许 ls 命令",
+      "gitStatus": "- 允许 git status",
+      "npmInstall": "- 允许 npm install",
+      "rmRf": "- 阻止递归删除"
+    },
+    "codex": {
+      "permissionMode": "权限模式",
+      "description": "控制 Codex 如何处理文件修改和命令执行",
+      "modes": {
+        "default": {
+          "title": "默认",
+          "description": "在工作区沙箱内运行命令。Codex 决定何时需要批准；此非交互式集成无法批准请求。"
+        },
+        "acceptEdits": {
+          "title": "接受编辑",
+          "description": "所有命令在工作区内自动运行。具有沙箱执行的全自动模式。"
+        },
+        "bypassPermissions": {
+          "title": "绕过权限",
+          "description": "完全系统访问，无任何限制。所有命令自动运行，具有完整的磁盘和网络访问权限。请谨慎使用。"
+        }
+      },
+      "technicalDetails": "技术详情",
+      "technicalInfo": {
+        "default": "sandboxMode=workspace-write, approvalPolicy=on-request. 在工作区沙箱内运行命令。Codex 决定何时需要批准；此非交互式集成无法批准请求。",
+        "acceptEdits": "sandboxMode=workspace-write, approvalPolicy=never。所有命令在项目目录内自动执行。",
+        "bypassPermissions": "sandboxMode=danger-full-access, approvalPolicy=never。完全系统访问权限，仅在可信环境中使用。",
+        "overrideNote": "您可以使用聊天界面中的模式按钮按会话覆盖此设置。"
+      }
+    },
+    "actions": {
+      "add": "添加"
+    }
+  },
+  "mcpServers": {
+    "title": "MCP 服务器",
+    "description": {
+      "claude": "Model Context Protocol 服务器为 Claude 提供额外的工具和数据源",
+      "cursor": "Model Context Protocol 服务器为 Cursor 提供额外的工具和数据源",
+      "codex": "Model Context Protocol 服务器为 Codex 提供额外的工具和数据源",
+      "opencode": "Model Context Protocol 服务器为 OpenCode 提供额外的工具和数据源"
+    },
+    "addButton": "添加 MCP 服务器",
+    "empty": "未配置 MCP 服务器",
+    "serverType": "类型",
+    "scope": {
+      "local": "本地",
+      "user": "用户"
+    },
+    "config": {
+      "command": "命令",
+      "url": "URL",
+      "args": "参数",
+      "environment": "环境变量"
+    },
+    "tools": {
+      "title": "工具",
+      "count": "（{{count}}）：",
+      "more": "还有 {{count}} 个"
+    },
+    "actions": {
+      "edit": "编辑服务器",
+      "delete": "删除服务器"
+    },
+    "managed": {
+      "badge": "已托管",
+      "hint": "由 ClaudeWeb 管理。"
+    },
+    "help": {
+      "title": "关于 Codex MCP",
+      "description": "Codex 支持基于 stdio 的 MCP 服务器。您可以添加服务器，通过额外的工具和资源来扩展 Codex 的功能。"
+    }
+  },
+  "pluginSettings": {
+    "title": "插件",
+    "description": "通过自定义插件扩展界面。从 git 安装或直接将文件夹放入 ~/.claude-code-ui/plugins/",
+    "installPlaceholder": "https://github.com/user/my-plugin",
+    "installButton": "安装",
+    "installing": "安装中…",
+    "securityWarning": "仅安装您已审查过源代码或信任作者的插件。",
+    "scanningPlugins": "正在扫描插件…",
+    "noPluginsInstalled": "未安装插件",
+    "pullLatest": "从 git 拉取最新内容",
+    "noGitRemote": "无 git 远程仓库 — 无法更新",
+    "uninstallPlugin": "卸载插件",
+    "confirmUninstall": "再次点击确认",
+    "confirmUninstallMessage": "移除 {{name}}？此操作无法撤销。",
+    "cancel": "取消",
+    "remove": "移除",
+    "updateFailed": "更新失败",
+    "installFailed": "安装失败",
+    "uninstallFailed": "卸载失败",
+    "toggleFailed": "切换失败",
+    "starterPluginLabel": "入门插件",
+    "starter": "入门模板",
+    "docs": "文档",
+    "sections": {
+      "officialTitle": "官方插件",
+      "officialDescription": "由 CloudCLI 团队维护，可直接安装。",
+      "unofficialTitle": "其他插件",
+      "unofficialDescription": "来自其他用户的非官方插件和集成。安装前请审查源代码。"
+    },
+    "starterPlugin": {
+      "name": "项目统计",
+      "badge": "入门",
+      "description": "查看项目的文件数、代码行数、文件类型分布以及最近活动。",
+      "install": "安装"
+    },
+    "terminalPlugin": {
+      "name": "终端",
+      "badge": "官方",
+      "description": "集成终端，可直接在界面内获得完整 Shell 访问权限。",
+      "install": "安装"
+    },
+    "scheduledPromptPlugin": {
+      "name": "定时提示",
+      "badge": "非官方",
+      "description": "安排工作区提示、查看运行历史并管理定期本地任务。",
+      "install": "安装"
+    },
+    "prismCloudCLI": {
+      "name": "PRISM CloudCLI",
+      "badge": "非官方",
+      "description": "CloudCLI 内的 Claude Code 会话智能分析。无需离开浏览器即可了解会话为何消耗大量 Token。",
+      "install": "安装"
+    },
+    "sessionManagerPlugin": {
+      "name": "会话管理",
+      "badge": "非官方",
+      "description": "查看、管理和终止活跃的 Claude Code 会话。",
+      "install": "安装"
+    },
+    "tokenCostCalculatorPlugin": {
+      "name": "Token 费用计算器",
+      "badge": "非官方",
+      "description": "根据模型价格和 Token 使用量计算 API 费用，支持预设模型定价。",
+      "install": "安装"
+    },
+    "taskQueuePlugin": {
+      "name": "任务队列",
+      "badge": "非官方",
+      "description": "任务队列仪表板，用于查看、筛选和启动 Agent 任务。",
+      "install": "安装"
+    },
+    "githubIssuesBoardPlugin": {
+      "name": "GitHub Issues 看板",
+      "badge": "非官方",
+      "description": "GitHub Issues 看板，支持双向 TaskMaster 同步和 /github-task CLI 技能自动安装",
+      "install": "安装"
+    },
+    "morePlugins": "更多",
+    "enable": "启用",
+    "disable": "禁用",
+    "installAriaLabel": "插件 git 仓库 URL",
+    "tab": "标签",
+    "runningStatus": "运行中",
+    "codexUsagePlugin": {
+      "name": "Codex Usage",
+      "badge": "非官方",
+      "description": "查看 Codex 套餐实时限额、重置时间及最近 30 天的账户 Token 活动。",
+      "install": "安装"
+    },
+    "agentMonitorPlugin": {
+      "name": "Agent Monitor",
+      "badge": "非官方",
+      "description": "查看对话结束后仍在运行的后台子智能体与 Shell，并可停止它们。",
+      "install": "安装"
+    }
+  },
+  "workspaceThemes": {
+    "system": "跟随系统",
+    "warm": "暖白",
+    "light": "浅灰",
+    "dark": "深色"
+  },
+  "chatMcp": {
+    "label": "聊天模式 MCP 是否打开",
+    "description": "默认关闭；项目模式沿用项目配置。"
+  },
+  "skillsPage": {
+    "description": "通过本地文件、完整文件夹及项目目录管理 {{provider}} 技能。",
+    "searchPlaceholder": "搜索技能…",
+    "searchAriaLabel": "搜索技能",
+    "clearSearch": "清除技能搜索",
+    "addSkill": "添加技能",
+    "refresh": "刷新",
+    "scanningProjectSkills": "正在扫描项目技能…",
+    "addDialogTitle": "添加 {{provider}} 技能",
+    "addDialogDescription": "上传 SKILL.md 文件或完整的技能文件夹。",
+    "closeDialog": "关闭添加技能窗口",
+    "savedSuccessfully": "技能已保存。",
+    "footerHint": "上传文件夹时保留所选文件夹名称；单独上传文件时使用 SKILL.md 中的 name。",
+    "installWithCount_one": "安装 {{count}} 个技能",
+    "installWithCount_other": "安装 {{count}} 个技能",
+    "installPlain": "安装技能",
+    "loading": "正在加载 {{provider}} 技能…",
+    "emptyTitle": "尚未发现技能",
+    "emptyDescription": "可在上方添加全局技能，或在工作区创建项目专用技能文件夹。",
+    "noMatchTitle": "没有匹配的技能",
+    "noMatchDescription": "请尝试其他命令、名称、作用范围、项目或来源路径。",
+    "count_one": "{{count}} 个技能",
+    "count_other": "{{count}} 个技能",
+    "noDescription": "技能文件的元数据中未提供说明。",
+    "pluginBadge": "插件：{{name}}",
+    "projectBadge": "项目：{{name}}",
+    "source": "来源",
+    "upload": {
+      "dropTitle": "拖入技能文件夹或 SKILL.md",
+      "dropHint": "文件夹可以包含脚本、参考资料和资源文件。",
+      "chooseFiles": "选择文件",
+      "chooseFolder": "选择文件夹",
+      "readyToInstall": "准备安装",
+      "filesCount_one": "{{count}} 个文件",
+      "filesCount_other": "{{count}} 个文件",
+      "markdownFile": "Markdown 文件",
+      "removeFile": "移除 {{name}}",
+      "hideInstallLocation": "隐藏安装位置",
+      "whereToInstall": "将安装到哪里？"
+    },
+    "errors": {
+      "tooManyFiles": "每个技能文件夹最多包含 {{max}} 个文件。",
+      "tooLarge": "所选技能文件夹总大小必须小于 30 MB。",
+      "noSkillMd": "所选文件夹不包含 SKILL.md。",
+      "couldNotReadSkillMd": "无法读取 {{folder}} 中的 SKILL.md。",
+      "readFailed": "读取技能文件夹失败",
+      "dropMarkdown": "请拖入 Markdown 文件，或包含 SKILL.md 的文件夹。",
+      "addFirst": "请先添加至少一个 Markdown 文件。",
+      "importFailed": "导入技能失败"
+    },
+    "scopes": {
+      "user": "用户",
+      "plugin": "插件",
+      "repo": "仓库",
+      "project": "项目",
+      "admin": "管理员",
+      "system": "系统"
+    }
+  },
+  "mcpServersAdd": {
+    "menuLabel": "添加 MCP 服务器",
+    "globalButtonLabel": "添加全局 MCP 服务器",
+    "providerButtonLabel": "添加 {{provider}} MCP 服务器",
+    "globalAddDescription": "为所有已启用的提供方添加相同的 stdio 或 HTTP 服务器。",
+    "providerAddDescription": "{{button}}只修改 {{provider}} 的配置。",
+    "globalModalDescription": "为所有已启用的提供方添加此 MCP 服务器。仅支持 stdio 和 HTTP，确保各提供方可以使用同一配置。",
+    "refreshingScopes": "正在刷新项目作用范围…",
+    "loadingServers": "正在加载 MCP 服务器…",
+    "configCwd": "工作目录",
+    "configEnvVars": "环境变量"
+  },
+  "mcpTeamCard": {
+    "title": "团队 MCP 配置",
+    "description": "在团队中共享 MCP 服务器配置，并自动保持同步。",
+    "proLink": "CloudCLI Pro 提供此功能"
+  },
+  "mcpServersAddErrors": {
+    "loadFailedProvider": "加载 {{provider}} MCP 服务器失败",
+    "deleteFailed": "删除 MCP 服务器失败",
+    "saveFailed": "保存 MCP 服务器失败",
+    "saveGlobalFailed": "为所有提供方保存 MCP 服务器失败",
+    "selectProjectRequired": "请为项目范围的 MCP 服务器选择项目",
+    "globalScopeUnsupported": "通用 MCP 服务器仅支持用户或项目范围。",
+    "globalAddFailed": "为所有提供方添加 MCP 服务器失败。{{details}}",
+    "deleteConfirm": "确定要删除此 MCP 服务器吗？",
+    "unknownError": "未知错误"
+  },
+  "about": {
+    "devices": {
+      "title": "登录设备（{{count}}/{{max}}）",
+      "description": "最多 {{max}} 台设备可以同时登录这台 WebDesktop。主设备是最早登录或最后一次选择「接管」的设备，只有它能进行系统更新；主设备退出后，由登录最早的设备接替。",
+      "main": "主设备",
+      "current": "本机",
+      "unknown": "设备",
+      "kick": "踢出",
+      "cancel": "取消",
+      "confirm": "让这台设备退出？它需要重新输入密码才能再登录。",
+      "confirmCmcp": "让这台设备退出？它的 CMCP 连接也会断开，重新连接之前，Claude 不能再使用那台电脑上的文件和工具。",
+      "kickFailed": "无法让这台设备退出，它可能已经退出了。",
+      "justNow": "刚刚",
+      "minutesAgo": "{{count}} 分钟前",
+      "earlier": "更早",
+      "via": {
+        "desktop": "云电脑",
+        "claudeweb": "Claude 网页版",
+        "cmcp": "CMCP"
+      },
+      "notice": {
+        "title": "新设备加入：{{device}}",
+        "dismiss": "知道了"
+      }
+    },
+    "licensed": "采用 AGPL-3.0 许可证",
+    "modifiedVersion": "本应用是针对 WebDesktop 修改的 CloudCLI UI（https://github.com/siteboon/claudecodeui）版本，基于上游提交 58a28e0。",
+    "sourceChanges": "查看 WebDesktop 修改源码",
+    "title": "关于",
+    "basedOn": "本界面基于开源项目 CloudCLI（Claude Code UI）开发，并为 WebDesktop 做了修改。",
+    "githubLink": "CloudCLI 的 GitHub 仓库",
+    "update": {
+      "title": "ClaudeWeb 版本",
+      "installed": "当前版本",
+      "builtOnServer": "由早期安装程序在本服务器上编译；更新后会换成预编译版本。",
+      "unknown": "未知",
+      "check": "检查更新",
+      "upToDate": "已是最新版本。",
+      "available": "有新版本 {{version}}（下载约 {{size}} MB）。",
+      "needsWebDesktop": "{{version}} 需要 WebDesktop {{webdesktop}} 或更新版本，请先在桌面「设置」里更新 WebDesktop。",
+      "install": "更新到 {{version}}",
+      "confirm": "更新时 ClaudeWeb 会重启，正在运行的对话会中断。对话记录和设置都会保留，更新前会先备份数据库。",
+      "confirmButton": "立即更新到 {{version}}",
+      "cancel": "取消",
+      "progress": {
+        "queued": "正在开始更新到 {{version}}…",
+        "checking": "正在核对版本…",
+        "downloading": "正在下载 {{version}}…",
+        "installing": "正在安装 {{version}}…",
+        "restarting": "正在重启 ClaudeWeb…",
+        "done": "更新完成，正在刷新…",
+        "reloading": "更新完成，正在刷新…",
+        "idle": "正在等待更新程序…",
+        "failed": "更新失败。"
+      },
+      "errors": {
+        "CLAUDEWEB_DISK_REQUIRED": "磁盘空间不足，无法更新。请先腾出空间（例如在桌面「设置 → 更新」里清理旧版本）后重试。",
+        "CLAUDEWEB_UPDATE_TOO_SOON": "刚刚已经发起过更新，请两分钟后再试。",
+        "CLAUDEWEB_UPDATE_RUNNING": "已有更新正在进行。",
+        "CLAUDEWEB_START_FAILED_ROLLED_BACK": "新版本没能启动，已自动恢复到原来的版本和数据。",
+        "CLAUDEWEB_DOWNLOAD_FAILED": "下载失败，请检查服务器到 GitHub 的网络后重试。",
+        "CLAUDEWEB_CATALOGUE_UNAVAILABLE": "无法获取版本列表，请稍后重试。",
+        "CLAUDEWEB_UPDATER_UNAVAILABLE": "WebDesktop 更新程序没有响应，请稍后重试。",
+        "CLAUDEWEB_WEBDESKTOP_TOO_OLD": "这个版本需要更新的 WebDesktop，请先在桌面「设置」里更新 WebDesktop。",
+        "other": "更新失败（{{code}}）。"
+      }
+    }
+  },
+  "profile": {
+    "title": "个人资料",
+    "description": "仅用于本界面左下角显示，不会同步到 Claude Desktop 或 Claude 账号。",
+    "avatar": {
+      "label": "头像",
+      "hint": "PNG、JPEG 或 WebP，最大 10 MB。",
+      "change": "上传头像",
+      "remove": "移除",
+      "invalidType": "请选择 PNG、JPEG 或 WebP 图片。",
+      "tooLarge": "图片超过 10 MB。",
+      "failed": "无法读取这张图片。"
+    },
+    "name": {
+      "label": "名称",
+      "placeholder": "显示在左下角"
+    }
+  },
+  "backup": {
+    "export": {
+      "title": "导出",
+      "description": "重装这台服务器之前，把所有 Claude 对话下载成一个文件。",
+      "encrypt": "用密码保护",
+      "encryptDescription": "文件里有完整的聊天内容。加了密码的文件只能在这里输入密码导入；忘记密码就无法恢复。",
+      "password_other": "密码（至少 {{count}} 位）",
+      "confirm": "再输入一次密码",
+      "button": "导出全部对话",
+      "preparing": "正在准备…",
+      "started": "正在下载 {{fileName}}。对话很多时需要一些时间。",
+      "passwordTooShort_other": "密码至少需要 {{count}} 位。",
+      "passwordMismatch": "两次输入的密码不一样。",
+      "includes": "包含：Claude 对话记录、项目记忆、代码检查点、任务清单、聊天里的图片，以及对话标题、归档、草稿、定时消息和偏好设置。",
+      "excludes": "不包含：Claude 登录信息、ClaudeWeb 账户和密钥、项目源代码、插件。"
+    },
+    "import": {
+      "title": "导入",
+      "description": "重装并登录后，把之前导出的文件拖到这里。已有的对话会跳过，不会被覆盖。",
+      "drop": "把备份文件拖到这里，或点击选择文件",
+      "dropActive": "松开即可上传",
+      "dropHint": "claude-backup-….tar.gz 或 .tar.gz.enc",
+      "uploading": "正在上传 {{sent}} / {{total}}",
+      "keepOpen": "上传完成前请不要关闭这个页面。",
+      "reading": "正在读取备份…",
+      "passwordTitle": "这个备份设置了密码",
+      "passwordPlaceholder": "备份密码",
+      "unlock": "解锁",
+      "createdAt": "备份时间：{{date}}",
+      "encrypted": "已加密",
+      "empty": "这个备份里没有对话。",
+      "sessions_other": "{{count}} 个对话待导入",
+      "existing_other": "{{count}} 个已存在，将跳过",
+      "pathMissing": "这台服务器上没有这个文件夹。导入后可以查看对话，但要继续聊，需要先建好这个文件夹（或把代码拉回来）。",
+      "pathUnknown": "备份里没有记录这些文件原来所在的文件夹。",
+      "space": "将新增约 {{required}}，服务器可用 {{free}}。",
+      "apply_other": "导入 {{count}} 个项目",
+      "cancel": "取消",
+      "importing": "正在导入…",
+      "importingHint": "即使关闭页面，服务器也会继续完成导入。",
+      "done_other": "已导入 {{count}} 个对话。",
+      "skipped_other": "跳过了 {{count}} 个已存在的对话。",
+      "doneHint": "它们已经出现在左侧列表里，也可以在终端用 claude --resume 继续。",
+      "finish": "完成",
+      "chooseAgain": "重新选择文件"
+    },
+    "errors": {
+      "generic": "出了点问题，请重试。",
+      "BACKUP_NETWORK": "连接中断了，请重试。",
+      "BACKUP_REQUEST_FAILED": "服务器拒绝了这个请求，请重试。",
+      "BACKUP_DISK_FULL": "服务器磁盘空间不够。",
+      "BACKUP_SIZE_INVALID": "这个文件是空的或太大。",
+      "BACKUP_FORMAT_UNKNOWN": "这不是从这个页面导出的备份文件。",
+      "BACKUP_VERSION_UNSUPPORTED": "这个备份来自更新的版本，请先更新。",
+      "BACKUP_CORRUPTED": "备份文件已损坏或不完整，可以的话请重新下载。",
+      "BACKUP_UNSAFE_ENTRY": "备份里有无法安全恢复的文件，所以什么都没有导入。",
+      "BACKUP_PASSWORD_WRONG": "密码不正确。",
+      "BACKUP_PASSWORD_INVALID": "密码至少需要 8 位。",
+      "BACKUP_IMPORT_NOT_FOUND": "这次上传已过期，请重新选择文件。",
+      "BACKUP_IMPORT_STATE": "现在无法进行这一步，请重新选择文件。",
+      "BACKUP_CHUNK_INVALID": "上传的部分内容损坏了，请重新选择文件。",
+      "BACKUP_CHUNK_OUT_OF_ORDER": "上传的部分内容丢失了，请重新选择文件。",
+      "BACKUP_IMPORT_FAILED": "导入失败，请重试。"
+    }
+  },
+  "archive": {
+    "title": "已归档会话",
+    "description": "归档的会话和项目不在侧栏显示。可以在这里取消归档，或永久删除。",
+    "loading": "正在读取归档…",
+    "empty": "没有归档的会话。",
+    "loadFailed": "无法读取归档。",
+    "restoreFailed": "取消归档失败，请重试。",
+    "deleteFailed": "删除失败，请重试。",
+    "restore": "取消归档",
+    "delete": "删除",
+    "cancel": "取消",
+    "project": "项目",
+    "untitled": "未命名会话",
+    "deleteTitle": "删除会话",
+    "deleteConfirm": "永久删除「{{title}}」？对话记录会被删除，无法恢复。",
+    "deleteProjectTitle": "删除项目",
+    "deleteProjectConfirm": "永久删除项目「{{title}}」？该项目下的所有对话都会被删除，无法恢复。项目文件夹及其中的文件不受影响。"
+  },
+  "promptSuggestions": {
+    "section": "对话",
+    "label": "下一轮提示建议",
+    "description": "回复结束后显示浅灰色建议，按 Tab 或右方向键接受，仍需手动发送。生成建议会使用额外 Token。"
+  },
+  "yourClaude": {
+    "profileTitle": "个人资料",
+    "nameLabel": "Claude 应该怎么称呼你？",
+    "nameDescription": "保存在 Claude 的 CLAUDE.md（{{path}}）中，所有对话、网页终端和 SSH 会话都会从下一条消息开始使用。",
+    "namePlaceholder": "你的称呼",
+    "memoryTitle": "记忆",
+    "autoMemoryLabel": "自动记忆",
+    "autoMemoryDescription": "Claude 会记下会话中有用的信息，并在之后的会话里读取。",
+    "directoryLabel": "记忆存放目录",
+    "directoryDescription": "留空使用默认位置：~/.claude/projects/<项目>/memory/。请填写绝对路径或以 ~/ 开头的路径。",
+    "directoryPlaceholder": "默认",
+    "autoDreamLabel": "后台整理记忆",
+    "autoDreamDescription": "空闲时在后台合并、整理已保存的记忆，会消耗一些套餐额度。",
+    "autoDreamDefault": "未设置：由 Claude 默认决定。",
+    "useDefault": "恢复默认",
+    "save": "保存",
+    "saving": "正在保存…",
+    "saved": "已保存",
+    "loading": "正在加载…",
+    "loadFailed": "无法读取 Claude 设置。",
+    "saveFailed": "保存失败：{{error}}",
+    "settingsInvalid": "{{path}} 不是有效的 JSON，记忆开关暂时只读。请先修复或删除该文件。",
+    "footnote": "记忆开关保存在 {{path}}，与命令行 /memory 界面使用同一个文件。修改从下一条消息开始生效。",
+    "responsesTitle": "回复",
+    "outputStyleLabel": "回复风格",
+    "outputStyleNote": "决定 Claude 在所有对话中如何组织回复，保存为 Claude settings.json 中的 outputStyle（与命令行 /output-style 是同一个设置）。自定义风格放在 Claude 目录的 output-styles/ 中。从下一条消息开始生效。",
+    "styleMissing": "这个风格不在列表中，命令行可能找不到它。",
+    "styles": {
+      "default": {
+        "label": "默认",
+        "description": "Claude Code 的标准回复方式。"
+      },
+      "Explanatory": {
+        "label": "解释型",
+        "description": "Claude 会解释实现上的取舍和代码库中的模式。"
+      },
+      "Learning": {
+        "label": "学习型",
+        "description": "Claude 会停下来请你亲手写一小段代码来练习。"
+      },
+      "Proactive": {
+        "label": "主动型",
+        "description": "Claude 直接动手执行，尽量少打断你，倾向行动而不是先做计划。"
+      }
+    }
+  }
+}

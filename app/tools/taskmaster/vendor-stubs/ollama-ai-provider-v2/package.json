@@ -1,0 +1,9 @@
+{
+  "name": "ollama-ai-provider-v2",
+  "version": "0.0.0-webdesktop",
+  "description": "WebDesktop stand-in: TaskMaster here runs on Claude Code only, so ollama-ai-provider-v2 is not installed.",
+  "type": "module",
+  "main": "index.js",
+  "exports": "./index.js",
+  "license": "MIT"
+}

@@ -1,0 +1,41 @@
+{
+  "name": "webdesktop-taskmaster-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned TaskMaster CLI installed with the WebDesktop CloudCLI build. Non-Claude AI providers are replaced by the stand-ins in vendor-stubs/.",
+  "dependencies": {
+    "task-master-ai": "0.43.1",
+    "@ai-sdk/amazon-bedrock": "file:./vendor-stubs/ai-sdk-amazon-bedrock",
+    "@ai-sdk/azure": "file:./vendor-stubs/ai-sdk-azure",
+    "@ai-sdk/google": "file:./vendor-stubs/ai-sdk-google",
+    "@ai-sdk/google-vertex": "file:./vendor-stubs/ai-sdk-google-vertex",
+    "@ai-sdk/groq": "file:./vendor-stubs/ai-sdk-groq",
+    "@ai-sdk/mistral": "file:./vendor-stubs/ai-sdk-mistral",
+    "@ai-sdk/openai": "file:./vendor-stubs/ai-sdk-openai",
+    "@ai-sdk/openai-compatible": "file:./vendor-stubs/ai-sdk-openai-compatible",
+    "@ai-sdk/perplexity": "file:./vendor-stubs/ai-sdk-perplexity",
+    "@ai-sdk/xai": "file:./vendor-stubs/ai-sdk-xai",
+    "@aws-sdk/credential-providers": "file:./vendor-stubs/aws-sdk-credential-providers",
+    "@openrouter/ai-sdk-provider": "file:./vendor-stubs/openrouter-ai-sdk-provider",
+    "ai-sdk-provider-codex-cli": "file:./vendor-stubs/ai-sdk-provider-codex-cli",
+    "ai-sdk-provider-gemini-cli": "file:./vendor-stubs/ai-sdk-provider-gemini-cli",
+    "ollama-ai-provider-v2": "file:./vendor-stubs/ollama-ai-provider-v2"
+  },
+  "overrides": {
+    "@ai-sdk/amazon-bedrock": "$@ai-sdk/amazon-bedrock",
+    "@ai-sdk/azure": "$@ai-sdk/azure",
+    "@ai-sdk/google": "$@ai-sdk/google",
+    "@ai-sdk/google-vertex": "$@ai-sdk/google-vertex",
+    "@ai-sdk/groq": "$@ai-sdk/groq",
+    "@ai-sdk/mistral": "$@ai-sdk/mistral",
+    "@ai-sdk/openai": "$@ai-sdk/openai",
+    "@ai-sdk/openai-compatible": "$@ai-sdk/openai-compatible",
+    "@ai-sdk/perplexity": "$@ai-sdk/perplexity",
+    "@ai-sdk/xai": "$@ai-sdk/xai",
+    "@aws-sdk/credential-providers": "$@aws-sdk/credential-providers",
+    "@openrouter/ai-sdk-provider": "$@openrouter/ai-sdk-provider",
+    "ai-sdk-provider-codex-cli": "$ai-sdk-provider-codex-cli",
+    "ai-sdk-provider-gemini-cli": "$ai-sdk-provider-gemini-cli",
+    "ollama-ai-provider-v2": "$ollama-ai-provider-v2"
+  }
+}

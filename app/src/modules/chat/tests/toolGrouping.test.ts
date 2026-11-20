@@ -1,0 +1,318 @@
+import assert from 'node:assert/strict';
+
+import { test } from 'vitest';
+
+import { describeToolCall, groupConsecutiveTools, isToolGroupItem } from '@/modules/chat/utils/toolGrouping';
+import type { ChatMessage } from '@/shared/types';
+
+/**
+ * The collapsed group's summary line is built here rather than in
+ * ToolGroupContainer because producing it JSON.parses tool inputs, which can be
+ * whole file contents. The component's useMemo could never cache it — grouping
+ * allocates a fresh messages array on every pass — so it ran on every render of
+ * the transcript, including ten times a second while streaming.
+ */
+
+const toolMessage = (toolName: string, toolInput: unknown): ChatMessage => ({
+  type: 'tool',
+  content: '',
+  timestamp: '2024-01-01T00:00:00.000Z',
+  isToolUse: true,
+  toolName,
+  toolInput: typeof toolInput === 'string' ? toolInput : JSON.stringify(toolInput),
+});
+
+const textMessage = (content: string): ChatMessage => ({
+  type: 'assistant',
+  content,
+  timestamp: '2024-01-01T00:00:00.000Z',
+});
+
+const thinkingMessage = (): ChatMessage => ({
+  type: 'assistant',
+  content: 'deliberating',
+  timestamp: '2024-01-01T00:00:00.000Z',
+  isThinking: true,
+});
+
+test('a run of same-tool calls is grouped and carries a precomputed preview', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    toolMessage('Read', { file_path: '/b.ts' }),
+  ]);
+
+  assert.equal(items.length, 1);
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.preview, '/a.ts, /b.ts');
+});
+
+test('a group of more than two calls reports the remainder', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    toolMessage('Read', { file_path: '/b.ts' }),
+    toolMessage('Read', { file_path: '/c.ts' }),
+    toolMessage('Read', { file_path: '/d.ts' }),
+  ]);
+
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.preview, '/a.ts, /b.ts, +2 more');
+});
+
+test('a single tool call is a group of one, so it reads as one line too', () => {
+  const items = groupConsecutiveTools([toolMessage('Read', { file_path: '/a.ts' })]);
+
+  assert.equal(items.length, 1);
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.toolCount, 1);
+  assert.deepEqual(group.callPreviews, ['/a.ts']);
+});
+
+test('different tools in a row share one group that names no single source', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    toolMessage('Write', { file_path: '/b.ts' }),
+  ]);
+
+  assert.equal(items.length, 1);
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.toolCount, 2);
+  assert.equal(group.sourceName, null);
+});
+
+test('calls to one MCP server are named by that server, and failures are counted', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('mcp__windows-pc-files__edit_file', { path: 'F:/a.cjs' }),
+    { ...toolMessage('mcp__windows-pc-files__windows_execute', { command: 'dir' }), toolResult: { content: 'boom', isError: true } },
+    toolMessage('mcp__windows-pc-files__read_text_file', { path: 'F:/b.ts' }),
+  ]);
+
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.sourceName, 'windows-pc-files');
+  assert.equal(group.toolCount, 3);
+  assert.equal(group.failedCount, 1);
+});
+
+test('an MCP call is described by its server and a readable action', () => {
+  assert.deepEqual(describeToolCall('mcp__windows-pc-files__edit_file'), { source: 'windows-pc-files', action: 'Edit File' });
+  assert.deepEqual(describeToolCall('Bash'), { source: 'Bash', action: null });
+});
+
+test('a text turn splits a run', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    textMessage('some prose'),
+    toolMessage('Read', { file_path: '/b.ts' }),
+  ]);
+
+  assert.equal(items.length, 3);
+  assert.equal(items.filter(isToolGroupItem).length, 2);
+  assert.equal(isToolGroupItem(items[1]), false);
+});
+
+test('a checklist keeps its own card and ends the run', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    toolMessage('TodoWrite', { todos: [] }),
+    toolMessage('Read', { file_path: '/b.ts' }),
+  ]);
+
+  assert.equal(items.length, 3);
+  assert.equal(isToolGroupItem(items[1]), false);
+});
+
+test('an unparsable tool input does not throw while grouping', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', '{not json'),
+    toolMessage('Read', '{also not json'),
+  ]);
+
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  // Read's getValue reads .file_path off the parsed input; the unparsable input
+  // stays a string, so there is nothing to show. The group must still form, the
+  // raw JSON must not leak into the summary line, and both calls must be
+  // accounted for as unnamed.
+  assert.equal(group.preview, '+2 more');
+});
+
+test('a tool with no config is previewed by what it operated on', () => {
+  // Exercises the other half of getToolInputPreview: unknown tools resolve to
+  // the Default config, whose title summarizes the input. Previewing the
+  // config's own label instead made every unmapped provider tool collapse into
+  // an identical, meaningless "Parameters, Parameters" line.
+  const items = groupConsecutiveTools([
+    toolMessage('SomeUnknownTool', { command: 'npm test' }),
+    toolMessage('SomeUnknownTool', { file_path: '/repo/a.ts' }),
+  ]);
+
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.preview, 'npm test, /repo/a.ts');
+});
+
+test('the group carries the run\u2019s first timestamp, which is what the search jump matches on', () => {
+  const items = groupConsecutiveTools([
+    { ...toolMessage('Read', { file_path: '/a.ts' }), timestamp: '2024-01-01T10:00:00.000Z' },
+    { ...toolMessage('Read', { file_path: '/b.ts' }), timestamp: '2024-01-01T10:00:05.000Z' },
+  ]);
+
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.timestamp, '2024-01-01T10:00:00.000Z');
+});
+
+test('a call the line cannot name is counted in the remainder', () => {
+  // One of the two is named, so the other is "more" — the badge says x2 and the
+  // line accounts for two calls.
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    toolMessage('Read', {}),
+  ]);
+
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.preview, '/a.ts, +1 more');
+});
+
+test('the named calls plus the remainder always add up to the group size', () => {
+  // The invariant that keeps the summary honest next to ToolGroupContainer's
+  // x{messages.length} badge. Subtracting the two preview slots instead of the
+  // previews that produced text renders "+1 more" for three hidden calls.
+  const items = groupConsecutiveTools([
+    toolMessage('Read', {}),
+    toolMessage('Read', { file_path: '/b.ts' }),
+    toolMessage('Read', { file_path: '/c.ts' }),
+  ]);
+
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.preview, '/b.ts, +2 more');
+});
+
+test('a group that can name nothing still accounts for every call', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', {}),
+    toolMessage('Read', {}),
+    toolMessage('Read', {}),
+    toolMessage('Read', {}),
+    toolMessage('Read', {}),
+  ]);
+
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.preview, '+5 more');
+});
+
+test('hidden reasoning between two tool calls does not split the run', () => {
+  // Codex interleaves reasoning between consecutive tool calls; with thinking
+  // turned off those messages render nothing, so splitting on them would show
+  // two ungrouped rows with an invisible gap between them.
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    thinkingMessage(),
+    toolMessage('Read', { file_path: '/b.ts' }),
+  ], false);
+
+  assert.equal(items.length, 1);
+  assert.equal(isToolGroupItem(items[0]), true);
+});
+
+test('reasoning the user can see stays inside the run it sits in', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    thinkingMessage(),
+    toolMessage('Read', { file_path: '/b.ts' }),
+  ], true);
+
+  assert.equal(items.length, 1);
+  const [group] = items;
+  assert.ok(isToolGroupItem(group));
+  assert.equal(group.messages.length, 3, 'the reasoning row is kept, to be opened inside the group');
+  assert.equal(group.toolCount, 2, 'but it is not counted as a call');
+  assert.deepEqual(group.callPreviews, ['/a.ts', '', '/b.ts']);
+});
+
+test('reasoning after the last call stays a row of its own', () => {
+  const items = groupConsecutiveTools([
+    toolMessage('Read', { file_path: '/a.ts' }),
+    thinkingMessage(),
+    textMessage('done'),
+  ]);
+
+  assert.equal(items.length, 3);
+  assert.ok(isToolGroupItem(items[0]));
+  assert.equal((items[1] as { isThinking?: boolean }).isThinking, true);
+});
+
+test('a subagent container is never absorbed into a group', () => {
+  // It renders its own nested transcript, so collapsing it into a one-line
+  // summary would hide the whole subagent run.
+  const items = groupConsecutiveTools([
+    toolMessage('Task', { prompt: 'a' }),
+    { ...toolMessage('Task', { prompt: 'b' }), isSubagentContainer: true },
+  ]);
+
+  assert.equal(items.length, 2);
+  assert.equal(isToolGroupItem(items[1]), false);
+});
+
+test('consecutive workflow launches keep their own cards instead of folding into a run', () => {
+  // A collapsed run mounts nothing until expanded, which would hide two
+  // workflows' names, statuses and the anchors the background-tasks strip
+  // scrolls to.
+  const items = groupConsecutiveTools([
+    toolMessage('Workflow', { script: "export const meta = { name: 'a' }" }),
+    toolMessage('Workflow', { script: "export const meta = { name: 'b' }" }),
+  ]);
+
+  assert.equal(items.length, 2);
+  assert.ok(items.every((item) => !isToolGroupItem(item)));
+});
+
+/**
+ * Grouping re-runs on every 100ms stream tick over a fresh array. The group
+ * objects it hands back are props of the memoized ToolGroupContainer, so a run
+ * whose rows did not change has to come back as the very same object — or
+ * every collapsed group in the transcript re-renders ten times a second.
+ */
+test('an unchanged run comes back as the same group object', () => {
+  const first = toolMessage('Read', { file_path: '/a.ts' });
+  const second = toolMessage('Read', { file_path: '/b.ts' });
+  const tail = textMessage('done');
+
+  const [groupA] = groupConsecutiveTools([first, second, tail]);
+  // A later tick: same rows, new array, plus a row appended after the run.
+  const [groupB] = groupConsecutiveTools([first, second, tail, textMessage('more')]);
+
+  assert.ok(isToolGroupItem(groupA) && isToolGroupItem(groupB));
+  assert.equal(groupB, groupA, 'the group object must survive a stream tick');
+  assert.equal(groupB.messages, groupA.messages, 'and so must its messages array');
+});
+
+test('a run that grew, changed rows, or changed showThinking is rebuilt', () => {
+  const first = toolMessage('Read', { file_path: '/a.ts' });
+  const second = toolMessage('Read', { file_path: '/b.ts' });
+
+  const [initial] = groupConsecutiveTools([first, second]);
+  assert.ok(isToolGroupItem(initial));
+
+  const [grown] = groupConsecutiveTools([first, second, toolMessage('Read', { file_path: '/c.ts' })]);
+  assert.ok(isToolGroupItem(grown));
+  assert.notEqual(grown, initial);
+  assert.equal(grown.preview, '/a.ts, /b.ts, +1 more');
+
+  // A tool result arriving re-projects the row into a new object.
+  const [replaced] = groupConsecutiveTools([first, { ...second, toolResult: { content: 'ok' } }]);
+  assert.ok(isToolGroupItem(replaced));
+  assert.notEqual(replaced, initial);
+
+  // Hidden reasoning both joins runs and changes what the preview names.
+  const [rehidden] = groupConsecutiveTools([first, thinkingMessage(), second], false);
+  assert.ok(isToolGroupItem(rehidden));
+  assert.notEqual(rehidden, initial);
+});

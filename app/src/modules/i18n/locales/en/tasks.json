@@ -1,0 +1,218 @@
+{
+  "notConfigured": {
+    "title": "TaskMaster AI is not configured",
+    "description": "TaskMaster helps break down complex projects into manageable tasks with AI-powered assistance",
+    "whatIsTitle": "🎯 What is TaskMaster?",
+    "features": {
+      "aiPowered": "AI-Powered Task Management: Break complex projects into manageable subtasks",
+      "prdTemplates": "PRD Templates: Generate tasks from Product Requirements Documents",
+      "dependencyTracking": "Dependency Tracking: Understand task relationships and execution order",
+      "progressVisualization": "Progress Visualization: Kanban boards and detailed task analytics",
+      "cliIntegration": "CLI Integration: Use taskmaster commands for advanced workflows"
+    },
+    "initializeButton": "Initialize TaskMaster AI"
+  },
+  "gettingStarted": {
+    "title": "Getting Started with TaskMaster",
+    "subtitle": "TaskMaster is initialized! Here's what to do next:",
+    "steps": {
+      "createPRD": {
+        "title": "Create a Product Requirements Document (PRD)",
+        "description": "Discuss your project idea and create a PRD that describes what you want to build.",
+        "addButton": "Add PRD",
+        "existingPRDs": "Existing PRDs:"
+      },
+      "generateTasks": {
+        "title": "Generate Tasks from PRD",
+        "description": "Once you have a PRD, ask your AI assistant to parse it and TaskMaster will automatically break it down into manageable tasks with implementation details."
+      },
+      "analyzeTasks": {
+        "title": "Analyze & Expand Tasks",
+        "description": "Ask your AI assistant to analyze task complexity and expand them into detailed subtasks for easier implementation."
+      },
+      "startBuilding": {
+        "title": "Start Building",
+        "description": "Ask your AI assistant to begin working on tasks, update their status, and add new tasks as your project evolves."
+      }
+    },
+    "tip": "💡 Tip: Start with a PRD to get the most out of TaskMaster's AI-powered task generation"
+  },
+  "setupModal": {
+    "title": "TaskMaster Setup",
+    "subtitle": "Initialize task management for {{projectName}}",
+    "willStart": "TaskMaster initialization will start automatically",
+    "completed": "TaskMaster setup completed! You can now close this window.",
+    "closeButton": "Close",
+    "closeContinueButton": "Close & Continue",
+    "apiDescription": "Initialize this project with the installed TaskMaster and configure it to use Claude Code. No separate model API key is needed.",
+    "initializing": "Initializing…",
+    "initializeButton": "Initialize",
+    "failed": "Initialization failed. Please retry.",
+    "output": "Show output"
+  },
+  "helpGuide": {
+    "title": "Getting Started with TaskMaster",
+    "subtitle": "Your guide to productive task management",
+    "examples": {
+      "parsePRD": "💬 Example:\n\"I've just initialized a new project with Claude Task Master. I have a PRD at .taskmaster/docs/prd.txt. Can you help me parse it and set up the initial tasks?\"",
+      "expandTask": "💬 Example:\n\"Task 5 seems complex. Can you break it down into subtasks?\"",
+      "addTask": "💬 Example:\n\"Please add a new task to implement user profile image uploads using Cloudinary, research the best approach.\""
+    },
+    "moreExamples": "View more examples and usage patterns →",
+    "proTips": {
+      "title": "💡 Pro Tips",
+      "search": "Use the search bar to quickly find specific tasks",
+      "views": "Switch between Kanban, List, and Grid views using the view toggles",
+      "filters": "Use filters to focus on specific task statuses or priorities",
+      "details": "Click on any task to view detailed information and manage subtasks"
+    },
+    "learnMore": {
+      "title": "📚 Learn More",
+      "description": "TaskMaster AI is an advanced task management system built for developers. Get documentation, examples, and contribute to the project.",
+      "githubButton": "View on GitHub"
+    }
+  },
+  "search": {
+    "placeholder": "Search tasks..."
+  },
+  "filters": {
+    "button": "Filters",
+    "status": "Status",
+    "priority": "Priority",
+    "sortBy": "Sort By",
+    "allStatuses": "All Statuses",
+    "allPriorities": "All Priorities",
+    "showing": "Showing {{filtered}} of {{total}} tasks",
+    "clearFilters": "Clear Filters"
+  },
+  "sort": {
+    "id": "ID",
+    "status": "Status",
+    "priority": "Priority",
+    "idAsc": "ID (Ascending)",
+    "idDesc": "ID (Descending)",
+    "titleAsc": "Title (A-Z)",
+    "titleDesc": "Title (Z-A)",
+    "statusAsc": "Status (Pending First)",
+    "statusDesc": "Status (Done First)",
+    "priorityAsc": "Priority (High First)",
+    "priorityDesc": "Priority (Low First)"
+  },
+  "views": {
+    "kanban": "Kanban view",
+    "list": "List view",
+    "grid": "Grid view"
+  },
+  "kanban": {
+    "pending": "📋 To Do",
+    "inProgress": "🚀 In Progress",
+    "done": "✅ Done",
+    "blocked": "🚫 Blocked",
+    "deferred": "⏳ Deferred",
+    "cancelled": "❌ Cancelled",
+    "noTasksYet": "No tasks yet",
+    "tasksWillAppear": "Tasks will appear here",
+    "moveTasksHere": "Move tasks here when started",
+    "completedTasksHere": "Completed tasks appear here",
+    "statusTasksHere": "Tasks with this status will appear here"
+  },
+  "buttons": {
+    "help": "TaskMaster Getting Started Guide",
+    "prds": "PRDs",
+    "addPRD": "Add PRD",
+    "addTask": "Add Task",
+    "createNewPRD": "Create New PRD",
+    "prdsAvailable": "{{count}} PRD(s) available"
+  },
+  "prd": {
+    "modified": "Modified: {{date}}"
+  },
+  "statuses": {
+    "pending": "Pending",
+    "in-progress": "In Progress",
+    "done": "Done",
+    "blocked": "Blocked",
+    "deferred": "Deferred",
+    "cancelled": "Cancelled"
+  },
+  "priorities": {
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "highTitle": "High Priority",
+    "mediumTitle": "Medium Priority",
+    "lowTitle": "Low Priority"
+  },
+  "noMatchingTasks": {
+    "title": "No tasks match your filters",
+    "description": "Try adjusting your search or filter criteria."
+  },
+  "banner": {
+    "initialize": "Initialize",
+    "hideDetails": "Hide details",
+    "whatIsTaskmaster": "What is TaskMaster?",
+    "detailAiPowered": "- AI-powered task management with dependencies and subtasks.",
+    "detailPrdDriven": "- PRD-driven task generation for faster project bootstrapping.",
+    "detailKanbanList": "- Kanban and list views for day-to-day execution.",
+    "startTask": "Start Task",
+    "viewTaskDetails": "View task details",
+    "viewAllTasks": "View all tasks",
+    "allComplete": "All tasks complete",
+    "taskNumber": "Task {{id}}",
+    "review": "Review",
+    "noPending": "No pending tasks"
+  },
+  "composerMenu": {
+    "nextTaskPrompt": "Start TaskMaster task {{id}} \"{{title}}\": run `task-master show {{id}}` for the details, mark it in progress with `task-master set-status --id={{id}} --status=in-progress`, and set it to done when finished.",
+    "parsePrdPrompt": "Run `task-master parse-prd .taskmaster/docs/{{fileName}}` to create tasks from this PRD (add --append if the project already has tasks, so they are kept), then summarize the tasks it created."
+  },
+  "taskPage": {
+    "retry": "Retry",
+    "loading": "Loading tasks…",
+    "backToChat": "Back to chat"
+  },
+  "prdEditor": {
+    "title": "Product Requirements Document",
+    "fileNamePlaceholder": "PRD file name",
+    "focusFileName": "Edit file name",
+    "newBadge": "New",
+    "preview": "Preview",
+    "edit": "Back to editing",
+    "wrapOn": "Turn off word wrap",
+    "wrapOff": "Turn on word wrap",
+    "wrapLabel": "Wrap",
+    "theme": "Switch editor colours",
+    "download": "Download",
+    "generateTasks": "Generate tasks",
+    "generateTasksTitle": "Generate tasks from this PRD",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
+    "close": "Close",
+    "stats": "{{lines}} lines · {{words}} words · {{characters}} characters",
+    "shortcuts": "Ctrl+S to save, Esc to close",
+    "loading": "Loading PRD…",
+    "savedNotice": "PRD saved",
+    "errors": {
+      "empty": "Add some content before saving.",
+      "noFileName": "Enter a file name.",
+      "noProject": "No project is open. Reopen the editor.",
+      "saveFailed": "Save failed: {{reason}}",
+      "unknown": "unknown error"
+    },
+    "overwrite": {
+      "title": "File already exists",
+      "message": "A PRD named \"{{fileName}}\" already exists. Overwrite it?",
+      "cancel": "Cancel",
+      "confirm": "Overwrite"
+    },
+    "generate": {
+      "title": "Generate tasks from this PRD",
+      "lead": "Save the PRD first. Then choose \"Generate tasks from a PRD\" in the chat input's + menu, or send Claude a prompt like this:",
+      "docs": "TaskMaster documentation",
+      "done": "Got it"
+    }
+  }
+}

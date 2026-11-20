@@ -1,0 +1,9 @@
+{
+  "name": "@ai-sdk/groq",
+  "version": "0.0.0-webdesktop",
+  "description": "WebDesktop stand-in: TaskMaster here runs on Claude Code only, so @ai-sdk/groq is not installed.",
+  "type": "module",
+  "main": "index.js",
+  "exports": "./index.js",
+  "license": "MIT"
+}
