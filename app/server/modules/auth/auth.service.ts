@@ -1,155 +1,158 @@
 import { AppError } from '@/shared/utils.js';
 
+import type { createLoginLockout } from './login-lockout.service.js';
+
 type AuthUser = {
-  id: number | bigint;
+  id: number;
   username: string;
 };
 
-type AuthLoginUser = AuthUser & { password_hash: string };
-
-type AuthDependencies = {
-  users: {
-    hasUsers(): boolean;
-    createUser(username: string, passwordHash: string): AuthUser;
-    getUserByUsername(username: string): AuthLoginUser | undefined;
-    updateLastLogin(userId: number): void;
-  };
-  transaction: {
-    begin(): void;
-    commit(): void;
-    rollback(): void;
-  };
-  hashPassword(password: string): Promise<string>;
-  comparePassword(password: string, passwordHash: string): Promise<boolean>;
-  generateToken(user: AuthUser): string;
+type LoginSessionRecord = {
+  id: string;
+  user_id: number;
+  password_generation: string;
+  last_seen_at: number;
 };
 
-function numericUserId(userId: number | bigint): number {
-  return Number(userId);
-}
+type AuthDependencies<User extends AuthUser> = {
+  owner: {
+    /** The one account every login signs in as; created on first login. */
+    ensure(): User;
+    getById(userId: number): User | undefined;
+    recordLogin(userId: number): void;
+  };
+  sessions: {
+    create(session: {
+      id: string;
+      user_id: number;
+      password_generation: string;
+      via: string;
+      ip: string | null;
+      user_agent: string | null;
+      created_at: number;
+    }): void;
+    get(sessionId: string): LoginSessionRecord | undefined;
+    touch(sessionId: string, at: number): void;
+    delete(sessionId: string): void;
+    deleteStale(currentGeneration: string, seenBefore: number): void;
+  };
+  password: {
+    /** Null when no password is set on this server. */
+    verify(password: string): Promise<{ matches: boolean; generation: string } | null>;
+    currentGeneration(): string | null;
+  };
+  lockout: ReturnType<typeof createLoginLockout>;
+  signToken(claims: { userId: number; username: string; sid: string }): string;
+  createSessionId(): string;
+  now(): number;
+};
 
-function isUniqueConstraintError(error: unknown): boolean {
-  return typeof error === 'object'
-    && error !== null
-    && 'code' in error
-    && error.code === 'SQLITE_CONSTRAINT_UNIQUE';
+// last_seen_at is written at most once a minute, not on every request.
+const SESSION_TOUCH_INTERVAL_MS = 60_000;
+// Tokens live 7 days; a session unseen for longer can no longer be used.
+const SESSION_UNUSED_LIMIT_MS = 8 * 24 * 60 * 60_000;
+
+function lockedError(seconds: number): AppError {
+  return new AppError(`Too many failed attempts. Try again in ${seconds} seconds.`, {
+    code: 'AUTH_LOCKED',
+    statusCode: 429,
+    details: { retryAfterSeconds: seconds },
+  });
 }
 
 /**
- * Creates the Auth application service around explicit persistence, crypto,
- * transaction, and token dependencies.
+ * Creates the Auth application service: one login password set by root, a
+ * per-IP lockout, and server-side sessions so logout ends one device and a
+ * new password ends them all.
  */
-export function createAuthService(dependencies: AuthDependencies) {
+export function createAuthService<User extends AuthUser>(dependencies: AuthDependencies<User>) {
   return {
     getStatus() {
       return {
-        needsSetup: !dependencies.users.hasUsers(),
+        passwordConfigured: dependencies.password.currentGeneration() !== null,
         isAuthenticated: false,
       };
     },
 
-    async register(usernameInput: unknown, passwordInput: unknown) {
-      const username = typeof usernameInput === 'string' ? usernameInput : '';
-      const password = typeof passwordInput === 'string' ? passwordInput : '';
+    async login(input: { password: unknown; ip: string; userAgent: string | null }) {
+      const password = typeof input.password === 'string' ? input.password : '';
+      if (!password) {
+        throw new AppError('Enter the password', { code: 'AUTH_PASSWORD_REQUIRED', statusCode: 400 });
+      }
 
-      if (!username || !password) {
-        throw new AppError('Username and password are required', {
-          code: 'AUTH_CREDENTIALS_REQUIRED',
-          statusCode: 400,
+      const secondsLocked = dependencies.lockout.secondsLocked(input.ip);
+      if (secondsLocked > 0) throw lockedError(secondsLocked);
+
+      const result = await dependencies.password.verify(password);
+      if (!result) {
+        throw new AppError('No login password is set on this server. As root, run: claudeweb password --set', {
+          code: 'AUTH_PASSWORD_NOT_SET',
+          statusCode: 503,
         });
       }
-      if (username.length < 3 || password.length < 6) {
-        throw new AppError(
-          'Username must be at least 3 characters, password at least 6 characters',
-          { code: 'AUTH_CREDENTIALS_TOO_SHORT', statusCode: 400 },
-        );
-      }
-
-      dependencies.transaction.begin();
-      try {
-        if (dependencies.users.hasUsers()) {
-          throw new AppError('User already exists. This is a single-user system.', {
-            code: 'AUTH_USER_ALREADY_CONFIGURED',
-            statusCode: 403,
-          });
-        }
-
-        const passwordHash = await dependencies.hashPassword(password);
-        const user = dependencies.users.createUser(username, passwordHash);
-        const token = dependencies.generateToken(user);
-        dependencies.transaction.commit();
-        dependencies.users.updateLastLogin(numericUserId(user.id));
-
-        return {
-          success: true,
-          user: { id: user.id, username: user.username },
-          token,
-        };
-      } catch (error) {
-        dependencies.transaction.rollback();
-        if (isUniqueConstraintError(error)) {
-          throw new AppError('Username already exists', {
-            code: 'AUTH_USERNAME_CONFLICT',
-            statusCode: 409,
-          });
-        }
-        throw error;
-      }
-    },
-
-    async login(usernameInput: unknown, passwordInput: unknown) {
-      const username = typeof usernameInput === 'string' ? usernameInput : '';
-      const password = typeof passwordInput === 'string' ? passwordInput : '';
-      if (!username || !password) {
-        throw new AppError('Username and password are required', {
-          code: 'AUTH_CREDENTIALS_REQUIRED',
-          statusCode: 400,
-        });
-      }
-
-      const user = dependencies.users.getUserByUsername(username);
-      const validPassword = user
-        ? await dependencies.comparePassword(password, user.password_hash)
-        : false;
-      if (!user || !validPassword) {
-        throw new AppError('Invalid username or password', {
-          code: 'AUTH_INVALID_CREDENTIALS',
+      if (!result.matches) {
+        const failure = dependencies.lockout.recordFailure(input.ip);
+        if (failure.lockedForSeconds > 0) throw lockedError(failure.lockedForSeconds);
+        throw new AppError('Wrong password', {
+          code: 'AUTH_INVALID_PASSWORD',
           statusCode: 401,
+          details: { attemptsBeforeLock: failure.attemptsBeforeLock },
         });
       }
 
-      dependencies.users.updateLastLogin(numericUserId(user.id));
+      dependencies.lockout.recordSuccess(input.ip);
+      const now = dependencies.now();
+      const user = dependencies.owner.ensure();
+      dependencies.sessions.deleteStale(result.generation, now - SESSION_UNUSED_LIMIT_MS);
+      const sessionId = dependencies.createSessionId();
+      dependencies.sessions.create({
+        id: sessionId,
+        user_id: user.id,
+        password_generation: result.generation,
+        via: 'web',
+        ip: input.ip,
+        user_agent: input.userAgent,
+        created_at: now,
+      });
+      dependencies.owner.recordLogin(user.id);
+
       return {
         success: true,
         user: { id: user.id, username: user.username },
-        token: dependencies.generateToken(user),
+        token: dependencies.signToken({ userId: user.id, username: user.username, sid: sessionId }),
       };
     },
 
-    getCurrentUser(user: unknown) {
-      return { user };
-    },
-
-    refreshSession(user: unknown) {
-      if (
-        typeof user !== 'object'
-        || user === null
-        || !('id' in user)
-        || !('username' in user)
-        || (typeof user.id !== 'number' && typeof user.id !== 'bigint')
-        || typeof user.username !== 'string'
-      ) {
-        throw new AppError('Authenticated user is required', {
-          code: 'AUTH_USER_REQUIRED',
-          statusCode: 401,
-        });
+    /**
+     * Resolves the user behind a token's session, or null when the device was
+     * signed out, the password changed since, or no password is set any more.
+     */
+    authenticateSession(claims: { userId: number; sid: string }): User | null {
+      const generation = dependencies.password.currentGeneration();
+      const session = dependencies.sessions.get(claims.sid);
+      if (!session) return null;
+      if (!generation || session.password_generation !== generation || session.user_id !== claims.userId) {
+        dependencies.sessions.delete(session.id);
+        return null;
       }
-
-      return { token: dependencies.generateToken(user as AuthUser) };
+      const user = dependencies.owner.getById(session.user_id);
+      if (!user) return null;
+      const now = dependencies.now();
+      if (now - session.last_seen_at >= SESSION_TOUCH_INTERVAL_MS) {
+        dependencies.sessions.touch(session.id, now);
+      }
+      return user;
     },
 
-    logout() {
-      return { success: true, message: 'Logged out successfully' };
+    /** A fresh token for the same session. */
+    refreshToken(user: AuthUser, sessionId: string) {
+      return { token: dependencies.signToken({ userId: user.id, username: user.username, sid: sessionId }) };
+    },
+
+    /** Signs this device out; other devices stay signed in. */
+    logout(sessionId: string) {
+      dependencies.sessions.delete(sessionId);
+      return { success: true };
     },
   };
 }

@@ -42,7 +42,7 @@ const stubServer = () => {
       await new Promise((resolve) => setTimeout(resolve, onboardingStatusDelayMs));
     }
     const body = url === '/api/auth/status'
-      ? { needsSetup: false }
+      ? { passwordConfigured: true }
       : url === '/api/auth/user'
         ? { user: { id: 1, username: 'triage' } }
         : url === '/api/auth/login'
@@ -227,7 +227,7 @@ test('signing in before onboarding shows onboarding without mounting the workspa
   // the onboarding status arrives.
   onboardingStatusDelayMs = 30;
 
-  let login: ((username: string, password: string) => Promise<unknown>) | null = null;
+  let login: ((password: string) => Promise<unknown>) | null = null;
   function LoginProbe() {
     const { login: authLogin } = useAuth();
     useEffect(() => {
@@ -246,7 +246,7 @@ test('signing in before onboarding shows onboarding without mounting the workspa
 
   let pendingLogin: Promise<unknown> | undefined;
   act(() => {
-    pendingLogin = login?.('triage', 'triage-pass-123');
+    pendingLogin = login?.('triage-pass-123');
   });
   await screen.findByText('onboarding');
   await act(async () => {

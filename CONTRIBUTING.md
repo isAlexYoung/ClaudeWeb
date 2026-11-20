@@ -18,8 +18,19 @@ cd app
 npm ci
 npm run typecheck
 npm run lint
-npm test
+npm test             # server tests
+npm run test:client  # browser-side tests
 ```
+
+- To sign in to a development server, give it a login password first. The
+  password files normally live in `/etc/claudeweb`; point both at a local
+  folder, set a password, and start the server with the same variables:
+
+  ```bash
+  export CLAUDEWEB_LOGIN_FILE=$PWD/.dev/login.json CLAUDEWEB_PASSWORD_FILE=$PWD/.dev/password
+  npx tsx --tsconfig server/tsconfig.json server/modules/cli/cli.ts password --set
+  npm run dev
+  ```
 
 - Backend code under `app/server/` follows
   `app/.agents/skills/backend-module-standards/SKILL.md`; frontend code under

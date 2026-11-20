@@ -32,7 +32,8 @@ ClaudeWeb 是 Siteboon AI B.V. 及贡献者开发的
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | sudo bash
 ```
 
-加上 `--version=2.0.0` 可以安装指定版本；默认安装最新的正式版。安装结束时会显示登录密码。
+加上 `--version=2.0.0` 可以安装指定版本；默认安装最新的正式版。安装结束时会显示登录密码；之后 root 可以用
+`claudeweb password` 再次查看，用 `claudeweb password --set` 换一个新密码（所有设备都会退出登录）。
 
 计划中的运行要求：
 
@@ -63,7 +64,8 @@ cd app
 npm ci
 npm run typecheck
 npm run lint
-npm test
+npm test             # server tests
+npm run test:client  # browser-side tests
 ```
 
 2.0.0 的计划见 [`doc/PROJECT_CHECKLIST.md`](doc/PROJECT_CHECKLIST.md)。

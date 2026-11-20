@@ -320,6 +320,39 @@ CREATE TABLE IF NOT EXISTS superseded_provider_sessions (
 );
 `;
 
+/**
+ * Signed-in devices, one row per successful login. The token a browser holds
+ * names its row; deleting the row signs that device out. `password_generation`
+ * is the login password's generation at sign-in: once root sets a new
+ * password, every older row stops working. Times are milliseconds since epoch.
+ */
+const LOGIN_SESSIONS_TABLE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS login_sessions (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    password_generation TEXT NOT NULL,
+    via TEXT NOT NULL DEFAULT 'web',
+    ip TEXT,
+    user_agent TEXT,
+    created_at INTEGER NOT NULL,
+    last_seen_at INTEGER NOT NULL
+);
+`;
+
+/**
+ * Failed login attempts per source IP, kept across restarts so a restart does
+ * not lift a lockout. `failures` counts since the IP's last success;
+ * `locked_until` is 0 when the IP is not locked. Times are milliseconds.
+ */
+const LOGIN_ATTEMPTS_TABLE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS login_attempts (
+    ip TEXT PRIMARY KEY,
+    failures INTEGER NOT NULL,
+    locked_until INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL
+);
+`;
+
 export const INIT_SCHEMA_SQL = `
 -- Initialize authentication database
 PRAGMA foreign_keys = ON;
@@ -373,4 +406,9 @@ ${USER_PREFERENCES_TABLE_SCHEMA_SQL}
 ${SESSION_DRAFTS_TABLE_SCHEMA_SQL}
 
 ${SUPERSEDED_PROVIDER_SESSIONS_TABLE_SCHEMA_SQL}
+
+${LOGIN_SESSIONS_TABLE_SCHEMA_SQL}
+CREATE INDEX IF NOT EXISTS idx_login_sessions_user ON login_sessions(user_id);
+
+${LOGIN_ATTEMPTS_TABLE_SCHEMA_SQL}
 `;

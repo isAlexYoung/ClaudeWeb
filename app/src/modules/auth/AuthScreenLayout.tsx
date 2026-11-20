@@ -9,7 +9,7 @@ type AuthScreenLayoutProps = {
   logo?: ReactNode;
 };
 
-/** Wraps the auth module's LoginForm and SetupForm so both full-screen auth pages share one card layout. */
+/** Wraps the auth module's LoginForm in the full-screen card layout. */
 export default function AuthScreenLayout({
   title,
   description,

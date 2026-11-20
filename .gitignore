@@ -7,6 +7,7 @@ coverage/
 .env.local
 .DS_Store
 Thumbs.db
+.dev/
 
 # Local-only notes (machine paths, test environment)
 doc/LOCAL_NOTES.md

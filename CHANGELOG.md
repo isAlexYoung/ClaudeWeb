@@ -6,6 +6,16 @@ release is a test release.
 
 ## Unreleased
 
+### Added
+
+- One login password per server, set by root: `claudeweb password` shows it,
+  `claudeweb password --set` replaces it with a generated one (`--stdin` for
+  your own). The web page asks only for the password; there is no sign-up.
+- Failed passwords lock the visitor's IP: 1 minute after 5 tries, then
+  5 minutes, then 30 minutes. The page shows the time left.
+- Sessions are kept on the server: signing out ends only that device, and a
+  new password signs out every device.
+
 ### Changed
 
 - ClaudeWeb is now a standalone project, independent of WebDesktop. The

@@ -39,7 +39,9 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 ```
 
 `--version=2.0.0` will pick a specific version; the default is the latest
-stable release. The installer prints the login password at the end.
+stable release. The installer prints the login password at the end; root can
+show it again with `claudeweb password` and replace it with
+`claudeweb password --set`, which signs every device out.
 
 Planned requirements:
 
@@ -73,7 +75,8 @@ cd app
 npm ci
 npm run typecheck
 npm run lint
-npm test
+npm test             # server tests
+npm run test:client  # browser-side tests
 ```
 
 [`doc/PROJECT_CHECKLIST.md`](doc/PROJECT_CHECKLIST.md) tracks the plan for

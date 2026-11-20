@@ -214,17 +214,14 @@ export const api = {
   // Auth endpoints (no token required)
   auth: {
     status: () => fetch('/api/auth/status'),
-    login: (username: string, password: string) => fetch('/api/auth/login', {
+    login: (password: string) => fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    }),
-    register: (username: string, password: string) => fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ password }),
     }),
     refresh: () => post('/api/auth/refresh'),
+    // Ends this device's session on the server; other devices stay signed in.
+    logout: () => post('/api/auth/logout'),
     user: () => get('/api/auth/user'),
   },
 

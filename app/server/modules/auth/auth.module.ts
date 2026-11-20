@@ -1,38 +1,62 @@
-import { createRequire } from 'node:module';
+import { randomBytes } from 'node:crypto';
 
-import { getConnection, userDb } from '@/modules/database/index.js';
+import { loginAttemptsDb, loginSessionsDb, userDb } from '@/modules/database/index.js';
+import { getLoginPasswordGeneration, verifyLoginPassword } from '@/modules/login-password/index.js';
 
-import { authenticateToken, generateToken } from './auth.middleware.js';
+import { createAuthenticateToken } from './auth.middleware.js';
 import { createAuthRouter } from './auth.routes.js';
 import { createAuthService } from './auth.service.js';
-
-type BcryptAdapter = {
-  hash(password: string, saltRounds: number): Promise<string>;
-  compare(password: string, passwordHash: string): Promise<boolean>;
-};
-
-// bcrypt does not ship TypeScript declarations in this project, so the
-// composition root narrows its CommonJS runtime surface before injecting it.
-const require = createRequire(import.meta.url);
-const bcrypt = require('bcrypt') as BcryptAdapter;
-const databaseConnection = getConnection();
+import { readSessionToken, signSessionToken } from './auth-token.service.js';
+import { createLoginLockout } from './login-lockout.service.js';
 
 const authService = createAuthService({
-  users: {
-    hasUsers: () => userDb.hasUsers(),
-    createUser: (username, passwordHash) => userDb.createUser(username, passwordHash),
-    getUserByUsername: (username) => userDb.getUserByUsername(username),
-    updateLastLogin: (userId) => userDb.updateLastLogin(userId),
+  owner: {
+    ensure: () => userDb.ensureOwnerUser(),
+    getById: (userId) => userDb.getUserById(userId),
+    recordLogin: (userId) => userDb.updateLastLogin(userId),
   },
-  transaction: {
-    begin: () => databaseConnection.prepare('BEGIN').run(),
-    commit: () => databaseConnection.prepare('COMMIT').run(),
-    rollback: () => databaseConnection.prepare('ROLLBACK').run(),
+  sessions: loginSessionsDb,
+  password: {
+    verify: (password) => verifyLoginPassword(password),
+    currentGeneration: () => getLoginPasswordGeneration(),
   },
-  hashPassword: (password) => bcrypt.hash(password, 12),
-  comparePassword: (password, passwordHash) => bcrypt.compare(password, passwordHash),
-  generateToken,
+  lockout: createLoginLockout({ store: loginAttemptsDb, now: () => Date.now() }),
+  signToken: signSessionToken,
+  createSessionId: () => randomBytes(32).toString('hex'),
+  now: () => Date.now(),
 });
+
+/**
+ * Checks one token: valid signature, and a session that still exists under
+ * the current password. Past half its lifetime, a replacement token for the
+ * same session is handed back so an active browser never expires.
+ */
+function checkToken(token: string) {
+  const read = readSessionToken(token);
+  if ('error' in read) return read;
+  const user = authService.authenticateSession(read.claims);
+  if (!user) return { error: 'invalid' as const };
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const halfLife = (read.expiresAt - read.issuedAt) / 2;
+  const refreshedToken = nowSeconds > read.issuedAt + halfLife
+    ? authService.refreshToken(user, read.claims.sid).token
+    : null;
+  return { user, sessionId: read.claims.sid, refreshedToken };
+}
+
+/** Used by the server entrypoint to protect every authenticated HTTP router. */
+export const authenticateToken = createAuthenticateToken(checkToken);
+
+/**
+ * Used by the server entrypoint's WebSocket setup to admit chat, shell and
+ * browser connections with the same token and session rules as HTTP.
+ */
+export function authenticateWebSocket(token: string | null) {
+  if (!token) return null;
+  const result = checkToken(token);
+  if ('error' in result) return null;
+  return { id: result.user.id, userId: result.user.id, username: result.user.username, sessionId: result.sessionId };
+}
 
 /** Auth router assembled for the server entrypoint. */
 export const authRoutes = createAuthRouter(authService, authenticateToken);

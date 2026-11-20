@@ -6,6 +6,10 @@ export { appConfigDb } from '@/modules/database/repositories/app-config.js';
 export { backupDb } from '@/modules/database/repositories/backup.db.js';
 export { credentialsDb } from '@/modules/database/repositories/credentials.js';
 export { githubTokensDb } from '@/modules/database/repositories/github-tokens.js';
+// loginAttemptsDb: used by Auth to count failed logins and lock out an IP across restarts.
+export { loginAttemptsDb } from '@/modules/database/repositories/login-attempts.db.js';
+// loginSessionsDb: used by Auth for signed-in devices, so logout and a new password end them.
+export { loginSessionsDb } from '@/modules/database/repositories/login-sessions.db.js';
 export { notificationChannelEndpointsDb } from '@/modules/database/repositories/notification-channel-endpoints.js';
 export { notificationPreferencesDb } from '@/modules/database/repositories/notification-preferences.js';
 // providerModelsDb: used by Providers to persist user-managed custom model rows.

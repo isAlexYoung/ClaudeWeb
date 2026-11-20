@@ -1,131 +1,53 @@
-// @ts-nocheck -- JWT request augmentation is narrowed by Auth route contracts.
-import jwt from 'jsonwebtoken';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
+type TokenCheck<User> =
+  | { user: User; sessionId: string; refreshedToken: string | null }
+  | { error: 'expired' | 'invalid' };
 
-import { userDb, appConfigDb } from '../database/index.js';
+/**
+ * Request after `authenticateToken`: the signed-in user and the login session
+ * (device) the token belongs to. Used by the Auth routes for refresh and logout.
+ */
+type AuthenticatedRequest<User> = Request & { user?: User; authSessionId?: string };
 
-// Use env var if set, otherwise auto-generate a unique secret per installation
-const JWT_SECRET = process.env.JWT_SECRET || appConfigDb.getOrCreateJwtSecret();
-
-// Optional API key middleware
-const validateApiKey = (req, res, next) => {
-  // Skip API key validation if not configured
+/** Optional API-wide key, enabled only when API_KEY is set in the environment. */
+export const validateApiKey: RequestHandler = (req, res, next) => {
   if (!process.env.API_KEY) {
     return next();
   }
-  
-  const apiKey = req.headers['x-api-key'];
-  if (apiKey !== process.env.API_KEY) {
+  if (req.headers['x-api-key'] !== process.env.API_KEY) {
     return res.status(401).json({ error: 'Invalid API key' });
   }
   next();
 };
 
-// JWT authentication middleware
-const authenticateToken = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+/**
+ * Used by the Auth module to build the HTTP guard every protected router uses.
+ * The token comes from `Authorization: Bearer`, or from `?token=` for
+ * EventSource, which cannot set headers.
+ */
+export function createAuthenticateToken<User>(checkToken: (token: string) => TokenCheck<User>): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const header = req.headers.authorization;
+    const queryToken = typeof req.query.token === 'string' ? req.query.token : '';
+    const token = (header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : '') || queryToken;
 
-  // Also check query param for SSE endpoints (EventSource can't set headers)
-  if (!token && req.query.token) {
-    token = req.query.token;
-  }
-
-  if (!token) {
-    res.setHeader('X-Auth-Error', 'invalid-token');
-    return res.status(401).json({
-      error: 'Access denied. No token provided.',
-      code: 'AUTH_TOKEN_INVALID',
-    });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    // Verify user still exists and is active
-    const user = userDb.getUserById(decoded.userId);
-    if (!user) {
-      res.setHeader('X-Auth-Error', 'invalid-token');
+    const result = token ? checkToken(token) : { error: 'invalid' as const };
+    if ('error' in result) {
+      const expired = result.error === 'expired';
+      res.setHeader('X-Auth-Error', expired ? 'session-expired' : 'invalid-token');
       return res.status(401).json({
-        error: 'Invalid token. User not found.',
-        code: 'AUTH_TOKEN_INVALID',
+        error: expired ? 'Session expired. Please log in again.' : 'Please log in.',
+        code: expired ? 'AUTH_TOKEN_EXPIRED' : 'AUTH_TOKEN_INVALID',
       });
     }
 
-    // Auto-refresh: if token is past halfway through its lifetime, issue a new one
-    if (decoded.exp && decoded.iat) {
-      const now = Math.floor(Date.now() / 1000);
-      const halfLife = (decoded.exp - decoded.iat) / 2;
-      if (now > decoded.iat + halfLife) {
-        const newToken = generateToken(user);
-        res.setHeader('X-Refreshed-Token', newToken);
-      }
+    if (result.refreshedToken) {
+      res.setHeader('X-Refreshed-Token', result.refreshedToken);
     }
-
-    req.user = user;
+    const authenticated = req as AuthenticatedRequest<User>;
+    authenticated.user = result.user;
+    authenticated.authSessionId = result.sessionId;
     next();
-  } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
-      res.setHeader('X-Auth-Error', 'session-expired');
-      return res.status(401).json({
-        error: 'Session expired. Please log in again.',
-        code: 'AUTH_TOKEN_EXPIRED',
-      });
-    }
-
-    console.warn(
-      'Token verification failed:',
-      error instanceof Error ? error.message : String(error),
-    );
-    res.setHeader('X-Auth-Error', 'invalid-token');
-    return res.status(401).json({
-      error: 'Invalid token',
-      code: 'AUTH_TOKEN_INVALID',
-    });
-  }
-};
-
-// Generate JWT token
-const generateToken = (user) => {
-  return jwt.sign(
-    {
-      userId: user.id,
-      username: user.username
-    },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  );
-};
-
-// WebSocket authentication function
-const authenticateWebSocket = (token) => {
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    // Verify user actually exists in database (matches REST authenticateToken behavior)
-    const user = userDb.getUserById(decoded.userId);
-    if (!user) {
-      return null;
-    }
-    return { userId: user.id, username: user.username };
-  } catch (error) {
-    if (!(error instanceof jwt.TokenExpiredError)) {
-      console.warn(
-        'WebSocket token verification failed:',
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-    return null;
-  }
-};
-
-export {
-  validateApiKey,
-  authenticateToken,
-  generateToken,
-  authenticateWebSocket,
-  JWT_SECRET
-};
+  };
+}

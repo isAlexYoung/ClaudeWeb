@@ -1533,6 +1533,22 @@ export type FileTreeBrowseResult = {
 };
 
 // ---------------------------
+//----------------- LOGIN PASSWORD CONTRACTS ------------
+/**
+ * Locations of the two files that hold the server's one login password.
+ *
+ * `loginFile` (default /etc/claudeweb/login.json) holds a scrypt hash and the
+ * password generation; the service account reads it to check logins and
+ * sessions. `passwordFile` (default /etc/claudeweb/password) holds the password
+ * itself for root's `claudeweb password`. Both are written only by root through
+ * the Login Password module; Auth reads `loginFile`, the CLI uses both.
+ */
+export type LoginPasswordFiles = {
+  loginFile: string;
+  passwordFile: string;
+};
+
+// ---------------------------
 //----------------- CLI MODULE CONTRACTS ------------
 /**
  * Output boundary used by the CLI service.

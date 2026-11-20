@@ -18,12 +18,15 @@ const AUTH_TOKEN_STORAGE_KEY = 'auth-token';
 const AUTH_ERROR_MESSAGES = {
   authStatusCheckFailed: 'errors.authStatusCheckFailed',
   loginFailed: 'errors.loginFailed',
-  registrationFailed: 'errors.registrationFailed',
+  invalidPassword: 'login.errors.invalidPassword',
+  passwordNotSet: 'login.passwordNotSet',
+  locked: 'login.errors.locked',
   networkError: 'errors.networkError',
   sessionExpired: 'errors.sessionExpired',
 } as const;
 
-type AuthActionResult = { success: true } | { success: false; error: string };
+/** A failed login carries `retryAfterSeconds` when this IP is locked out for a while. */
+type AuthActionResult = { success: true } | { success: false; error: string; retryAfterSeconds?: number };
 
 type AuthSessionPayload = {
   token?: string;
@@ -31,7 +34,11 @@ type AuthSessionPayload = {
 };
 
 type AuthStatusPayload = {
-  needsSetup?: boolean;
+  passwordConfigured?: boolean;
+};
+
+type AuthErrorPayload = {
+  error?: { code?: unknown; details?: { retryAfterSeconds?: unknown; attemptsBeforeLock?: unknown } };
 };
 
 type AuthUserPayload = {
@@ -46,11 +53,11 @@ type AuthContextValue = {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
-  needsSetup: boolean;
+  /** False when the server has no login password yet (root has to set one). */
+  passwordConfigured: boolean;
   hasCompletedOnboarding: boolean;
   error: string | null;
-  login: (username: string, password: string) => Promise<AuthActionResult>;
-  register: (username: string, password: string) => Promise<AuthActionResult>;
+  login: (password: string) => Promise<AuthActionResult>;
   logout: () => void;
   refreshOnboardingStatus: () => Promise<void>;
 };
@@ -94,7 +101,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(() => readStoredToken());
   const [isLoading, setIsLoading] = useState(true);
-  const [needsSetup, setNeedsSetup] = useState(false);
+  const [passwordConfigured, setPasswordConfigured] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -201,12 +208,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const statusResponse = await api.auth.status();
       const statusPayload = await parseJsonSafely<AuthStatusPayload>(statusResponse);
 
-      if (statusPayload?.needsSetup) {
-        setNeedsSetup(true);
-        return;
-      }
-
-      setNeedsSetup(false);
+      setPasswordConfigured(statusPayload?.passwordConfigured !== false);
 
       // Read the stored token instead of depending on `token` state: this
       // bootstrap flips `isLoading`, which swaps the whole app for the loading
@@ -286,21 +288,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await checkOnboardingStatus();
     setUser(nextUser);
     setToken(nextToken);
-    setNeedsSetup(false);
+    setPasswordConfigured(true);
   }, [checkOnboardingStatus]);
 
   const login = useCallback<AuthContextValue['login']>(
-    async (username, password) => {
+    async (password) => {
       try {
         setError(null);
-        const response = await api.auth.login(username, password);
-        const payload = await parseJsonSafely<AuthSessionPayload>(response);
+        const response = await api.auth.login(password);
+        const payload = await parseJsonSafely<AuthSessionPayload & AuthErrorPayload>(response);
 
         if (!response.ok || !payload?.token || !payload.user) {
-          // Most auth failures arrive as the structured AppError envelope; passing its
-          // `error` object on would render it as a React child and blank the screen.
-          const message = readApiErrorMessage(payload) ?? t(AUTH_ERROR_MESSAGES.loginFailed);
-          setError(message);
+          // The login refusals ClaudeWeb itself sends are worded here, in the
+          // page's language; anything else shows the server's message. Passing
+          // the envelope's `error` object on would render it as a React child
+          // and blank the screen.
+          const code = payload?.error?.code;
+          const details = payload?.error?.details;
+          if (code === 'AUTH_LOCKED' && typeof details?.retryAfterSeconds === 'number') {
+            return { success: false, error: t(AUTH_ERROR_MESSAGES.locked), retryAfterSeconds: details.retryAfterSeconds };
+          }
+          if (code === 'AUTH_PASSWORD_NOT_SET') {
+            setPasswordConfigured(false);
+            return { success: false, error: t(AUTH_ERROR_MESSAGES.passwordNotSet) };
+          }
+          const message = code === 'AUTH_INVALID_PASSWORD'
+            ? t(AUTH_ERROR_MESSAGES.invalidPassword, { count: Number(details?.attemptsBeforeLock) || 0 })
+            : readApiErrorMessage(payload) ?? t(AUTH_ERROR_MESSAGES.loginFailed);
           return { success: false, error: message };
         }
 
@@ -315,33 +329,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [publishSession, t],
   );
 
-  const register = useCallback<AuthContextValue['register']>(
-    async (username, password) => {
-      try {
-        setError(null);
-        const response = await api.auth.register(username, password);
-        const payload = await parseJsonSafely<AuthSessionPayload>(response);
-
-        if (!response.ok || !payload?.token || !payload.user) {
-          const message = readApiErrorMessage(payload) ?? t(AUTH_ERROR_MESSAGES.registrationFailed);
-          setError(message);
-          return { success: false, error: message };
-        }
-
-        await publishSession(payload.user, payload.token);
-        return { success: true };
-      } catch (caughtError) {
-        console.error('Registration error:', caughtError);
-        setError(t(AUTH_ERROR_MESSAGES.networkError));
-        return { success: false, error: t(AUTH_ERROR_MESSAGES.networkError) };
-      }
-    },
-    [publishSession, t],
-  );
-
   const logout = useCallback(() => {
-    // JWT logout is client-side: the server endpoint does not maintain a
-    // revocation list, so clearing the session is the complete operation.
+    // The server forgets this device's session, so the token is dead even if
+    // a copy survives. Sent before the token is cleared, since the request
+    // reads it from storage; the page signs out whether or not it arrives.
+    void api.auth.logout().catch((caughtError: unknown) => {
+      console.warn('[Auth] Logout request failed:', caughtError);
+    });
     clearSession();
   }, [clearSession]);
 
@@ -350,11 +344,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       user,
       token,
       isLoading,
-      needsSetup,
+      passwordConfigured,
       hasCompletedOnboarding,
       error,
       login,
-      register,
       logout,
       refreshOnboardingStatus,
     }),
@@ -364,9 +357,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isLoading,
       login,
       logout,
-      needsSetup,
+      passwordConfigured,
       refreshOnboardingStatus,
-      register,
       token,
       user,
     ],

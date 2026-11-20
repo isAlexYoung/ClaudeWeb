@@ -99,6 +99,19 @@ export const userDb = {
       .get() as UserPublicRow | undefined;
   },
 
+  /**
+   * Returns the one account ClaudeWeb signs everybody in as, creating it on
+   * first login. Its password_hash is unusable on purpose: the login password
+   * lives in /etc/claudeweb, not in this table. A database carried over from
+   * an earlier install keeps its existing first user.
+   */
+  ensureOwnerUser(): UserPublicRow {
+    const existing = userDb.getFirstUser();
+    if (existing) return existing;
+    const created = userDb.createUser('claudeweb', '!');
+    return userDb.getUserById(Number(created.id)) as UserPublicRow;
+  },
+
   /** Stores the user's preferred git name and email. */
   updateGitConfig(
     userId: number,

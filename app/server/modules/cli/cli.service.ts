@@ -17,6 +17,17 @@ type CliServiceDependencies = {
   environment: CliEnvironment;
   fileSystem: CliFileSystem;
   output: CliOutput;
+  loginPassword: {
+    /** The current password from the root-only file; throws AppError when unset or unreadable. */
+    read(): string;
+    /** Stores a new password; every signed-in device is signed out. */
+    write(password: string): Promise<void>;
+    generate(): string;
+    /** An English reason the password cannot be used, or null. */
+    describeUnusable(password: string): string | null;
+  };
+  /** One line typed by the user (hidden on a terminal) or piped in. */
+  readSecretLine(prompt: string): Promise<string>;
   startServer(): Promise<void>;
 };
 
@@ -26,12 +37,15 @@ type ParsedCliArguments = {
     serverPort?: string;
     databasePath?: string;
   };
+  /** Everything after a command that takes its own options, such as `password`. */
+  commandArguments: string[];
 };
 
 function parseCliArguments(argumentsList: string[]): ParsedCliArguments {
   const parsedArguments: ParsedCliArguments = {
     command: 'start',
     options: {},
+    commandArguments: [],
   };
 
   for (let argumentIndex = 0; argumentIndex < argumentsList.length; argumentIndex += 1) {
@@ -50,6 +64,10 @@ function parseCliArguments(argumentsList: string[]): ParsedCliArguments {
       parsedArguments.command = 'version';
     } else if (!argument.startsWith('-')) {
       parsedArguments.command = argument;
+      if (argument === 'password') {
+        parsedArguments.commandArguments = argumentsList.slice(argumentIndex + 1);
+        break;
+      }
     }
   }
 
@@ -115,6 +133,10 @@ Usage:
 Commands:
   start            Start the ClaudeWeb server (default)
   status           Show configuration and data locations
+  password         Show the login password (root only)
+  password --set   Set a new, generated login password and sign out every device
+  password --set --stdin
+                   Set a login password you type (or pipe in) instead
   update           Explain how ClaudeWeb is updated
   help             Show this help information
   version          Show version information
@@ -129,6 +151,7 @@ Examples:
   $ claudeweb                        # Start with defaults
   $ claudeweb --port 8080            # Start on port 8080
   $ claudeweb status                 # Show configuration
+  $ sudo claudeweb password          # Show the login password
 
 Environment Variables:
   SERVER_PORT         Set server port (default: 3001)
@@ -156,6 +179,61 @@ export function createCliService(dependencies: CliServiceDependencies): CliAppli
   const explainUpdates = (): void => {
     dependencies.output.log(`${terminalTextStyles.info('[INFO]')} ClaudeWeb ${dependencies.packageMetadata.version} is updated by root on the server.`);
     dependencies.output.log(`${terminalTextStyles.tip('[TIP]')} Run as root: ${terminalTextStyles.bright('claudeweb update')}`);
+  };
+
+  const reportPasswordError = (error: unknown): number => {
+    dependencies.output.error(`${terminalTextStyles.error('[ERROR]')} ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  };
+
+  // `password` shows the current password; `password --set` replaces it with a
+  // generated one, `--set --stdin` with one the user types. Reading needs root
+  // (the file is 0600 root); so does writing to /etc/claudeweb.
+  const runPassword = async (commandArguments: string[]): Promise<number> => {
+    const unknown = commandArguments.filter((argument) => argument !== '--set' && argument !== '--stdin');
+    const setting = commandArguments.includes('--set');
+    if (unknown.length > 0 || (!setting && commandArguments.includes('--stdin'))) {
+      dependencies.output.error(`${terminalTextStyles.error('[ERROR]')} Usage: claudeweb password [--set [--stdin]]`);
+      return 1;
+    }
+
+    if (!setting) {
+      try {
+        dependencies.output.log(dependencies.loginPassword.read());
+        return 0;
+      } catch (error) {
+        return reportPasswordError(error);
+      }
+    }
+
+    let password: string;
+    const chosen = commandArguments.includes('--stdin');
+    if (chosen) {
+      password = await dependencies.readSecretLine('New login password: ');
+      const problem = dependencies.loginPassword.describeUnusable(password);
+      if (problem) {
+        dependencies.output.error(`${terminalTextStyles.error('[ERROR]')} ${problem}`);
+        return 1;
+      }
+    } else {
+      password = dependencies.loginPassword.generate();
+    }
+
+    try {
+      await dependencies.loginPassword.write(password);
+    } catch (error) {
+      const status = reportPasswordError(error);
+      // The new password may already be active (only root's copy failed): show
+      // a generated one rather than lose it.
+      if (!chosen && (error as { code?: string }).code === 'PASSWORD_COPY_FAILED') {
+        dependencies.output.log(`New login password: ${password}`);
+      }
+      return status;
+    }
+
+    dependencies.output.log(chosen ? 'The login password was changed.' : `New login password: ${password}`);
+    dependencies.output.log('Every signed-in device has to sign in again.');
+    return 0;
   };
 
   return {
@@ -187,6 +265,8 @@ export function createCliService(dependencies: CliServiceDependencies): CliAppli
         case 'update':
           explainUpdates();
           return 0;
+        case 'password':
+          return runPassword(parsedArguments.commandArguments);
         default:
           dependencies.output.error(`\n❌ Unknown command: ${parsedArguments.command}`);
           dependencies.output.log('   Run "claudeweb help" for usage information.\n');
