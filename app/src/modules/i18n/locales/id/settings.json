@@ -717,11 +717,6 @@
     "configCwd": "Cwd",
     "configEnvVars": "Env Vars"
   },
-  "mcpTeamCard": {
-    "title": "Konfigurasi MCP Tim",
-    "description": "Bagikan konfigurasi server MCP di seluruh tim. Semua anggota tetap tersinkron otomatis.",
-    "proLink": "Tersedia dengan CloudCLI Pro"
-  },
   "mcpServersAddErrors": {
     "loadFailedProvider": "Gagal memuat server MCP {{provider}}",
     "deleteFailed": "Gagal menghapus server MCP",

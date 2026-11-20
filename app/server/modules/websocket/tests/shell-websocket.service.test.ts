@@ -358,7 +358,7 @@ function withClaudeConfig(body: (fixture: ClaudeConfigFixture) => void, homeName
 // The server-owned settings file a light launch points `--settings` at. The
 // default fixture HOME has no quote in it, so bash quoting is a plain wrap.
 const themeSettingsPath = (theme: string) =>
-  path.join(os.homedir(), '.cloudcli', `claude-shell-theme-${theme}.json`);
+  path.join(os.homedir(), '.claudeweb', `claude-shell-theme-${theme}.json`);
 const themeFlag = (theme: string) => ` --settings '${themeSettingsPath(theme)}'`;
 
 // The flag outranks the user's own settings, so a dark Shell tab must not send
@@ -389,7 +389,7 @@ test('a dark Shell tab launches claude exactly as before, whatever the user them
     assert.equal(calls[0].env.COLORFGBG, '15;0');
     assert.equal(calls[3].env.COLORFGBG, process.env.COLORFGBG);
     assert.equal(calls[4].env.COLORFGBG, process.env.COLORFGBG);
-    assert.equal(fs.existsSync(path.join(home, '.cloudcli')), false, 'a dark launch writes no file');
+    assert.equal(fs.existsSync(path.join(home, '.claudeweb')), false, 'a dark launch writes no file');
   });
 });
 
@@ -605,7 +605,7 @@ test('the light theme settings file is written once to the app data folder', () 
   withClaudeConfig(({ configHome, home, projectPath, write }) => {
     write(path.join(configHome, 'settings.json'), { theme: 'dark-daltonized' });
     const configBefore = fs.readdirSync(configHome).sort();
-    const settingsPath = path.join(home, '.cloudcli', 'claude-shell-theme-light-daltonized.json');
+    const settingsPath = path.join(home, '.claudeweb', 'claude-shell-theme-light-daltonized.json');
     const { calls, dependencies } = spawnRecorder();
 
     launch(dependencies, { provider: 'claude', colorScheme: 'light' }, projectPath);
@@ -623,7 +623,7 @@ test('the light theme settings file is written once to the app data folder', () 
     assert.equal(fs.readFileSync(settingsPath, 'utf8'), '{"theme":"light-daltonized"}\n');
 
     assert.equal(calls.length, 3);
-    assert.deepEqual(fs.readdirSync(path.join(home, '.cloudcli')), ['claude-shell-theme-light-daltonized.json']);
+    assert.deepEqual(fs.readdirSync(path.join(home, '.claudeweb')), ['claude-shell-theme-light-daltonized.json']);
     assert.deepEqual(fs.readdirSync(configHome).sort(), configBefore);
     assert.equal(fs.existsSync(path.join(projectPath, '.claude')), false);
   });
@@ -638,7 +638,7 @@ test('the settings file path is quoted for bash and for PowerShell', (t) => {
     return;
   }
   withClaudeConfig(({ home, projectPath }) => {
-    const settingsPath = path.join(home, '.cloudcli', 'claude-shell-theme-light.json');
+    const settingsPath = path.join(home, '.claudeweb', 'claude-shell-theme-light.json');
     const { calls, dependencies } = spawnRecorder('resumed-session-id');
 
     launch(dependencies, { provider: 'claude', colorScheme: 'light' }, projectPath);
@@ -661,8 +661,8 @@ test('the settings file path is quoted for bash and for PowerShell', (t) => {
       ],
     ]);
     // Spelled out once, so the escaping above is not only checked against itself.
-    assert.ok(calls[0].command.endsWith(`/it'\\''s a \u2019quoted\u2019 home/.cloudcli/claude-shell-theme-light.json'`));
-    assert.ok(calls[2].command.endsWith(`/it''s a \u2019\u2019quoted\u2019\u2019 home/.cloudcli/claude-shell-theme-light.json'`));
+    assert.ok(calls[0].command.endsWith(`/it'\\''s a \u2019quoted\u2019 home/.claudeweb/claude-shell-theme-light.json'`));
+    assert.ok(calls[2].command.endsWith(`/it''s a \u2019\u2019quoted\u2019\u2019 home/.claudeweb/claude-shell-theme-light.json'`));
     assert.deepEqual(JSON.parse(fs.readFileSync(settingsPath, 'utf8')), { theme: 'light' });
   }, "it's a \u2019quoted\u2019 home");
 });
@@ -670,7 +670,7 @@ test('the settings file path is quoted for bash and for PowerShell', (t) => {
 test('a settings file that cannot be written drops the flag, logs once and still launches', (t) => {
   withClaudeConfig(({ home, projectPath, write }) => {
     // A file where the app data folder should be makes every write fail.
-    write(path.join(home, '.cloudcli'), 'not a folder');
+    write(path.join(home, '.claudeweb'), 'not a folder');
     const warn = t.mock.method(console, 'warn', () => undefined);
     const { calls, dependencies } = spawnRecorder();
 

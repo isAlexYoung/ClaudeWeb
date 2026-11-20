@@ -17,8 +17,8 @@ import { getGlobalImageAssetsDir } from '@/shared/image-attachments.js';
 
 // `<ms>-<random>-<sanitized original name>`, as both upload paths name files.
 const STORED_NAME_PATTERN = /^(\d{12,14})-\d+-(.+)$/;
-const ASSET_REFERENCE_PATTERN = /\.cloudcli[\\/]+assets[\\/]+([A-Za-z0-9._-]+)/g;
-const ORIGINAL_NAME_PATTERN = /\.cloudcli[\\/]+assets[\\/]+([A-Za-z0-9._-]+) \(original name: ([^)\\"]+)\)/g;
+const ASSET_REFERENCE_PATTERN = /\.claudeweb[\\/]+assets[\\/]+([A-Za-z0-9._-]+)/g;
+const ORIGINAL_NAME_PATTERN = /\.claudeweb[\\/]+assets[\\/]+([A-Za-z0-9._-]+) \(original name: ([^)\\"]+)\)/g;
 
 type Match = { projectPath: string | null; sessionId: string; originalName?: string };
 
@@ -43,7 +43,7 @@ async function scanTranscript(
   const lines = readline.createInterface({ input: stream, crlfDelay: Infinity });
   try {
     for await (const line of lines) {
-      if (!line.includes('.cloudcli')) continue;
+      if (!line.includes('.claudeweb')) continue;
       const names = new Map<string, string | undefined>();
       for (const match of line.matchAll(ASSET_REFERENCE_PATTERN)) names.set(match[1], undefined);
       for (const match of line.matchAll(ORIGINAL_NAME_PATTERN)) names.set(match[1], match[2].trim() || undefined);

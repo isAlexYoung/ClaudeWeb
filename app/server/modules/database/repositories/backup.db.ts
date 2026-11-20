@@ -49,7 +49,7 @@ const IN_CLAUSE_CHUNK = 500;
 
 export const backupDb = {
   /**
-   * Reads one user's CloudCLI rows for a backup. Only Claude sessions that
+   * Reads one user's ClaudeWeb rows for a backup. Only Claude sessions that
    * already have a transcript id are included: a session that never ran has
    * nothing to resume.
    */

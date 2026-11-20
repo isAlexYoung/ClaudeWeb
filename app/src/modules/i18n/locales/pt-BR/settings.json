@@ -739,11 +739,6 @@
     "configCwd": "Cwd",
     "configEnvVars": "Vars de ambiente"
   },
-  "mcpTeamCard": {
-    "title": "Configs MCP da equipe",
-    "description": "Compartilhe configurações de servidores MCP com sua equipe. Todos ficam em sincronia automaticamente.",
-    "proLink": "Disponível com CloudCLI Pro"
-  },
   "mcpServersAddErrors": {
     "loadFailedProvider": "Falha ao carregar servidores MCP do {{provider}}",
     "deleteFailed": "Falha ao excluir servidor MCP",

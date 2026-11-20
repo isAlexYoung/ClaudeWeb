@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS scheduled_messages (
 );
 `;
 
-// ClaudeWeb File management: one row per chat attachment in ~/.cloudcli/assets,
+// ClaudeWeb File management: one row per chat attachment in ~/.claudeweb/assets,
 // with the project (and conversation) it was uploaded for. The file itself
 // stays where it always was; the row only adds who it belongs to.
 export const UPLOADED_FILES_TABLE_SCHEMA_SQL = `

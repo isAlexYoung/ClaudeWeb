@@ -2,7 +2,7 @@
   "name": "webdesktop-taskmaster-runtime",
   "version": "1.0.0",
   "private": true,
-  "description": "Pinned TaskMaster CLI installed with the WebDesktop CloudCLI build. Non-Claude AI providers are replaced by the stand-ins in vendor-stubs/.",
+  "description": "Pinned TaskMaster CLI installed with the WebDesktop ClaudeWeb build. Non-Claude AI providers are replaced by the stand-ins in vendor-stubs/.",
   "dependencies": {
     "task-master-ai": "0.43.1",
     "@ai-sdk/amazon-bedrock": "file:./vendor-stubs/ai-sdk-amazon-bedrock",

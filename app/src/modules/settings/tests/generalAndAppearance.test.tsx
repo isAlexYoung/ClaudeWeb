@@ -18,7 +18,7 @@ import AboutTab from '@/modules/settings/tabs/AboutTab';
 /**
  * Settings round of 2026-11-14: General replaces Agents at the top, voice and
  * browser are gone, the profile only labels the bottom-left account button,
- * fonts are an appearance choice, and About points at CloudCLI.
+ * fonts are an appearance choice, and About points at upstream CloudCLI UI.
  */
 
 beforeAll(async () => {
@@ -59,12 +59,12 @@ test('settings open on General, and voice and browser are no longer offered', ()
   assert.ok(!labels.includes('Browser'));
 });
 
-test('About says what the interface is built on and links to CloudCLI, with the license notice', () => {
+test('About says what the interface is built on and links to upstream CloudCLI UI, with the license notice', () => {
   const { container } = render(<AboutTab />);
-  const link = screen.getByRole('link', { name: /CloudCLI on GitHub/ });
+  const link = screen.getByRole('link', { name: /CloudCLI UI on GitHub/ });
 
   assert.equal(link.getAttribute('href'), 'https://github.com/siteboon/claudecodeui');
-  assert.match(container.textContent ?? '', /built on the open-source project CloudCLI/);
+  assert.match(container.textContent ?? '', /built on the open-source project CloudCLI UI/);
   assert.match(container.textContent ?? '', /AGPL-3\.0/);
   assert.doesNotMatch(container.textContent ?? '', /Discord|Star on GitHub|Pro Features/);
 });

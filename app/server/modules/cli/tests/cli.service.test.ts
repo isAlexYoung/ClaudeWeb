@@ -14,15 +14,14 @@ function createHarness() {
     error: (message = '') => errorMessages.push(message),
   };
   let serverStarts = 0;
-  let sandboxArguments: string[] = [];
   const service = createCliService({
     applicationRoot: '/application',
-    defaultDatabasePath: '/home/user/.cloudcli/auth.db',
+    defaultDatabasePath: '/home/user/.claudeweb/auth.db',
     homeDirectory: '/home/user',
     packageMetadata: {
       version: '1.2.3',
-      homepage: 'https://cloudcli.example',
-      bugsUrl: 'https://cloudcli.example/issues',
+      homepage: 'https://claudeweb.example',
+      bugsUrl: 'https://claudeweb.example/issues',
     },
     environment,
     fileSystem: {
@@ -30,14 +29,6 @@ function createHarness() {
       getFileStats: () => ({ size: 0, modifiedAt: new Date(0) }),
     },
     output,
-    sandboxService: {
-      execute: async (argumentsList) => {
-        sandboxArguments = argumentsList;
-        return 7;
-      },
-    },
-    getLatestPackageVersion: async () => '1.2.3',
-    updateGlobalPackage: () => undefined,
     startServer: async () => {
       serverStarts += 1;
     },
@@ -49,7 +40,6 @@ function createHarness() {
     logMessages,
     errorMessages,
     getServerStarts: () => serverStarts,
-    getSandboxArguments: () => sandboxArguments,
   };
 }
 
@@ -68,13 +58,14 @@ test('applies CLI options to the injected environment before starting the server
   assert.equal(harness.getServerStarts(), 1);
 });
 
-test('passes only sandbox arguments to the injected sandbox service', async () => {
+test('update only points at the root updater and starts nothing', async () => {
   const harness = createHarness();
 
-  const exitCode = await harness.service.run(['sandbox', 'ls']);
+  const exitCode = await harness.service.run(['update']);
 
-  assert.equal(exitCode, 7);
-  assert.deepEqual(harness.getSandboxArguments(), ['ls']);
+  assert.equal(exitCode, 0);
+  assert.equal(harness.getServerStarts(), 0);
+  assert.match(harness.logMessages.join('\n'), /claudeweb update/);
 });
 
 test('returns a failure code for an unknown command without exiting the process', async () => {

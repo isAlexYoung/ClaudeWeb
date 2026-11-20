@@ -209,7 +209,7 @@
       "title": "File management",
       "summary_one": "{{count}} uploaded file, {{size}} on the server.",
       "summary_other": "{{count}} uploaded files, {{size}} on the server.",
-      "storedIn": "Files you add with “+” in this project’s chats are kept in ~/.cloudcli/assets.",
+      "storedIn": "Files you add with “+” in this project’s chats are kept in ~/.claudeweb/assets.",
       "refresh": "Refresh",
       "close": "Close",
       "loading": "Loading files…",

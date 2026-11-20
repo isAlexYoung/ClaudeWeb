@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { CLOUDCLI_WORDMARK_FONT_FAMILY } from '@/shared/constants';
+import { CLAUDEWEB_WORDMARK_FONT_FAMILY } from '@/shared/constants';
 
 const loadingDotAnimationDelays = ['0s', '0.15s', '0.3s'];
 
@@ -16,7 +16,7 @@ export default function AuthLoadingScreen() {
       <div className="relative text-center" role="status" aria-live="polite">
         <h1
           className="mb-4 text-2xl font-bold tracking-tight text-foreground"
-          style={{ fontFamily: CLOUDCLI_WORDMARK_FONT_FAMILY }}
+          style={{ fontFamily: CLAUDEWEB_WORDMARK_FONT_FAMILY }}
         >
           ClaudeWeb
         </h1>

@@ -331,7 +331,7 @@ test('an empty selection opens no confirmation', () => {
 
 
 test('New chat selecting the chat directory does not open it as a project, a real project still opens', () => {
-  // Older CloudCLI installs kept projects in /home/wdguest, so it can be listed as a project.
+  // Older ClaudeWeb installs kept projects in /home/wdguest, so it can be listed as a project.
   const chatDirectory = { projectId: 'chat-dir', displayName: 'wdguest', fullPath: '/home/wdguest/', path: '/home/wdguest' } as unknown as Project;
   const view = renderController(vi.fn(), { ...IDLE, selectedProject: chatDirectory });
   assert.equal(view.result.current.isProjectExpanded('chat-dir'), false);
@@ -364,29 +364,29 @@ test('opt-in multi-open groups survive reloads and toggle independently', () => 
 });
 
 test('hydrating the preference restores groups before writing browser storage', () => {
-  localStorage.setItem('cloudcli-expanded-projects', JSON.stringify(['saved-1', 'saved-2']));
+  localStorage.setItem('claudeweb-expanded-projects', JSON.stringify(['saved-1', 'saved-2']));
   const controller = renderController();
   controller.rerender({ ...IDLE, keepProjectsExpanded: true });
   assert.equal(controller.result.current.isProjectExpanded('saved-1'), true);
   assert.equal(controller.result.current.isProjectExpanded('saved-2'), true);
   controller.rerender({ ...IDLE, keepProjectsExpanded: false });
   assert.equal(controller.result.current.isProjectExpanded('saved-2'), false);
-  assert.deepEqual(JSON.parse(localStorage.getItem('cloudcli-expanded-projects')!), ['saved-1', 'saved-2']);
+  assert.deepEqual(JSON.parse(localStorage.getItem('claudeweb-expanded-projects')!), ['saved-1', 'saved-2']);
 });
 
 test('invalid saved expansion data does not break navigation', () => {
-  localStorage.setItem('cloudcli-expanded-projects', 'invalid JSON');
+  localStorage.setItem('claudeweb-expanded-projects', 'invalid JSON');
   const { result } = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
   act(() => result.current.toggleProject('project-1'));
   assert.equal(result.current.isProjectExpanded('project-1'), true);
 });
 
 test('only string project IDs are restored from browser storage', () => {
-  localStorage.setItem('cloudcli-expanded-projects', JSON.stringify(['saved-1', 5, null, {}, 'saved-2']));
+  localStorage.setItem('claudeweb-expanded-projects', JSON.stringify(['saved-1', 5, null, {}, 'saved-2']));
   const { result } = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
   assert.equal(result.current.isProjectExpanded('saved-1'), true);
   assert.equal(result.current.isProjectExpanded('saved-2'), true);
-  assert.deepEqual(JSON.parse(localStorage.getItem('cloudcli-expanded-projects')!), ['saved-1', 'saved-2']);
+  assert.deepEqual(JSON.parse(localStorage.getItem('claudeweb-expanded-projects')!), ['saved-1', 'saved-2']);
 });
 
 
@@ -413,21 +413,21 @@ test('Running groups keep their independent collapse state in multi-open mode', 
 
 
 test('a selected project intentionally collapsed before reload stays collapsed', () => {
-  localStorage.setItem('cloudcli-expanded-projects', JSON.stringify(['other-project']));
+  localStorage.setItem('claudeweb-expanded-projects', JSON.stringify(['other-project']));
   const controller = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true, selectedProject: PROJECT });
   assert.equal(controller.result.current.isProjectExpanded(PROJECT.projectId), false);
   assert.equal(controller.result.current.isProjectExpanded('other-project'), true);
-  assert.deepEqual(JSON.parse(localStorage.getItem('cloudcli-expanded-projects')!), ['other-project']);
+  assert.deepEqual(JSON.parse(localStorage.getItem('claudeweb-expanded-projects')!), ['other-project']);
   controller.rerender({ ...IDLE, keepProjectsExpanded: true, selectedProject: { ...PROJECT, projectId: 'new-selection' } });
   assert.equal(controller.result.current.isProjectExpanded('new-selection'), true);
 });
 
 test('an empty saved set also preserves a collapsed selection restored after mount', () => {
-  localStorage.setItem('cloudcli-expanded-projects', '[]');
+  localStorage.setItem('claudeweb-expanded-projects', '[]');
   const controller = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
   controller.rerender({ ...IDLE, keepProjectsExpanded: true, selectedProject: PROJECT });
   assert.equal(controller.result.current.isProjectExpanded(PROJECT.projectId), false);
-  assert.equal(localStorage.getItem('cloudcli-expanded-projects'), '[]');
+  assert.equal(localStorage.getItem('claudeweb-expanded-projects'), '[]');
 });
 
 test('without saved expansion, initial project selection still opens normally', () => {

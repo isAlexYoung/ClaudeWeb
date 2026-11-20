@@ -802,11 +802,6 @@
     "configCwd": "Cwd",
     "configEnvVars": "Env Vars"
   },
-  "mcpTeamCard": {
-    "title": "Team MCP Configs",
-    "description": "Share MCP server configurations across your team. Everyone stays in sync automatically.",
-    "proLink": "Available with CloudCLI Pro"
-  },
   "mcpServersAddErrors": {
     "loadFailedProvider": "Failed to load {{provider}} MCP servers",
     "deleteFailed": "Failed to delete MCP server",
@@ -844,11 +839,11 @@
       }
     },
     "licensed": "Licensed under AGPL-3.0",
-    "modifiedVersion": "This is a modified version of CloudCLI UI (https://github.com/siteboon/claudecodeui), changed for WebDesktop. Based on upstream commit 58a28e0.",
+    "modifiedVersion": "ClaudeWeb is a modified version of CloudCLI UI (https://github.com/siteboon/claudecodeui), based on upstream commit 58a28e0. It is not the original CloudCLI UI.",
     "sourceChanges": "View the WebDesktop changes",
     "title": "About",
-    "basedOn": "This interface is built on the open-source project CloudCLI (Claude Code UI) and modified for WebDesktop.",
-    "githubLink": "CloudCLI on GitHub",
+    "basedOn": "ClaudeWeb is built on the open-source project CloudCLI UI (Claude Code UI).",
+    "githubLink": "CloudCLI UI on GitHub",
     "update": {
       "title": "ClaudeWeb version",
       "installed": "Installed version",

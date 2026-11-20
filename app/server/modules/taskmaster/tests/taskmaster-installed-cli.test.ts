@@ -17,7 +17,7 @@ const cliPath = path.resolve('tools/taskmaster/node_modules/task-master-ai/dist/
 test('installed TaskMaster initializes via HTTP, loads tasks and persists a status change', {
   skip: !fs.existsSync(cliPath), timeout: 120000,
 }, async () => {
-  const projectPath = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'cloudcli-task-flow-'));
+  const projectPath = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'claudeweb-task-flow-'));
   const cliCalls: string[][] = [];
   const router = createTaskmasterRouter({
     fileSystem: fs, fileSystemPromises: fsPromises,
@@ -59,7 +59,7 @@ test('installed TaskMaster initializes via HTTP, loads tasks and persists a stat
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
     assert.equal(path.dirname(projectPath), path.resolve(os.tmpdir()));
-    assert.ok(path.basename(projectPath).startsWith('cloudcli-task-flow-'));
+    assert.ok(path.basename(projectPath).startsWith('claudeweb-task-flow-'));
     await fsPromises.rm(projectPath, { recursive: true, force: true });
   }
 });

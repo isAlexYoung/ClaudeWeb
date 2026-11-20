@@ -358,7 +358,7 @@ test('running sessions report a turn driven by the Claude CLI', { concurrency: f
   });
 });
 
-test('a process CloudCLI holds open for background work is listed once, not again as a CLI', { concurrency: false }, async () => {
+test('a process ClaudeWeb holds open for background work is listed once, not again as a CLI', { concurrency: false }, async () => {
   // The held process reports itself busy in the CLI registry; it used to show
   // a second time as "Running in the Claude CLI", as if another process had
   // the session.
@@ -388,7 +388,7 @@ test('a process CloudCLI holds open for background work is listed once, not agai
   });
 });
 
-test('a busy process that is CloudCLI\'s own is not reported as the Claude CLI', { concurrency: false }, async () => {
+test('a busy process that is ClaudeWeb\'s own is not reported as the Claude CLI', { concurrency: false }, async () => {
   // Held open for work that reports no task events (a Monitor), so it is in
   // no task list: the runtime still knows the process as its own.
   await withIsolatedDatabase(async () => {

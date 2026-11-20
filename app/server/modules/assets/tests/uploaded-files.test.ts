@@ -22,7 +22,7 @@ import { indexOlderUploads, originalNameFromStoredName } from '@/modules/assets/
 import { closeConnection, getConnection, initializeDatabase, uploadedFilesDb } from '@/modules/database/index.js';
 import { AppError, normalizeProjectPath } from '@/shared/utils.js';
 
-/** Runs with an empty database and a temporary home folder (so `~/.cloudcli/assets` is private to the test). */
+/** Runs with an empty database and a temporary home folder (so `~/.claudeweb/assets` is private to the test). */
 async function withIsolatedHome(run: (home: string) => Promise<void>): Promise<void> {
   const saved = { db: process.env.DATABASE_PATH, home: process.env.HOME, profile: process.env.USERPROFILE };
   const home = await mkdtemp(path.join(tmpdir(), 'uploaded-files-'));
@@ -45,7 +45,7 @@ async function withIsolatedHome(run: (home: string) => Promise<void>): Promise<v
   }
 }
 
-const assetsDir = (home: string) => path.join(home, '.cloudcli', 'assets');
+const assetsDir = (home: string) => path.join(home, '.claudeweb', 'assets');
 
 async function rejectsWith(promise: Promise<unknown>, code: string): Promise<void> {
   await assert.rejects(promise, (error: unknown) => error instanceof AppError && error.code === code);

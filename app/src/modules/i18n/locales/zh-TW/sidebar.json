@@ -247,7 +247,7 @@
     "projectFiles": {
       "title": "檔案管理",
       "summary_other": "共 {{count}} 個上傳檔案，在伺服器上佔用 {{size}}。",
-      "storedIn": "在本專案對話中用「+」新增的檔案儲存在 ~/.cloudcli/assets。",
+      "storedIn": "在本專案對話中用「+」新增的檔案儲存在 ~/.claudeweb/assets。",
       "refresh": "重新整理",
       "close": "關閉",
       "loading": "正在載入檔案…",

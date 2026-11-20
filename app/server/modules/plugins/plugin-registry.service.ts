@@ -108,7 +108,7 @@ export function scanPlugins() {
 
   // The integrated build ships reviewed quota code read-only; a user's own
   // installation of the same plugin takes precedence.
-  const roots = [pluginsDir, process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR].filter(Boolean);
+  const roots = [pluginsDir, process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR].filter(Boolean);
   const entries = roots.flatMap(root => {
     try { return fs.readdirSync(root, { withFileTypes: true }).map(entry => ({ entry, root })); }
     catch { return []; }
@@ -187,7 +187,7 @@ export function getPluginDir(name) {
   const plugins = scanPlugins();
   const plugin = plugins.find(p => p.name === name);
   if (!plugin) return null;
-  return path.join(plugin.bundled ? process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR : getPluginsDir(), plugin.dirName);
+  return path.join(plugin.bundled ? process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR : getPluginsDir(), plugin.dirName);
 }
 
 export function resolvePluginAssetPath(name, assetPath) {

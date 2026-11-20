@@ -15,4 +15,4 @@ For each changed feature or UI area, add a separate Markdown record under
 behavior, every changed file, validation results, and any remaining limitations.
 Record design proposals separately from implemented UI. A preview does not
 authorize implementation of its layout or secondary menus. Keep
-`../cloudcli.patch` synchronized with changes to this integrated application.
+`../claudeweb.patch` synchronized with changes to this integrated application.

@@ -13,8 +13,8 @@ const homeDirectory = os.homedir();
 const backupService = createBackupService({
   homeDirectory,
   claudeHome: path.join(homeDirectory, '.claude'),
-  cloudcliHome: path.join(homeDirectory, '.cloudcli'),
-  uploadsDirectory: path.join(homeDirectory, '.cloudcli', 'backup-imports'),
+  claudewebHome: path.join(homeDirectory, '.claudeweb'),
+  uploadsDirectory: path.join(homeDirectory, '.claudeweb', 'backup-imports'),
   database: {
     exportSnapshot: (userId) => backupDb.exportSnapshot(userId),
     findKnownProviderSessionIds: (ids) => backupDb.findKnownProviderSessionIds(ids),

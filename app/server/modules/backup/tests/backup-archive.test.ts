@@ -44,7 +44,7 @@ const hasCode = (code: string) => (error: unknown) => error instanceof AppError 
 
 test('entry paths map to their restore area', () => {
   assert.deepEqual(classifyBackupEntryPath('manifest.json'), { kind: 'manifest' });
-  assert.deepEqual(classifyBackupEntryPath('cloudcli/data.json'), { kind: 'data' });
+  assert.deepEqual(classifyBackupEntryPath('claudeweb/data.json'), { kind: 'data' });
   assert.deepEqual(classifyBackupEntryPath('claude/projects/-home-u-p/abc.jsonl'), {
     kind: 'file', area: 'projects', segments: ['-home-u-p', 'abc.jsonl'],
   });
@@ -54,10 +54,18 @@ test('entry paths map to their restore area', () => {
   assert.deepEqual(classifyBackupEntryPath('claude/todos/abc-agent-abc.json'), {
     kind: 'file', area: 'todos', segments: ['abc-agent-abc.json'],
   });
-  assert.deepEqual(classifyBackupEntryPath('cloudcli/assets/a/b.png'), {
+  assert.deepEqual(classifyBackupEntryPath('claudeweb/assets/a/b.png'), {
     kind: 'file', area: 'assets', segments: ['a', 'b.png'],
   });
   assert.deepEqual(classifyBackupEntryPath('claude/projects/'), { kind: 'file', area: 'projects', segments: [] });
+});
+
+test('backups from earlier releases, written under cloudcli/, still map to their areas', () => {
+  assert.deepEqual(classifyBackupEntryPath('cloudcli/data.json'), { kind: 'data' });
+  assert.deepEqual(classifyBackupEntryPath('cloudcli/assets/a/b.png'), { kind: 'file', area: 'assets', segments: ['a', 'b.png'] });
+  assert.deepEqual(classifyBackupEntryPath('cloudcli/'), { kind: 'file', area: 'projects', segments: [] });
+  assert.throws(() => classifyBackupEntryPath('cloudcli/other.json'), AppError);
+  assert.throws(() => classifyBackupEntryPath('cloudcliX/data.json'), AppError);
 });
 
 test('unsafe or unknown entry paths are refused', () => {
@@ -73,8 +81,8 @@ test('unsafe or unknown entry paths are refused', () => {
     'claude/.credentials.json',
     'claude/settings.json',
     '.claude.json',
-    'cloudcli/auth.db',
-    'cloudcli/backup-imports/x.upload',
+    'claudeweb/auth.db',
+    'claudeweb/backup-imports/x.upload',
     `claude/projects/${'x'.repeat(300)}`,
     '',
   ]) {

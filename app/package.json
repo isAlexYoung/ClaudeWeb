@@ -1,20 +1,17 @@
 {
-  "name": "@cloudcli-ai/cloudcli",
+  "name": "claudeweb",
   "version": "1.37.7",
-  "productName": "CloudCLI",
-  "description": "A web-based UI for Claude Code CLI",
+  "productName": "ClaudeWeb",
+  "description": "Self-hosted web interface for Claude Code, installed on your own Linux server",
   "type": "module",
   "main": "dist-server/server/index.js",
-  "bin": {
-    "cloudcli": "dist-server/server/modules/cli/cli.js"
-  },
-  "homepage": "https://cloudcli.ai",
+  "homepage": "https://github.com/isAlexYoung/ClaudeWeb",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/siteboon/claudecodeui.git"
+    "url": "git+https://github.com/isAlexYoung/ClaudeWeb.git"
   },
   "bugs": {
-    "url": "https://github.com/siteboon/claudecodeui/issues"
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/issues"
   },
   "scripts": {
     "dev": "concurrently --kill-others \"npm run server:dev\" \"npm run client\"",
@@ -43,7 +40,7 @@
     "claude code",
     "claude-code",
     "claude-code-ui",
-    "cloudcli",
+    "claudeweb",
     "codex",
     "cursor",
     "cursor-cli",
@@ -55,7 +52,10 @@
     "ui",
     "mobile IDE"
   ],
-  "author": "CloudCLI UI Contributors",
+  "author": "ClaudeWeb contributors",
+  "contributors": [
+    "CloudCLI UI contributors (https://github.com/siteboon/claudecodeui)"
+  ],
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.165",

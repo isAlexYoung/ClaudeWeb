@@ -11,8 +11,8 @@ import { stopPluginServer } from '../plugin-process.service.js';
 
 test('real RPC cold-starts and restarts a bundled plugin from its installation directory', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bundled-rpc-'));
-  const previous = process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR;
-  process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR = root;
+  const previous = process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR;
+  process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR = root;
   const name = `bundled-rpc-${process.pid}`;
   const directory = path.join(root, name);
   fs.mkdirSync(directory);
@@ -32,8 +32,8 @@ test('real RPC cold-starts and restarts a bundled plugin from its installation d
   t.after(async () => {
     await stopPluginServer(name);
     await new Promise<void>(resolve => server.close(() => resolve()));
-    if (previous === undefined) delete process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR;
-    else process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR = previous;
+    if (previous === undefined) delete process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR;
+    else process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR = previous;
     fs.rmSync(root, { recursive: true, force: true });
   });
   const address = server.address();

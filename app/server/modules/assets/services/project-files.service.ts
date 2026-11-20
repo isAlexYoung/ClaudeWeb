@@ -9,7 +9,7 @@ import { AppError } from '@/shared/utils.js';
 /**
  * The project File management page: the files uploaded for one project, with
  * download and delete. Only names recorded in `uploaded_files` are reachable,
- * and they always resolve inside `~/.cloudcli/assets`.
+ * and they always resolve inside `~/.claudeweb/assets`.
  */
 
 type ProjectFile = {

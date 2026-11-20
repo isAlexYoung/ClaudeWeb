@@ -159,7 +159,7 @@ export function createPluginsService(dependencies: PluginDependencies) {
       const sharedPort = dependencies.getPluginDirectory('claude-usage') === directory
         ? dependencies.getServerPort('claude-usage') : undefined;
       // Not a valid installable plugin name: users cannot shadow this internal worker.
-      const worker = '@cloudcli/local-history';
+      const worker = '@claudeweb/local-history';
       const port = sharedPort || dependencies.getServerPort(worker)
         || await dependencies.startServer(worker, directory, 'dist/server.js');
       return { port, secrets: {} };

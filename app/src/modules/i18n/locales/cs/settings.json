@@ -702,11 +702,6 @@
     "configCwd": "Cwd",
     "configEnvVars": "Proměnné prostředí"
   },
-  "mcpTeamCard": {
-    "title": "Týmové konfigurace MCP",
-    "description": "Sdílejte konfigurace MCP serverů v rámci týmu. Všichni budou mít vše automaticky synchronizované.",
-    "proLink": "K dispozici v CloudCLI Pro"
-  },
   "mcpServersAddErrors": {
     "loadFailedProvider": "Nepodařilo se načíst MCP servery pro {{provider}}",
     "deleteFailed": "Nepodařilo se smazat MCP server",

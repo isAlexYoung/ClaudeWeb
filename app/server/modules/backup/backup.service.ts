@@ -12,6 +12,7 @@ import {
   BACKUP_AREAS,
   BACKUP_DATA_ENTRY,
   BACKUP_FORMAT_NAME,
+  LEGACY_BACKUP_FORMAT_NAME,
   BACKUP_FORMAT_VERSION,
   BACKUP_MANIFEST_ENTRY,
   BACKUP_PASSWORD_MAX_LENGTH,
@@ -58,14 +59,14 @@ const DISK_RESERVE_BYTES = 256 * 1024 * 1024;
 const EXPORT_TICKET_TTL_MS = 2 * 60 * 1000;
 const STALE_IMPORT_MS = 24 * 60 * 60 * 1000;
 const UPLOAD_SUFFIX = '.upload';
-const RESTORE_TEMP_SUFFIX = '.cloudcli-restore.tmp';
+const RESTORE_TEMP_SUFFIX = '.claudeweb-restore.tmp';
 
 type BackupServiceDependencies = {
   /** Home of the service user; recorded in the manifest so a preview can say where a backup came from. */
   homeDirectory: string;
   claudeHome: string;
-  cloudcliHome: string;
-  /** Where uploads are kept. Not /tmp: the CloudCLI sandbox gives /tmp only 256 MB of memory. */
+  claudewebHome: string;
+  /** Where uploads are kept. Not /tmp: the ClaudeWeb sandbox gives /tmp only 256 MB of memory. */
   uploadsDirectory: string;
   database: {
     exportSnapshot(userId: number): BackupDatabaseSnapshot;
@@ -170,7 +171,7 @@ function stringOrNull(value: unknown): string | null {
 }
 
 /**
- * Validates `cloudcli/data.json` from an untrusted archive. Malformed rows are
+ * Validates `claudeweb/data.json` from an untrusted archive. Malformed rows are
  * dropped one by one instead of failing the import: the transcripts matter
  * more than any single title.
  */
@@ -379,7 +380,7 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     projects: path.join(dependencies.claudeHome, 'projects'),
     fileHistory: path.join(dependencies.claudeHome, 'file-history'),
     todos: path.join(dependencies.claudeHome, 'todos'),
-    assets: path.join(dependencies.cloudcliHome, 'assets'),
+    assets: path.join(dependencies.claudewebHome, 'assets'),
   };
 
   // ---------------------------------------------------------------- export
@@ -727,7 +728,7 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
           manifest = JSON.parse((await collectEntry(entry, MAX_MANIFEST_BYTES)).toString('utf8')) as Record<string, unknown>;
         } catch (error) {
           if (error instanceof AppError) throw error;
-          throw new AppError('This is not a CloudCLI backup file', { code: 'BACKUP_FORMAT_UNKNOWN', statusCode: 400 });
+          throw new AppError('This is not a ClaudeWeb backup file', { code: 'BACKUP_FORMAT_UNKNOWN', statusCode: 400 });
         }
       },
       async onData(entry) {
@@ -754,8 +755,8 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     });
 
     const checkedManifest = manifest as Record<string, unknown> | null;
-    if (!checkedManifest || checkedManifest.format !== BACKUP_FORMAT_NAME) {
-      throw new AppError('This is not a CloudCLI backup file', { code: 'BACKUP_FORMAT_UNKNOWN', statusCode: 400 });
+    if (!checkedManifest || (checkedManifest.format !== BACKUP_FORMAT_NAME && checkedManifest.format !== LEGACY_BACKUP_FORMAT_NAME)) {
+      throw new AppError('This is not a ClaudeWeb backup file', { code: 'BACKUP_FORMAT_UNKNOWN', statusCode: 400 });
     }
     if (checkedManifest.version !== BACKUP_FORMAT_VERSION) {
       throw new AppError('This backup was made by a newer version', { code: 'BACKUP_VERSION_UNSUPPORTED', statusCode: 400 });
@@ -852,7 +853,7 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
 
     const format = detectBackupFormat(head);
     if (format === 'unknown') {
-      throw new AppError('This is not a CloudCLI backup file', { code: 'BACKUP_FORMAT_UNKNOWN', statusCode: 400 });
+      throw new AppError('This is not a ClaudeWeb backup file', { code: 'BACKUP_FORMAT_UNKNOWN', statusCode: 400 });
     }
     job.format = format;
     if (format === 'encrypted' && !job.encryption) {

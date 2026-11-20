@@ -22,11 +22,11 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 const FILES = [
   {
-    storedName: '1763000000000-1-report.pdf', name: '季度 report.pdf', path: '/home/u/.cloudcli/assets/1763000000000-1-report.pdf',
+    storedName: '1763000000000-1-report.pdf', name: '季度 report.pdf', path: '/home/u/.claudeweb/assets/1763000000000-1-report.pdf',
     size: 3 * 1024 * 1024, mimeType: 'application/pdf', sessionId: 's1', uploadedAt: '2026-11-16T08:00:00Z', exists: true,
   },
   {
-    storedName: '1763000000000-2-gone.txt', name: 'gone.txt', path: '/home/u/.cloudcli/assets/1763000000000-2-gone.txt',
+    storedName: '1763000000000-2-gone.txt', name: 'gone.txt', path: '/home/u/.claudeweb/assets/1763000000000-2-gone.txt',
     size: 12, mimeType: 'text/plain', sessionId: null, uploadedAt: '2026-11-15T08:00:00Z', exists: false,
   },
 ];

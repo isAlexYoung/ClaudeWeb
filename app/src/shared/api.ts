@@ -536,7 +536,7 @@ export const api = {
     execute: (payload: unknown) => post('/api/commands/execute', payload),
   },
 
-  // Chat attachments, stored globally under ~/.cloudcli/assets
+  // Chat attachments, stored globally under ~/.claudeweb/assets
   assets: {
     uploadFiles: (formData: FormData) =>
       authenticatedFetch('/api/assets/files', {

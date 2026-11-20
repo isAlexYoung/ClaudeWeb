@@ -740,11 +740,6 @@
     "configCwd": "Directorio",
     "configEnvVars": "Variables"
   },
-  "mcpTeamCard": {
-    "title": "Configuraciones MCP del equipo",
-    "description": "Comparte la configuración de los servidores MCP con tu equipo. Todos se mantienen sincronizados.",
-    "proLink": "Disponible con CloudCLI Pro"
-  },
   "mcpServersAddErrors": {
     "loadFailedProvider": "No se pudieron cargar los servidores MCP de {{provider}}",
     "deleteFailed": "No se pudo eliminar el servidor MCP",

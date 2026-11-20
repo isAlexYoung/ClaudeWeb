@@ -15,7 +15,7 @@ import { AppError } from '@/shared/utils.js';
  * request over 100 MB, so a large file cannot arrive in one POST. Pieces are
  * written in order into a temporary file outside the assets folder (so a
  * backup never picks up half an upload); the finished file is then moved into
- * `~/.cloudcli/assets` and recorded with the project it was uploaded for.
+ * `~/.claudeweb/assets` and recorded with the project it was uploaded for.
  */
 
 export const ATTACHMENT_CHUNK_BYTES = 8 * 1024 * 1024;
@@ -50,7 +50,7 @@ const uploads = new Map<string, Upload>();
 const badRequest = (message: string, code: string, statusCode = 400) => new AppError(message, { code, statusCode });
 
 export function getUploadTempDir(): string {
-  return path.join(os.homedir(), '.cloudcli', 'uploads-tmp');
+  return path.join(os.homedir(), '.claudeweb', 'uploads-tmp');
 }
 
 /** The name a file is stored under: unique, and safe as a single path segment. */

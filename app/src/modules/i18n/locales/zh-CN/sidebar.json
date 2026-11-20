@@ -200,7 +200,7 @@
     "projectFiles": {
       "title": "文件管理",
       "summary_other": "共 {{count}} 个上传文件，在服务器上占用 {{size}}。",
-      "storedIn": "在本项目对话中用“+”添加的文件保存在 ~/.cloudcli/assets。",
+      "storedIn": "在本项目对话中用“+”添加的文件保存在 ~/.claudeweb/assets。",
       "refresh": "刷新",
       "close": "关闭",
       "loading": "正在加载文件…",

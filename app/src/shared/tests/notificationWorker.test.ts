@@ -24,7 +24,7 @@ test('the notification worker has no fetch/cache interception and shows ClaudeWe
   const [, options] = (self.registration.showNotification.mock.calls as unknown as Array<[string, Record<string, unknown>]>)[0];
   expect(options.icon).toBeUndefined();
 });
-test('clicking a notification opens the session under the CloudCLI subpath', async () => {
+test('clicking a notification opens the session under the ClaudeWeb subpath', async () => {
   const { self, listeners } = worker();
   let pending: Promise<unknown> | undefined;
   listeners.notificationclick({ notification: { data: { sessionId: 'id/1' }, close: vi.fn() },
@@ -32,7 +32,7 @@ test('clicking a notification opens the session under the CloudCLI subpath', asy
   await pending;
   expect(self.clients.openWindow).toHaveBeenCalledWith('https://example.test/claude/session/id%2F1');
 });
-test('clicking a notification focuses CloudCLI rather than a different WebDesktop app', async () => {
+test('clicking a notification focuses ClaudeWeb rather than a different WebDesktop app', async () => {
   const { self, listeners } = worker();
   const other = { url: 'https://example.test/desktop/', focus: vi.fn() };
   const current = { url: 'https://example.test/claude/', focus: vi.fn(), postMessage: vi.fn() };

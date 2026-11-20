@@ -93,7 +93,7 @@ test('local dashboard uses the bundled implementation when a running older user 
     startServer: async (name, directory, entry) => { started.push([name, directory, String(entry)]); return 4001; },
   }));
   assert.deepEqual(await service.prepareUsageDashboard(), { port: 4001, secrets: {} });
-  assert.deepEqual(started, [['@cloudcli/local-history', '/opt/app/bundled-plugins/claude-usage', 'dist/server.js']]);
+  assert.deepEqual(started, [['@claudeweb/local-history', '/opt/app/bundled-plugins/claude-usage', 'dist/server.js']]);
   assert.equal((await service.prepareRpc('claude-usage')).port, 3000, 'normal plugin requests preserve the user installation');
 });
 

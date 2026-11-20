@@ -18,7 +18,7 @@ const runToCompletion = (run: TaskmasterRunner, args: string[], cwd: string) => 
 /**
  * Used by the TaskMaster routes right after `task-master init`: points every
  * TaskMaster model role at the Claude Code provider, makes that provider run the
- * CLI CloudCLI itself uses (`CLAUDE_CLI_PATH`) rather than the copy bundled in
+ * CLI ClaudeWeb itself uses (`CLAUDE_CLI_PATH`) rather than the copy bundled in
  * TaskMaster's dependencies, and creates the empty task list `init` leaves out,
  * so a manual task can be added before any PRD is parsed.
  */

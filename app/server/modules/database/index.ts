@@ -2,7 +2,7 @@ export { initializeDatabase } from '@/modules/database/init-db.js';
 export { closeConnection, getConnection, getDatabasePath } from '@/modules/database/connection.js';
 export { apiKeysDb } from '@/modules/database/repositories/api-keys.js';
 export { appConfigDb } from '@/modules/database/repositories/app-config.js';
-// backupDb: used by Backup to export one user's CloudCLI rows and merge them back after a reinstall.
+// backupDb: used by Backup to export one user's ClaudeWeb rows and merge them back after a reinstall.
 export { backupDb } from '@/modules/database/repositories/backup.db.js';
 export { credentialsDb } from '@/modules/database/repositories/credentials.js';
 export { githubTokensDb } from '@/modules/database/repositories/github-tokens.js';

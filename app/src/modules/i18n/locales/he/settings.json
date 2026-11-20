@@ -719,11 +719,6 @@
     "configCwd": "Cwd",
     "configEnvVars": "משתני סביבה"
   },
-  "mcpTeamCard": {
-    "title": "תצורות MCP לצוות",
-    "description": "שיתוף תצורות שרתי MCP עם כל הצוות. כולם נשארים מסונכרנים אוטומטית.",
-    "proLink": "זמין ב-CloudCLI Pro"
-  },
   "mcpServersAddErrors": {
     "loadFailedProvider": "טעינת שרתי ה-MCP של {{provider}} נכשלה",
     "deleteFailed": "מחיקת שרת ה-MCP נכשלה",

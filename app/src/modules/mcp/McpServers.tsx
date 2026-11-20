@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
-import { Edit3, ExternalLink, Globe, Lock, Plus, Server, Trash2, Users } from 'lucide-react';
+import { Edit3, Globe, Lock, Plus, Server, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { McpProject, McpProvider, McpScope, ProviderMcpServer } from '@/shared/types';
-import { IS_PLATFORM } from '@/shared/utils';
 import { ActionMenu, Badge, Button } from '@/shared/ui';
 import { MCP_GLOBAL_SUPPORTED_TRANSPORTS, MCP_PROVIDER_NAMES } from '@/shared/constants';
 import { useMcpServers } from '@/modules/mcp/hooks/useMcpServers';
@@ -27,10 +26,10 @@ const getServerKey = (server: ProviderMcpServer): string => (
   `${server.provider}:${server.scope}:${server.workspacePath || 'global'}:${server.name}`
 );
 
-// Servers prefixed with `cloudcli-` are written and removed automatically by a
-// CloudCLI feature toggle (e.g. the Browser tab), not added by the user. They are
+// Servers prefixed with `claudeweb-` are written and removed automatically by a
+// ClaudeWeb feature toggle (e.g. the Browser tab), not added by the user. They are
 // shown read-only so users don't edit/delete them out of sync with the feature.
-const isManagedServer = (server: ProviderMcpServer): boolean => server.name.startsWith('cloudcli-');
+const isManagedServer = (server: ProviderMcpServer): boolean => server.name.startsWith('claudeweb-');
 
 function ConfigLine({ label, children }: { label: string; children: string }) {
   if (!children) {
@@ -41,37 +40,6 @@ function ConfigLine({ label, children }: { label: string; children: string }) {
     <div>
       {label}:{' '}
       <code className="rounded bg-muted px-1 text-xs">{children}</code>
-    </div>
-  );
-}
-
-function TeamMcpFeatureCard() {
-  const { t } = useTranslation('settings');
-  return (
-    <div className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-5">
-      <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
-          <Users className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h4 className="text-sm font-medium text-foreground">{t('mcpTeamCard.title')}</h4>
-            <Lock className="h-3 w-3 text-muted-foreground/60" />
-          </div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {t('mcpTeamCard.description')}
-          </p>
-          <a
-            href="https://cloudcli.ai"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:underline"
-          >
-            {t('mcpTeamCard.proLink')}
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </div>
-      </div>
     </div>
   );
 }
@@ -214,7 +182,7 @@ export default function McpServers({ selectedProvider, currentProjects, children
                     {managed && (
                       <div className="text-xs text-muted-foreground">
                         {t('mcpServers.managed.hint', {
-                          defaultValue: 'Managed by CloudCLI.',
+                          defaultValue: 'Managed by ClaudeWeb.',
                         })}
                       </div>
                     )}
@@ -255,7 +223,6 @@ export default function McpServers({ selectedProvider, currentProjects, children
         )}
       </div>
 
-      {selectedProvider === 'claude' && !IS_PLATFORM && <TeamMcpFeatureCard />}
 
       {/* Mounted only while open: each instance runs a full useMcpServerForm. */}
       {serverForm?.scope === 'provider' && (

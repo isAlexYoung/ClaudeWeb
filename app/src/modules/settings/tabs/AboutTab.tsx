@@ -49,7 +49,7 @@ export default function AboutTab() {
         {import.meta.env.VITE_WEBDESKTOP === 'true' && (
           <p className="mt-2 text-xs text-muted-foreground/60">
             {t('about.modifiedVersion')}{' '}
-            <a href={`${import.meta.env.BASE_URL}__webdesktop/cloudcli.patch`} className="underline">{t('about.sourceChanges')}</a>.
+            <a href={`${import.meta.env.BASE_URL}__webdesktop/claudeweb.patch`} className="underline">{t('about.sourceChanges')}</a>.
           </p>
         )}
       </div>

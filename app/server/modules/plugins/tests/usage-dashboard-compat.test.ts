@@ -53,7 +53,7 @@ test('dashboard RPC reads real history even when an older user plugin returns 40
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>(resolve => server.once('listening', resolve));
   t.after(async () => {
-    await stopPluginServer('@cloudcli/local-history');
+    await stopPluginServer('@claudeweb/local-history');
     await Promise.all([server, legacy].map(instance => new Promise<void>(resolve => instance.close(() => resolve()))));
     fs.rmSync(root, { recursive: true, force: true });
   });
@@ -72,6 +72,6 @@ test('dashboard RPC reads real history even when an older user plugin returns 40
   assert.equal(legacyCalls, 0, 'dashboard never goes to the incompatible user installation');
   assert.equal((await fetch(`${base}/live`)).status, 404, 'normal plugin endpoints still use the user plugin');
   assert.equal(legacyCalls, 1);
-  await stopPluginServer('@cloudcli/local-history');
+  await stopPluginServer('@claudeweb/local-history');
   await check();
 });

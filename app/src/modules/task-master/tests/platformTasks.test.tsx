@@ -35,13 +35,13 @@ beforeEach(() => {
   mocks.tasks.mockImplementation(async () => ({ ok: true, json: async () => ({ tasks: [{ id: 1, title: 'First task', status: 'pending' }] }) }));
   mocks.initialize.mockImplementation(async () => new Response('{"output":"initialized"}'));
 });
-test('platform users without a CloudCLI token can load project tasks', async () => {
+test('platform users without a ClaudeWeb token can load project tasks', async () => {
   render(<TaskMasterProvider><Controls /></TaskMasterProvider>);
   fireEvent.click(screen.getByText('select'));
   expect(await screen.findByText('First task')).toBeTruthy();
   expect(mocks.tasks).toHaveBeenCalledWith('p1');
 });
-test('standalone users still require a CloudCLI token', async () => {
+test('standalone users still require a ClaudeWeb token', async () => {
   mocks.platform = false;
   render(<TaskMasterProvider><Controls /></TaskMasterProvider>);
   fireEvent.click(screen.getByText('select'));

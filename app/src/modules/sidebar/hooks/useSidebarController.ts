@@ -18,7 +18,7 @@ import {
 } from '@/modules/sidebar/utils/sidebarStoredPreferences';
 
 
-const EXPANDED_PROJECTS_STORAGE_KEY = 'cloudcli-expanded-projects';
+const EXPANDED_PROJECTS_STORAGE_KEY = 'claudeweb-expanded-projects';
 
 /** Read browser-local project expansion, tolerating missing or invalid storage. */
 function readExpandedProjects(): Set<string> | null {
@@ -216,7 +216,7 @@ export function useSidebarController({
     selectionExpansion.current.projectId = selectedProjectId;
     if (!selectedProjectId) return;
     selectionExpansion.current.seenSelection = true;
-    // New chat selects the chat working directory. Older CloudCLI installs kept
+    // New chat selects the chat working directory. Older ClaudeWeb installs kept
     // projects there too, so it can show as a project; opening it on every New
     // chat would look as if that project had been picked.
     if (selectedIsChatWorkspace) return;

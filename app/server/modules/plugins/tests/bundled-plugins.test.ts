@@ -8,10 +8,10 @@ import { getPluginDir, scanPlugins, uninstallPlugin, updatePluginFromGit } from 
 
 test('bundled plugins are discovered enabled and cannot be updated or uninstalled as user files', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bundled-quota-'));
-  const previous = process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR;
-  process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR = root;
+  const previous = process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR;
+  process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR = root;
   t.after(() => {
-    if (previous === undefined) delete process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR; else process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR = previous;
+    if (previous === undefined) delete process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR; else process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR = previous;
     fs.rmSync(root, { recursive: true, force: true });
   });
   const name = `bundled-fixture-${process.pid}`;

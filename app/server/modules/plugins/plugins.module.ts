@@ -17,7 +17,7 @@ const pluginsService = createPluginsService({
   scanPlugins, readConfig: getPluginsConfig, saveConfig: savePluginsConfig,
   getPluginDirectory: getPluginDir,
   getBundledUsageDirectory: () => {
-    const root = process.env.CLOUDCLI_BUNDLED_PLUGINS_DIR;
+    const root = process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR;
     if (!root) return null;
     const directory = path.join(root, 'claude-usage');
     return fs.existsSync(path.join(directory, 'dist/server.js')) ? directory : null;

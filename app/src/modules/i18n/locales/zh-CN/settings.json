@@ -812,11 +812,6 @@
     "configCwd": "工作目录",
     "configEnvVars": "环境变量"
   },
-  "mcpTeamCard": {
-    "title": "团队 MCP 配置",
-    "description": "在团队中共享 MCP 服务器配置，并自动保持同步。",
-    "proLink": "CloudCLI Pro 提供此功能"
-  },
   "mcpServersAddErrors": {
     "loadFailedProvider": "加载 {{provider}} MCP 服务器失败",
     "deleteFailed": "删除 MCP 服务器失败",
@@ -854,11 +849,11 @@
       }
     },
     "licensed": "采用 AGPL-3.0 许可证",
-    "modifiedVersion": "本应用是针对 WebDesktop 修改的 CloudCLI UI（https://github.com/siteboon/claudecodeui）版本，基于上游提交 58a28e0。",
+    "modifiedVersion": "ClaudeWeb 是 CloudCLI UI（https://github.com/siteboon/claudecodeui）的修改版本，基于上游提交 58a28e0，并非原版 CloudCLI UI。",
     "sourceChanges": "查看 WebDesktop 修改源码",
     "title": "关于",
-    "basedOn": "本界面基于开源项目 CloudCLI（Claude Code UI）开发，并为 WebDesktop 做了修改。",
-    "githubLink": "CloudCLI 的 GitHub 仓库",
+    "basedOn": "ClaudeWeb 基于开源项目 CloudCLI UI（Claude Code UI）开发。",
+    "githubLink": "CloudCLI UI 的 GitHub 仓库",
     "update": {
       "title": "ClaudeWeb 版本",
       "installed": "当前版本",

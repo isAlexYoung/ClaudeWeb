@@ -18,18 +18,21 @@ import { AppError } from '@/shared/utils.js';
 // written back only under the matching directory of the importing account:
 //
 //   manifest.json                    format marker, written first
-//   cloudcli/data.json               CloudCLI rows (titles, archive flags, ...)
+//   claudeweb/data.json               ClaudeWeb rows (titles, archive flags, ...)
 //   claude/projects/<dir>/...        transcripts and per-project memory
 //   claude/file-history/<sid>/...    code checkpoints used by rewind
 //   claude/todos/<file>              task lists
-//   cloudcli/assets/...              images attached to chats
+//   claudeweb/assets/...              images attached to chats
 
-/** Name of the first entry; its `format` field identifies a CloudCLI backup. */
+/** Name of the first entry; its `format` field identifies a ClaudeWeb backup. */
 export const BACKUP_MANIFEST_ENTRY = 'manifest.json';
-/** Entry holding the exported CloudCLI database rows. */
-export const BACKUP_DATA_ENTRY = 'cloudcli/data.json';
+/** Entry holding the exported ClaudeWeb database rows. */
+export const BACKUP_DATA_ENTRY = 'claudeweb/data.json';
 /** Value of `manifest.format` for this backup type. */
-export const BACKUP_FORMAT_NAME = 'cloudcli-backup';
+export const BACKUP_FORMAT_NAME = 'claudeweb-backup';
+/** Earlier ClaudeWeb releases wrote this format name and kept their rows and images under `cloudcli/`; those backups still import. */
+export const LEGACY_BACKUP_FORMAT_NAME = 'cloudcli-backup';
+const LEGACY_ROOT = 'cloudcli';
 /** Version of the manifest and data layout this build writes and reads. */
 export const BACKUP_FORMAT_VERSION = 1;
 
@@ -38,7 +41,7 @@ export const BACKUP_AREAS = [
   { area: 'projects', prefix: 'claude/projects/' },
   { area: 'fileHistory', prefix: 'claude/file-history/' },
   { area: 'todos', prefix: 'claude/todos/' },
-  { area: 'assets', prefix: 'cloudcli/assets/' },
+  { area: 'assets', prefix: 'claudeweb/assets/' },
 ] as const;
 
 /** One of the restorable directories. */
@@ -97,20 +100,23 @@ export function classifyBackupEntryPath(entryPath: string): BackupEntryTarget {
     }
   }
 
-  if (trimmed === BACKUP_MANIFEST_ENTRY) return { kind: 'manifest' };
-  if (trimmed === BACKUP_DATA_ENTRY) return { kind: 'data' };
+  // A backup from an earlier release names the ClaudeWeb directory `cloudcli/`.
+  const current = trimmed === LEGACY_ROOT || trimmed.startsWith(LEGACY_ROOT + '/') ? 'claudeweb' + trimmed.slice(LEGACY_ROOT.length) : trimmed;
+
+  if (current === BACKUP_MANIFEST_ENTRY) return { kind: 'manifest' };
+  if (current === BACKUP_DATA_ENTRY) return { kind: 'data' };
 
   for (const { area, prefix } of BACKUP_AREAS) {
-    if (trimmed === prefix.slice(0, -1)) {
+    if (current === prefix.slice(0, -1)) {
       return { kind: 'file', area, segments: [] };
     }
-    if (trimmed.startsWith(prefix)) {
-      return { kind: 'file', area, segments: trimmed.slice(prefix.length).split('/') };
+    if (current.startsWith(prefix)) {
+      return { kind: 'file', area, segments: current.slice(prefix.length).split('/') };
     }
   }
 
   // The parent directories of the areas are harmless directory entries.
-  if (trimmed === 'claude' || trimmed === 'cloudcli') {
+  if (current === 'claude' || current === 'claudeweb') {
     return { kind: 'file', area: 'projects', segments: [] };
   }
 
@@ -218,7 +224,7 @@ function formatError(message: string): AppError {
  */
 export function parseEncryptedHeader(bytes: Buffer): EncryptedBackupHeader {
   if (bytes.length < ENCRYPTED_HEADER_BYTES || detectBackupFormat(bytes) !== 'encrypted') {
-    throw formatError('Not an encrypted CloudCLI backup');
+    throw formatError('Not an encrypted ClaudeWeb backup');
   }
   const header = Buffer.from(bytes.subarray(0, ENCRYPTED_HEADER_BYTES));
   const scryptParameters = { log2N: header[10], r: header[11], p: header[12] };

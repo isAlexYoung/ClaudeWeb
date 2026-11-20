@@ -290,7 +290,7 @@ let registrationPromise: Promise<ServiceWorkerRegistration> | null = null;
 /** Used by main and notification settings to detect usable browser push support. */
 export function supportsWebPush(): boolean {
   return typeof window !== 'undefined' && window.isSecureContext
-    && !('cloudcliDesktopNotifications' in window)
+    && !('claudewebDesktopNotifications' in window)
     && 'Notification' in window && 'PushManager' in window && 'serviceWorker' in navigator;
 }
 

@@ -80,7 +80,7 @@ export type ProviderModelOption = {
   description?: string;
   /** Stable SQLite row id used only by model-management actions. */
   recordId?: number;
-  /** True for user-created rows; false for immutable CloudCLI defaults. */
+  /** True for user-created rows; false for immutable ClaudeWeb defaults. */
   isCustom?: boolean;
   effort?: {
     default?: string;
@@ -1112,7 +1112,7 @@ export type WorktreePorcelainEntry = {
  *
  * Extends the porcelain entry with everything the Worktrees panel renders:
  * dirty-file count, ahead/behind relative to the base branch (the branch
- * checked out in the main worktree), last-commit metadata, and the CloudCLI
+ * checked out in the main worktree), last-commit metadata, and the ClaudeWeb
  * project row linked to the worktree directory (if one was registered).
  */
 export type WorktreeDescriptor = {
@@ -1191,7 +1191,7 @@ export type CreateAndOpenWorktreeResult = CreateWorktreeResult & {
 };
 
 /**
- * Input accepted when registering an existing worktree as a CloudCLI project.
+ * Input accepted when registering an existing worktree as a ClaudeWeb project.
  *
  * The service verifies that `worktreePath` belongs to the repository containing
  * `projectPath` before it creates or restores any project record.
@@ -1202,7 +1202,7 @@ export type OpenWorktreeInput = {
 };
 
 /**
- * Project view returned after a worktree is opened in CloudCLI.
+ * Project view returned after a worktree is opened in ClaudeWeb.
  *
  * This deliberately mirrors the project-selection payload used by the Projects
  * module so the frontend can switch to the worktree without another lookup.
@@ -1535,7 +1535,7 @@ export type FileTreeBrowseResult = {
 // ---------------------------
 //----------------- CLI MODULE CONTRACTS ------------
 /**
- * Output boundary used by the CLI and Sandbox services.
+ * Output boundary used by the CLI service.
  *
  * Production wiring delegates to the real console. Unit tests collect these
  * calls in arrays, which keeps command assertions deterministic and avoids
@@ -1547,8 +1547,7 @@ export type CliOutput = {
 };
 
 /**
- * Minimal synchronous filesystem surface shared by CLI status reporting and
- * sandbox workspace validation.
+ * Minimal synchronous filesystem surface used by CLI status reporting.
  *
  * The production composition root adapts Node's filesystem module. Tests supply
  * path-keyed fakes, so service tests never inspect or modify the real machine.
@@ -1590,17 +1589,6 @@ export type CliApplication = {
   run(argumentsList: string[]): Promise<number>;
 };
 
-/**
- * Sandbox command service consumed by the top-level CLI command dispatcher.
- *
- * Keeping this behind one required dependency lets CLI tests use a tiny fake,
- * while focused Sandbox tests exercise subprocess and filesystem behavior with
- * their own handwritten adapters.
- */
-export type SandboxCommandService = {
-  execute(argumentsList: string[]): Promise<number>;
-};
-
 // ---------------------------
 //----------------- BACKUP SNAPSHOT TYPES ------------
 /**
@@ -1617,7 +1605,7 @@ export type BackupProjectRecord = {
 };
 
 /**
- * One Claude session row in a backup: the CloudCLI-only metadata (title,
+ * One Claude session row in a backup: the ClaudeWeb-only metadata (title,
  * archive flag, model, effort, fork origin) that the transcript itself does
  * not carry. Timestamps are kept exactly as SQLite stored them.
  */
@@ -1699,7 +1687,7 @@ export type BackupUploadedFileRecord = {
 };
 
 /**
- * The CloudCLI database rows of one user, written to `cloudcli/data.json`.
+ * The ClaudeWeb database rows of one user, written to `claudeweb/data.json`.
  *
  * Deliberately absent: accounts, password hashes, API keys, stored Git
  * credentials, the JWT secret and push-notification keys. Those belong to the

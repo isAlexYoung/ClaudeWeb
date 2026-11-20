@@ -48,8 +48,8 @@ async function createHarness(options: { snapshot?: BackupDatabaseSnapshot; known
   const service = createBackupService({
     homeDirectory: home,
     claudeHome: path.join(home, '.claude'),
-    cloudcliHome: path.join(home, '.cloudcli'),
-    uploadsDirectory: path.join(home, '.cloudcli', 'backup-imports'),
+    claudewebHome: path.join(home, '.claudeweb'),
+    uploadsDirectory: path.join(home, '.claudeweb', 'backup-imports'),
     database: {
       exportSnapshot: () => options.snapshot ?? EMPTY_SNAPSHOT,
       findKnownProviderSessionIds: (ids) => new Set(ids.filter((id) => options.known?.includes(id))),
@@ -117,7 +117,7 @@ function tarFile(entryPath: string, content: string | Buffer): Buffer[] {
   return [encodeTarFileHeader(entryPath, body.length, new Date('2026-11-01T00:00:00Z')), body, tarPadding(body.length)];
 }
 
-const MANIFEST = JSON.stringify({ format: 'cloudcli-backup', version: 1, createdAt: '2026-11-01T00:00:00.000Z', sourceHome: '/home/wdguest' });
+const MANIFEST = JSON.stringify({ format: 'claudeweb-backup', version: 1, createdAt: '2026-11-01T00:00:00.000Z', sourceHome: '/home/wdguest' });
 
 function handMadeArchive(...parts: Buffer[][]): Buffer {
   return gzipSync(Buffer.concat([...tarFile('manifest.json', MANIFEST), ...parts.flat(), TAR_END_OF_ARCHIVE]));
@@ -142,7 +142,7 @@ async function sourceHomeWithChats(harness: Harness): Promise<void> {
     'settings.json': '{}',
     'history.jsonl': '{}\n',
   });
-  await writeTree(path.join(harness.home, '.cloudcli'), {
+  await writeTree(path.join(harness.home, '.claudeweb'), {
     'assets/picture.png': 'png-bytes',
     'auth.db': 'sqlite',
   });
@@ -174,12 +174,12 @@ test('export contains transcripts, memory, checkpoints, task lists, images and d
     'claude/projects/-home-u-proj/bbbb-2222.jsonl',
     'claude/projects/-home-u-proj/memory/MEMORY.md',
     'claude/todos/aaaa-1111-agent-aaaa-1111.json',
-    'cloudcli/assets/picture.png',
-    'cloudcli/data.json',
+    'claudeweb/assets/picture.png',
+    'claudeweb/data.json',
     'manifest.json',
   ]);
-  assert.equal(JSON.parse(entries.get('manifest.json')!.toString()).format, 'cloudcli-backup');
-  assert.deepEqual(JSON.parse(entries.get('cloudcli/data.json')!.toString()), SNAPSHOT);
+  assert.equal(JSON.parse(entries.get('manifest.json')!.toString()).format, 'claudeweb-backup');
+  assert.deepEqual(JSON.parse(entries.get('claudeweb/data.json')!.toString()), SNAPSHOT);
   assert.ok(!archive.includes(Buffer.from('secret-token')));
   assert.ok(!gunzipSync(archive).includes(Buffer.from('secret-token')), 'Claude credentials must never be exported');
 });
@@ -272,14 +272,14 @@ test('import restores new sessions, keeps existing files untouched and skips uns
   assert.equal(await readFile(path.join(projects, '-home-u-proj', 'memory', 'MEMORY.md'), 'utf8'), 'KEEP-MEMORY');
   assert.equal(await readFile(path.join(target.home, '.claude', 'file-history', 'aaaa-1111', 'checkpoint-1'), 'utf8'), 'old code');
   assert.equal(await readFile(path.join(target.home, '.claude', 'todos', 'aaaa-1111-agent-aaaa-1111.json'), 'utf8'), '[]');
-  assert.equal(await readFile(path.join(target.home, '.cloudcli', 'assets', 'picture.png'), 'utf8'), 'png-bytes');
+  assert.equal(await readFile(path.join(target.home, '.claudeweb', 'assets', 'picture.png'), 'utf8'), 'png-bytes');
   // The unselected project's transcript is not written.
   await assert.rejects(stat(path.join(projects, '-', 'cccc-3333.jsonl')), { code: 'ENOENT' });
   // Restored files keep their original time, rounded down to whole seconds, so they never look newer.
   assert.equal((await stat(restored)).mtime.getTime(), Math.floor(originalTime.getTime() / 1000) * 1000);
   // No temporary files are left next to restored ones, and the upload is gone.
   assert.deepEqual((await readdir(path.join(projects, '-home-u-proj'))).filter((name) => name.endsWith('.tmp')), []);
-  assert.deepEqual(await readdir(path.join(target.home, '.cloudcli', 'backup-imports')), []);
+  assert.deepEqual(await readdir(path.join(target.home, '.claudeweb', 'backup-imports')), []);
 
   assert.deepEqual(status.result && {
     restoredSessions: status.result.restoredSessions,
@@ -391,7 +391,7 @@ test('uploads arrive in order, with the declared size, and need free disk space'
   await assert.rejects(full.service.createImport(1, { size: 100 }), { code: 'BACKUP_DISK_FULL' });
 
   await harness.service.cancelImport(1, importId);
-  assert.deepEqual(await readdir(path.join(harness.home, '.cloudcli', 'backup-imports')), []);
+  assert.deepEqual(await readdir(path.join(harness.home, '.claudeweb', 'backup-imports')), []);
 });
 
 function chunkSize8MiB(): number {

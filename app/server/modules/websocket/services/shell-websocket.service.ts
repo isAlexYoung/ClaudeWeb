@@ -354,7 +354,7 @@ let hasLoggedThemeSettingsFileError = false;
 /**
  * Returns a settings file that holds only `{"theme": theme}`, writing it when
  * it is missing or differs. It lives in the app's own data folder
- * (`~/.cloudcli`, like the chat assets); the user's Claude config is never
+ * (`~/.claudeweb`, like the chat assets); the user's Claude config is never
  * written. The write goes through a temp file and a rename, so a CLI starting
  * at the same time never reads half a file. Returns null, and logs once, when
  * the file cannot be written (a read-only home, say): the launch then simply
@@ -364,7 +364,7 @@ function ensureClaudeThemeSettingsFile(theme: string): string | null {
   const contents = `${JSON.stringify({ theme })}\n`;
   let tempPath: string | null = null;
   try {
-    const filePath = path.join(os.homedir(), '.cloudcli', `claude-shell-theme-${theme}.json`);
+    const filePath = path.join(os.homedir(), '.claudeweb', `claude-shell-theme-${theme}.json`);
     // Anything but the expected regular file is replaced; the rename never
     // opens what it replaces.
     if (readRegularConfigFile(filePath) !== contents) {

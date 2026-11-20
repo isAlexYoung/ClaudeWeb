@@ -2,7 +2,7 @@ import { getConnection } from '@/modules/database/connection.js';
 import { normalizeProjectPath } from '@/shared/utils.js';
 
 /**
- * One chat attachment stored in the global `~/.cloudcli/assets` folder, with
+ * One chat attachment stored in the global `~/.claudeweb/assets` folder, with
  * the project (and, once it was sent, the conversation) it belongs to. Read by
  * the project's File management page; written when an upload completes, when
  * a message carrying it is sent, and by the start-up index of older uploads.

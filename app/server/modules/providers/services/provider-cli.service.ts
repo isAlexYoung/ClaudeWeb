@@ -32,7 +32,7 @@ const FAILURE_PATTERN = /\bfailed\b/i;
 const RELEASE_VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/;
 
 type CliUpdater = {
-  /** The CLI chats run, or undefined when they run a binary that ships inside CloudCLI's dependencies. */
+  /** The CLI chats run, or undefined when they run a binary that ships inside ClaudeWeb's dependencies. */
   resolveCommand: () => string | undefined;
   /** Arguments that make the CLI update itself. */
   args: string[];
@@ -53,7 +53,7 @@ const CLI_UPDATERS: Partial<Record<LLMProvider, CliUpdater>> = {
   },
 };
 
-/** Why the settings page offers no update: the CLI ships with CloudCLI, or the hosting platform manages the CLIs. */
+/** Why the settings page offers no update: the CLI ships with ClaudeWeb, or the hosting platform manages the CLIs. */
 type CliUpdateUnavailableReason = 'bundled' | 'platform';
 
 /** Why an update run went wrong, as read from its exit code and output. */
@@ -435,7 +435,7 @@ export function createProviderCliService(dependencyOverrides: Partial<ProviderCl
       const provider = dependencies.resolveProvider(providerName);
       const update = resolveUpdateCommand(provider.id);
       if (!update) {
-        throw new AppError(`${getProviderLabel(provider.id)} ships with CloudCLI and is updated together with it.`, {
+        throw new AppError(`${getProviderLabel(provider.id)} ships with ClaudeWeb and is updated together with it.`, {
           code: 'PROVIDER_CLI_UPDATE_UNAVAILABLE',
           statusCode: 400,
         });
