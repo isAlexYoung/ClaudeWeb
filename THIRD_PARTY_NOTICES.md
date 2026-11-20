@@ -1,0 +1,22 @@
+# Third-party notices
+
+ClaudeWeb includes or installs the following third-party software. Each keeps
+its own license.
+
+| Component | Where | License |
+| --- | --- | --- |
+| [CloudCLI UI](https://github.com/siteboon/claudecodeui) (Claude Code UI) | `app/`, the base of ClaudeWeb | AGPL-3.0-or-later with Section 7 additional terms; see [LICENSE](LICENSE) and [NOTICE](NOTICE) |
+| [noVNC](https://github.com/novnc/noVNC) | `app/public/novnc/`, with local changes described in `app/public/novnc/LOCAL_PATCHES.md` | MPL-2.0 and others; see `app/public/novnc/LICENSE.txt` |
+| [Task Master](https://github.com/eyaltoledano/claude-task-master) (`task-master-ai` 0.43.1) | installed into `app/tools/taskmaster/` from npm | MIT with Commons Clause |
+| npm packages | listed in `app/package-lock.json` and `app/tools/taskmaster/package-lock.json` | their own licenses, recorded in each package |
+
+ClaudeWeb works with the official
+[Claude Code CLI](https://docs.claude.com/en/docs/claude-code/overview), which
+the installer will download from Anthropic, and installs the Claude Agent SDK
+(`@anthropic-ai/claude-agent-sdk`) from npm as a dependency. Neither is part
+of ClaudeWeb; both are covered by Anthropic's own terms, not by ClaudeWeb's
+license.
+
+The "Commons Clause" condition on Task Master forbids selling Task Master
+itself. ClaudeWeb is free software and does not sell it; if you redistribute
+ClaudeWeb commercially, check that condition first.

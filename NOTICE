@@ -1,0 +1,30 @@
+ClaudeWeb
+Copyright 2026 ClaudeWeb contributors
+
+ClaudeWeb is a modified version of CloudCLI UI
+(https://github.com/siteboon/claudecodeui), based on upstream commit 58a28e0.
+It is not the original CloudCLI UI and is not endorsed by its authors.
+The modifications are licensed under the GNU Affero General Public License
+v3.0 or later (AGPL-3.0-or-later), with the same additional terms under
+Section 7 as the original work. See the LICENSE file.
+
+ClaudeWeb is not affiliated with Anthropic. "Claude" and "Claude Code" are
+trademarks of Anthropic, PBC.
+
+The notice of the original work follows.
+
+--------------------------------------------------------------------------
+
+CloudCLI UI
+Copyright 2025-2026 Siteboon AI B.V. and contributors
+
+This software is licensed under the GNU Affero General Public License v3.0
+or later (AGPL-3.0-or-later). See the LICENSE file for the full license text,
+including additional terms under Section 7.
+
+Originally developed by Siteboon AI B.V. (https://github.com/siteboon/claudecodeui).
+
+Contributions by Siteboon AI B.V. prior to commit 004135ef were originally
+published under GPL-3.0 and are hereby relicensed to AGPL-3.0-or-later.
+Contributions by other authors prior to that commit remain under GPL-3.0
+and are incorporated into this work as permitted by GPL-3.0 Section 13.

@@ -71,7 +71,7 @@
 
 - [ ] ClaudeWeb 自己提供登录、会话和退出；不提供网页注册或首次设置页面，避免他人抢先创建账号。
 - [ ] HTTP、WebSocket、终端、文件、浏览器和更新接口统一经过鉴权。
-- [ ] 移除对 WebDesktop 外层认证的依赖，不能把当前信任外层认证的平台模式直接暴露公网。
+- [x] 移除对 WebDesktop 外层认证的依赖，不能把当前信任外层认证的平台模式直接暴露公网。（2026-11-20 已删除平台模式。第 5 步完成自己的登录之前，应用暂用上游的首次注册页 + JWT 登录，这个状态不能发布。）
 - [ ] 创建普通运行用户 `claudeweb`，统一 HOME、工作区和子进程环境。
 - [ ] 统一项目、下载、配置的文件所有权和默认权限，减少跨用户协调。
 - [ ] 安装程序和系统配置由安装器管理，应用不直接替换系统级程序文件。
@@ -226,21 +226,21 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 | 默认本机端口 | `127.0.0.1:3001` |
 | 日志 | systemd journal，必要文件放 `/var/log/claudeweb` |
 
-- [ ] 更新界面、包名、命令、环境变量、默认路径和发布脚本。
+- [x] 更新界面、包名、命令、环境变量、默认路径和发布脚本。（发布脚本在第 5 步编写）
 - [ ] 更新插件标识与配置引用，避免改名导致插件失联。
 - [ ] 独立维护源码、构建、版本、发布包和更新清单，不依赖 CloudCLI 发布链。
-- [ ] 保留第三方许可证、版权和来源声明，不能错误替换声明中的原项目名称。
-- [ ] 核对现有 AGPL 与附加署名条款，明确本项目为修改后的独立发行版本。
-- [ ] 使用全新的提交历史建仓，不导入私有仓库历史；清除内部报告、CI 与部署密钥引用、个人路径、其他账号名和 VPS 主机名。
-- [ ] 补充 `SECURITY.md`（漏洞报告方式）、`CHANGELOG` 和中英文 README。
-- [ ] README 声明与 Anthropic 无任何隶属关系，附免责声明和版权声明。
-- [ ] 关于页面的源码链接指向公开仓库，替代原 `cloudcli.patch`。
-- [ ] README 写明不收集任何使用数据。
+- [x] 保留第三方许可证、版权和来源声明，不能错误替换声明中的原项目名称。（见 `NOTICE`、`THIRD_PARTY_NOTICES.md`）
+- [x] 核对现有 AGPL 与附加署名条款，明确本项目为修改后的独立发行版本。
+- [x] 使用全新的提交历史建仓，不导入私有仓库历史；清除内部报告、CI 与部署密钥引用、个人路径、其他账号名和 VPS 主机名。（首次推送前改写了全部本地提交，并扫描确认）
+- [x] 补充 `SECURITY.md`（漏洞报告方式）、`CHANGELOG` 和中英文 README。
+- [x] README 声明与 Anthropic 无任何隶属关系，附免责声明和版权声明。
+- [x] 关于页面的源码链接指向公开仓库，替代原 `cloudcli.patch`。
+- [x] README 写明不收集任何使用数据。
 - [ ] 编写用户文档：安装、SSH 隧道与域名访问、CMCP 连接，以及常见问题（忘记密码、更新失败、CMCP 连不上、内存不足）。
-- [ ] 编写 `CONTRIBUTING.md`：本地开发与测试方法、代码规范、提交说明要求；PR 须通过 CI 并由维护者审查后合并。
-- [ ] 准备 Issue 模板（问题报告附 `claudeweb doctor` 输出、功能建议）和 PR 模板。
-- [ ] 贡献的许可证规则：贡献内容按本仓库许可证（AGPL）发布，提交时签署 DCO（`git commit -s`），确认贡献者有权提交这些代码。
-- [ ] 漏洞不走公开 Issue，按 `SECURITY.md` 私下报告。
+- [x] 编写 `CONTRIBUTING.md`：本地开发与测试方法、代码规范、提交说明要求；PR 须通过 CI 并由维护者审查后合并。
+- [x] 准备 Issue 模板（问题报告附 `claudeweb doctor` 输出、功能建议）和 PR 模板。
+- [x] 贡献的许可证规则：贡献内容按本仓库许可证（AGPL）发布，提交时签署 DCO（`git commit -s`），确认贡献者有权提交这些代码。
+- [x] 漏洞不走公开 Issue，按 `SECURITY.md` 私下报告。
 
 ## 旧数据导入
 
@@ -264,13 +264,23 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 
 ### 独立版本
 
-- [x] 本地仓库 （本地路径） 初始化（分支 `main`），按原样导入 1.0.17 基线到 `app/`（提交 `52e6243`）；提交作者使用 GitHub 隐私邮箱，不公开个人邮箱。
-- [ ] 清理后再创建公开仓库：私有信息、WebDesktop 依赖和上游专用文件处理完之前不推送。
-- [ ] 创建公开仓库，整理可公开源码与许可证。
-- [ ] 遵守上游 AGPL 附加条款：文档和关于页保留“CloudCLI UI (https://github.com/siteboon/claudecodeui)”署名；明确标注为修改版，不以原版名义发布；宣传中不使用“CloudCLI”“Siteboon”名称。
+- [x] 本地仓库初始化（分支 `main`），按原样导入 1.0.17 基线到 `app/`（提交 `4fba522`）；提交作者使用 GitHub 隐私邮箱，不公开个人邮箱。
+- [x] 清理后再创建公开仓库：私有信息、WebDesktop 依赖和上游专用文件处理完之前不推送。
+- [x] 创建公开仓库，整理可公开源码与许可证。（2026-11-20：`isAlexYoung/ClaudeWeb`）
+- [x] 遵守上游 AGPL 附加条款：文档和关于页保留“CloudCLI UI (https://github.com/siteboon/claudecodeui)”署名；明确标注为修改版，不以原版名义发布；宣传中不使用“CloudCLI”“Siteboon”名称。
 - [ ] 完成命名、认证、用户、文件和终端独立化。
 - [ ] 完成浏览器独立运行，去掉 WebDesktop 前置依赖。
 - [ ] 在没有 WebDesktop、fa-build 的干净环境完整运行。
+
+#### 执行进度（2026-11-20）
+
+- 第 1 步删除上游专用文件（`312047f`）；第 2 步 cloudcli→claudeweb 改名并保留署名（`ee565e8`）；第 3 步去掉 WebDesktop 依赖和平台模式（`93b4378`）；第 4 步仓库顶层文件。
+- Windows 上的检查：类型检查、lint、构建通过；前端测试全过；后端 18 个失败与基线相同（Windows 路径和符号链接相关），需在 Linux CI 上确认。
+- 暂未挂载、留待第 5 步重做：登录设备列表、新设备提醒和闲置退出（原走 WebDesktop 网关 `__webdesktop/*`）；设置 > 关于里的更新（原走 WebDesktop 的 root 更新器，协议字段 `requires_webdesktop` 待改）；浏览器面板（原走 WebDesktop 网关 socket）。这些组件的文案仍提到 WebDesktop，重做时一起改。
+- 应用内 CLI（`app/server/modules/cli`，`start/status/update` 等）与计划中的 root 管理命令 `claudeweb` 同名，第 5 步决定改名或合并。
+- 聊天工作目录固定为 `/home/claudeweb`（`CHAT_WORKSPACE_PATH`），安装器须创建该用户及其家目录。
+- 服务默认只监听 `127.0.0.1`（`HOST` 可覆盖）。
+- 应用版本号仍是上游的 1.37.7，发布时改为 2.0.0。
 
 ### 安装更新
 
