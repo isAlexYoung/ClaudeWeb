@@ -367,7 +367,7 @@ export default class RFB extends EventTargetMixin {
     }
 
     get showDotCursor() { return this._showDotCursor; }
-    // WebDesktop: explicit public bounds, no global/private-method patching.
+    // ClaudeWeb: explicit public bounds, no global/private-method patching.
     set resizeLimits(limits) {
         if (!Number.isInteger(limits.width) || !Number.isInteger(limits.height) ||
             limits.width < 640 || limits.width > 1600 || limits.height < 480 || limits.height > 1000) {
@@ -811,7 +811,7 @@ export default class RFB extends EventTargetMixin {
             return;
         }
 
-        // WebDesktop: bounded and debounced; dragging does not restart Xvnc.
+        // ClaudeWeb: bounded and debounced; dragging does not restart Xvnc.
         const resizeDelay = this._resizeLimits ? 300 : 100;
         if ((Date.now() - this._lastResize) < resizeDelay) {
             clearTimeout(this._resizeTimeout);

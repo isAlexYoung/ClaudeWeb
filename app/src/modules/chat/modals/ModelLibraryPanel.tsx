@@ -23,7 +23,7 @@ import type {
 
 const PROVIDERS: Array<{ id: LLMProvider; label: string }> = [
   { id: 'claude', label: 'Claude' },
-]; // WebDesktop: Claude only
+]; // ClaudeWeb: Claude only
 
 type ModelLibraryPanelProps = {
   initialProvider: LLMProvider;

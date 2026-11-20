@@ -3,7 +3,7 @@ import type { IProvider } from '@/shared/interfaces.js';
 import type { LLMProvider } from '@/shared/types.js';
 import { AppError } from '@/shared/utils.js';
 
-// The WebDesktop build ships Claude only; Codex, Cursor and OpenCode were removed.
+// ClaudeWeb ships Claude only; upstream's Codex, Cursor and OpenCode providers were removed.
 const providers: Record<LLMProvider, IProvider> = {
   claude: new ClaudeProvider(),
 };

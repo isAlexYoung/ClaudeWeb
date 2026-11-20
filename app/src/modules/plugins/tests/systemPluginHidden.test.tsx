@@ -7,7 +7,7 @@ import PluginSettingsTab from '@/modules/plugins/PluginSettingsTab';
 import type { Plugin } from '@/shared/types';
 
 /**
- * WebDesktop installs the Claude usage plugin to drive the composer's quota
+ * ClaudeWeb installs the Claude usage plugin to drive the composer's quota
  * ring, so Settings > Plugins neither lists it nor recommends installing it.
  */
 

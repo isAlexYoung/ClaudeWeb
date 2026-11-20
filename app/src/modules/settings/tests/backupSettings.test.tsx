@@ -81,12 +81,12 @@ test('import uploads in pieces, asks for the password, previews and imports the 
       encrypted: true,
       preview: {
         createdAt: '2026-11-01T00:00:00.000Z',
-        sourceHome: '/home/wdguest',
+        sourceHome: '/home/claudeweb',
         encrypted: true,
         sharedNewBytes: 1024,
         freeBytes: 10 * 1024 * 1024 * 1024,
         projects: [
-          { id: '-home-wdguest-app', name: 'app', path: '/home/wdguest/app', pathExists: true, sessionCount: 3, existingSessionCount: 1, newBytes: 2048 },
+          { id: '-home-claudeweb-app', name: 'app', path: '/home/claudeweb/app', pathExists: true, sessionCount: 3, existingSessionCount: 1, newBytes: 2048 },
           { id: '-srv-site', name: 'site', path: '/srv/site', pathExists: false, sessionCount: 1, existingSessionCount: 0, newBytes: 512 },
         ],
       },
@@ -112,14 +112,14 @@ test('import uploads in pieces, asks for the password, previews and imports the 
 
   fireEvent.change(screen.getByLabelText('Backup password'), { target: { value: 'secret pass' } });
   fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
-  expect(await screen.findByText('/home/wdguest/app')).toBeTruthy();
+  expect(await screen.findByText('/home/claudeweb/app')).toBeTruthy();
   expect(mocks.preview).toHaveBeenLastCalledWith('imp-1', 'secret pass');
   expect(screen.getByText('2 conversations to import · 1 already here, skipped')).toBeTruthy();
   expect(screen.getByText(/This folder does not exist on this server/)).toBeTruthy();
 
   fireEvent.click(screen.getAllByRole('checkbox')[1]);
   fireEvent.click(screen.getByRole('button', { name: 'Import 1 project' }));
-  expect(mocks.apply).toHaveBeenCalledWith('imp-1', ['-home-wdguest-app']);
+  expect(mocks.apply).toHaveBeenCalledWith('imp-1', ['-home-claudeweb-app']);
   expect(await screen.findByText('Importing…')).toBeTruthy();
   await waitFor(() => expect(screen.getByText('Imported 2 conversations.')).toBeTruthy(), { timeout: 3000 });
   expect(screen.getByText('Skipped 1 conversation that was already here.')).toBeTruthy();

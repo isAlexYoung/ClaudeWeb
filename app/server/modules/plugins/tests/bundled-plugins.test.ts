@@ -20,7 +20,7 @@ test('bundled plugins are discovered enabled and cannot be updated or uninstalle
   assert.equal(scanPlugins().find(plugin => plugin.name === name)?.bundled, true);
   assert.equal(scanPlugins().find(plugin => plugin.name === name)?.enabled, true);
   assert.equal(getPluginDir(name), path.join(root, name));
-  await assert.rejects(uninstallPlugin(name), /managed by WebDesktop/);
-  await assert.rejects(updatePluginFromGit(name), /updated with WebDesktop/);
+  await assert.rejects(uninstallPlugin(name), /managed by ClaudeWeb/);
+  await assert.rejects(updatePluginFromGit(name), /updated with ClaudeWeb/);
   assert.equal(fs.existsSync(path.join(root, name, 'manifest.json')), true);
 });

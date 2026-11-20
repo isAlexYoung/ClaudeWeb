@@ -27,7 +27,7 @@ self.addEventListener('notificationclick', event => {
   event.waitUntil((async () => {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of clientList) {
-      // Never focus another WebDesktop app on the same host.
+      // Never focus another app on the same host.
       if (client.url.startsWith(self.registration.scope)) {
         await client.focus();
         client.postMessage({ type: 'notification:navigate', sessionId, provider, urlPath });

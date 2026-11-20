@@ -1,10 +1,9 @@
 import { ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import ClaudeWebUpdateSection from '@/modules/settings/tabs/ClaudeWebUpdateSection';
-import LoginDevicesSection from '@/modules/settings/tabs/LoginDevicesSection';
 
-const GITHUB_REPO_URL = 'https://github.com/siteboon/claudecodeui';
+const UPSTREAM_REPO_URL = 'https://github.com/siteboon/claudecodeui';
+const SOURCE_URL = 'https://github.com/isAlexYoung/ClaudeWeb';
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -15,23 +14,21 @@ function GitHubIcon({ className }: { className?: string }) {
 }
 
 /**
- * Rendered by Settings for the "about" tab: the installed ClaudeWeb version and its
- * update and the signed-in devices (WebDesktop build), what this interface is built on and where that project
- * lives. The license line and the link to the WebDesktop changes stay because the
- * AGPL asks a modified network service to offer both.
+ * Rendered by Settings for the "about" tab: what this interface is built on,
+ * where that project lives, the license, and where ClaudeWeb's own source is.
+ * The AGPL asks a modified network service to say it is modified and to offer
+ * its source, so the last two lines stay.
  */
 export default function AboutTab() {
   const { t } = useTranslation('settings');
 
   return (
     <div className="space-y-6">
-      {import.meta.env.VITE_WEBDESKTOP === 'true' && <ClaudeWebUpdateSection />}
-      {import.meta.env.VITE_WEBDESKTOP === 'true' && <LoginDevicesSection />}
       <div className="space-y-3">
         <h3 className="text-base font-semibold text-foreground">{t('about.title')}</h3>
         <p className="text-sm text-muted-foreground">{t('about.basedOn')}</p>
         <a
-          href={GITHUB_REPO_URL}
+          href={UPSTREAM_REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
@@ -46,12 +43,10 @@ export default function AboutTab() {
         <p className="text-xs text-muted-foreground/60">
           {t('about.licensed')}
         </p>
-        {import.meta.env.VITE_WEBDESKTOP === 'true' && (
-          <p className="mt-2 text-xs text-muted-foreground/60">
-            {t('about.modifiedVersion')}{' '}
-            <a href={`${import.meta.env.BASE_URL}__webdesktop/claudeweb.patch`} className="underline">{t('about.sourceChanges')}</a>.
-          </p>
-        )}
+        <p className="mt-2 text-xs text-muted-foreground/60">
+          {t('about.modifiedVersion')}{' '}
+          <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer" className="underline">{t('about.sourceChanges')}</a>.
+        </p>
       </div>
     </div>
   );

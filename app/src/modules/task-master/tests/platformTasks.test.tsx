@@ -4,14 +4,11 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import '@/modules/i18n';
 
 const mocks = vi.hoisted(() => ({
-  tasks: vi.fn(), initialize: vi.fn(), platform: true,
-  auth: { user: { username: 'platform-user' }, token: null as string | null, isLoading: false },
+  tasks: vi.fn(), initialize: vi.fn(),
+  auth: { user: { username: 'user' }, token: 'token' as string | null, isLoading: false },
   socket: { subscribe: vi.fn(() => () => {}) },
 }));
 vi.mock('@/modules/auth', () => ({ useAuth: () => mocks.auth }));
-vi.mock('@/shared/utils', async (original) => ({
-  ...(await original<Record<string, unknown>>()), get IS_PLATFORM() { return mocks.platform; },
-}));
 vi.mock('@/shared/context/WebSocketContext', () => ({ useWebSocket: () => mocks.socket }));
 vi.mock('@/shared/api', async (original) => ({
   ...(await original<Record<string, unknown>>()),
@@ -22,7 +19,7 @@ vi.mock('@/shared/api', async (original) => ({
 }));
 const { TaskMasterProvider, useTaskMaster } = await import('@/modules/task-master/context/TaskMasterContext');
 const { default: TaskMasterSetupModal } = await import('@/modules/task-master/modals/TaskMasterSetupModal');
-const project = { projectId: 'p1', displayName: 'Demo', fullPath: '/home/wdguest/demo' };
+const project = { projectId: 'p1', displayName: 'Demo', fullPath: '/home/claudeweb/demo' };
 function Controls() {
   const context = useTaskMaster();
   return <><button onClick={() => context.setCurrentProject(project as never)}>select</button>
@@ -31,18 +28,18 @@ function Controls() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.platform = true;
+  mocks.auth.token = 'token';
   mocks.tasks.mockImplementation(async () => ({ ok: true, json: async () => ({ tasks: [{ id: 1, title: 'First task', status: 'pending' }] }) }));
   mocks.initialize.mockImplementation(async () => new Response('{"output":"initialized"}'));
 });
-test('platform users without a ClaudeWeb token can load project tasks', async () => {
+test('a signed-in user loads project tasks', async () => {
   render(<TaskMasterProvider><Controls /></TaskMasterProvider>);
   fireEvent.click(screen.getByText('select'));
   expect(await screen.findByText('First task')).toBeTruthy();
   expect(mocks.tasks).toHaveBeenCalledWith('p1');
 });
-test('standalone users still require a ClaudeWeb token', async () => {
-  mocks.platform = false;
+test('without a ClaudeWeb token no tasks are requested', async () => {
+  mocks.auth.token = null;
   render(<TaskMasterProvider><Controls /></TaskMasterProvider>);
   fireEvent.click(screen.getByText('select'));
   await act(async () => { await Promise.resolve(); });

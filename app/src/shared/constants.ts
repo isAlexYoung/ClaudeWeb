@@ -215,9 +215,9 @@ export const PROVIDER_PERMISSION_PREFERENCE_KEYS: Record<LLMProvider, UserPrefer
  * Working directory of standalone chats (no project). The workspace registers it as a
  * project row so the backend can run sessions there, and the navigation hides that row.
  */
-export const CHAT_WORKSPACE_PATH = '/home/wdguest';
+export const CHAT_WORKSPACE_PATH = '/home/claudeweb';
 /** Default Code working directory when the user starts without choosing a project folder. */
-export const CODE_WORKSPACE_PATH = '/home/wdguest/Code';
+export const CODE_WORKSPACE_PATH = '/home/claudeweb/Code';
 
 //----------------- UI MOTION ------------
 

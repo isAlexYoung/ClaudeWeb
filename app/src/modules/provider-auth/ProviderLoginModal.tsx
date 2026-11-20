@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 
 import { StandaloneShell } from '@/modules/standalone-shell';
-import { IS_PLATFORM } from '@/shared/utils';
+import { CHAT_WORKSPACE_PATH } from '@/shared/constants';
 import type { LLMProvider } from '@/shared/types';
 
 /**
@@ -17,8 +17,8 @@ import type { LLMProvider } from '@/shared/types';
 const DEFAULT_PROJECT_FOR_EMPTY_SHELL = {
   projectId: 'default',
   displayName: 'default',
-  fullPath: IS_PLATFORM ? '/home/wdguest' : '',
-  path: IS_PLATFORM ? '/home/wdguest' : '',
+  fullPath: CHAT_WORKSPACE_PATH,
+  path: CHAT_WORKSPACE_PATH,
 };
 
 type ProviderLoginModalProps = {

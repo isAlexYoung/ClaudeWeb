@@ -555,7 +555,7 @@
       "waiting": "{{stage}} ({{seconds}} s)",
       "reconnecting": "Connection lost, reconnecting… the browser is still running ({{seconds}} s)",
       "ended": "The browser connection ended. Reopen it, or ask the administrator to check the logs.",
-      "unavailable": "The browser panel is not available yet. It needs WebDesktop 3.0.3 or later; if WebDesktop is already updated, wait a few seconds and reopen.",
+      "unavailable": "The browser panel is not available on this server yet.",
       "reopen": "Reopen",
       "clipboardInput": "Remote clipboard input",
       "closeNotice": "Close",

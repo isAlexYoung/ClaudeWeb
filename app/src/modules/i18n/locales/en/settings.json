@@ -840,7 +840,7 @@
     },
     "licensed": "Licensed under AGPL-3.0",
     "modifiedVersion": "ClaudeWeb is a modified version of CloudCLI UI (https://github.com/siteboon/claudecodeui), based on upstream commit 58a28e0. It is not the original CloudCLI UI.",
-    "sourceChanges": "View the WebDesktop changes",
+    "sourceChanges": "View the ClaudeWeb source",
     "title": "About",
     "basedOn": "ClaudeWeb is built on the open-source project CloudCLI UI (Claude Code UI).",
     "githubLink": "CloudCLI UI on GitHub",

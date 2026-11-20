@@ -24,9 +24,7 @@ function createDependencies(
     homeDirectory: () => '/home/test',
     spawnProcess: (() => { throw new Error('spawn should not run'); }) as unknown as
       AgentDependencies['spawnProcess'],
-    platformMode: true,
-    users: { getFirstUser: () => ({ id: 1, username: 'test-user' }) },
-    apiKeys: { validateApiKey: () => undefined },
+    apiKeys: { validateApiKey: (apiKey) => (apiKey === 'test-key' ? { id: 1, username: 'test-user' } : undefined) },
     githubTokens: { getActiveGithubToken: () => null },
     projects: { createProjectPath: () => ({ outcome: 'created' }) },
     models: {} as AgentDependencies['models'],
@@ -74,7 +72,7 @@ test('Agent route rejects missing project input before invoking provider depende
   await withAgentServer(createDependencies(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/agent`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-api-key': 'test-key' },
       body: JSON.stringify({ message: 'Inspect this project', stream: false }),
     });
     const body = await response.json() as { error: string };
@@ -87,7 +85,6 @@ test('Agent route rejects missing project input before invoking provider depende
 test('Agent route validates API keys through the injected repository', async () => {
   const receivedKeys: string[] = [];
   await withAgentServer(createDependencies({
-    platformMode: false,
     apiKeys: {
       validateApiKey: (apiKey) => {
         receivedKeys.push(apiKey);
@@ -110,7 +107,7 @@ test('Agent route rejects GitHub lookalike hosts before cloning', async () => {
   await withAgentServer(createDependencies(), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/agent`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-api-key': 'test-key' },
       body: JSON.stringify({
         githubUrl: 'https://github.com.evil.example/owner/repo',
         message: 'Run',
@@ -150,7 +147,7 @@ test('GitHub cloning keeps credentials out of arguments and remote URL', async (
   }), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/agent`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-api-key': 'test-key' },
       body: JSON.stringify({
         githubUrl: 'https://github.com/owner/repo.git',
         message: 'Run',
@@ -202,7 +199,7 @@ test('Agent route reuses a matching checkout without cloning or deleting it', as
   }), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/agent`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-api-key': 'test-key' },
       body: JSON.stringify({
         githubUrl: 'https://github.com/owner/repo.git',
         projectPath: '/home/test/.claude/external-projects/existing',
@@ -247,7 +244,7 @@ async function runWithoutModel(
   }), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/agent`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-api-key': 'test-key' },
       body: JSON.stringify({
         projectPath: '/home/test/project',
         message: 'Run',
@@ -275,7 +272,7 @@ test('Agent route marks a Claude run unattended, as no person can answer an MCP 
   }), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/agent`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-api-key': 'test-key' },
       body: JSON.stringify({ projectPath: '/home/test/project', message: 'Run', provider: 'claude', stream: false }),
     });
     assert.equal(response.status, 200);
@@ -345,7 +342,7 @@ test('Agent route reads no model catalog for a continued session of an unregiste
   }), async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/agent`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-api-key': 'test-key' },
       body: JSON.stringify({
         projectPath: '/home/test/project',
         message: 'Run',

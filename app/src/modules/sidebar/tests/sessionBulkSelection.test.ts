@@ -331,8 +331,8 @@ test('an empty selection opens no confirmation', () => {
 
 
 test('New chat selecting the chat directory does not open it as a project, a real project still opens', () => {
-  // Older ClaudeWeb installs kept projects in /home/wdguest, so it can be listed as a project.
-  const chatDirectory = { projectId: 'chat-dir', displayName: 'wdguest', fullPath: '/home/wdguest/', path: '/home/wdguest' } as unknown as Project;
+  // Older ClaudeWeb installs kept projects in /home/claudeweb, so it can be listed as a project.
+  const chatDirectory = { projectId: 'chat-dir', displayName: 'claudeweb', fullPath: '/home/claudeweb/', path: '/home/claudeweb' } as unknown as Project;
   const view = renderController(vi.fn(), { ...IDLE, selectedProject: chatDirectory });
   assert.equal(view.result.current.isProjectExpanded('chat-dir'), false);
 

@@ -18,7 +18,7 @@ const REPLY_HEADERS = ['content-type', 'x-image-width', 'x-image-height'];
 export type BrowserReply = { status: number; headers: Record<string, string>; body: Buffer };
 
 type Dependencies = {
-  /** WebDesktop's gateway socket for ClaudeWeb (CLAUDEWEB_GUI_SOCKET); unset outside WebDesktop. */
+  /** The browser relay's local socket (CLAUDEWEB_GUI_SOCKET); unset when no browser is set up. */
   socketPath: string | undefined;
 };
 
@@ -36,7 +36,7 @@ function sendableCode(code: number): boolean {
 
 /**
  * Created by the browser module: ClaudeWeb's side of the browser panel. The desktop's own
- * Chromium runs under WebDesktop's gateway, which offers it to ClaudeWeb on a local socket;
+ * Chromium runs under a relay that offers it to ClaudeWeb on a local socket;
  * this relays the page's picture connection and its status, clipboard and close requests
  * there. The gateway decides everything (ownership, limits, takeover); this only forwards.
  */
@@ -52,7 +52,7 @@ export function createBrowserService({ socketPath }: Dependencies) {
 
   async function forward(method: string, path: string, body?: Buffer, contentType?: string): Promise<BrowserReply> {
     if (!(await available())) {
-      throw new AppError('The browser needs WebDesktop 3.0.3 or newer.', { code: 'BROWSER_UNAVAILABLE', statusCode: 503 });
+      throw new AppError('The browser is not available on this server yet.', { code: 'BROWSER_UNAVAILABLE', statusCode: 503 });
     }
     return new Promise((resolve, reject) => {
       const request = http.request({
@@ -89,7 +89,7 @@ export function createBrowserService({ socketPath }: Dependencies) {
       return forward('GET', '/api/gui/status?sid=' + requireSid(sid));
     },
 
-    /** Text clipboard: `{ sid, op, text? }` exactly as WebDesktop's own browser window sends it. */
+    /** Text clipboard: `{ sid, op, text? }` in the relay's clipboard format. */
     text(body: unknown) {
       return forward('POST', '/api/gui/text-clipboard', Buffer.from(JSON.stringify(body ?? {})), 'application/json');
     },

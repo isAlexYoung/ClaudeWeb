@@ -5,7 +5,7 @@ import { sessionsService } from '@/modules/providers/services/sessions.service.j
 import { resolveClaudeCodeExecutablePath } from '@/shared/claude-cli-path.js';
 import type { IProvider } from '@/shared/interfaces.js';
 import type { CliVersionProbe, LLMProvider } from '@/shared/types.js';
-import { AppError, IS_PLATFORM, stripAnsiSequences } from '@/shared/utils.js';
+import { AppError, stripAnsiSequences } from '@/shared/utils.js';
 
 /** How long the registry's answer is reused before it is asked again. */
 const LATEST_VERSION_TTL_MS = 60 * 60 * 1000;
@@ -127,7 +127,9 @@ const defaultDependencies: ProviderCliServiceDependencies = {
   resolveProvider: (provider) => providerRegistry.resolveProvider(provider),
   listBusyProviders: async () => (await sessionsService.listRunningSessions()).map((session) => session.provider),
   fetch: (input, init) => fetch(input, init),
-  platformMode: IS_PLATFORM,
+  // True only where something outside ClaudeWeb owns the CLIs; ClaudeWeb runs
+  // the official CLI's own updater.
+  platformMode: false,
   now: () => Date.now(),
   latestVersionTimeoutMs: LATEST_VERSION_TIMEOUT_MS,
   updateTimeoutMs: UPDATE_TIMEOUT_MS,

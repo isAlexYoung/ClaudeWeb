@@ -2,7 +2,7 @@ import { createClaudeWebUpdateRouter } from '@/modules/claudeweb-update/claudewe
 import { createClaudeWebUpdateService } from '@/modules/claudeweb-update/claudeweb-update.service.js';
 import { findApplicationRoot, getModuleDirectory } from '@/shared/utils.js';
 
-// WebDesktop's service unit names the root updater's socket and status file; elsewhere both are
+// The service unit names the root updater's socket and status file; elsewhere both are
 // unset and the About page only shows the version.
 const claudeWebUpdateService = createClaudeWebUpdateService({
   appRoot: findApplicationRoot(getModuleDirectory(import.meta.url)),

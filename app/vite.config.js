@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
   const serverPort = env.SERVER_PORT || env.PORT || 3001
 
   return {
-    // WebDesktop serves the UI under a sub-path such as /claude/.
+    // The UI can be served under a sub-path such as /claude/.
     base: env.VITE_BASE_PATH || '/',
     plugins: [react()],
     define: {

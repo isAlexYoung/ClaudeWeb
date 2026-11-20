@@ -7,7 +7,7 @@ type TaskmasterRunner = ReturnType<typeof createTaskmasterProcessRunner>;
 type TaskmasterRunResult = Parameters<Parameters<TaskmasterRunner>[3]>[0];
 
 // TaskMaster's `claude-code` provider runs through the user's Claude Code login,
-// so a WebDesktop project needs no separate API key for task generation.
+// so a ClaudeWeb project needs no separate API key for task generation.
 const CLAUDE_CODE_MODEL = 'sonnet';
 const MODEL_ROLE_FLAGS = ['--set-main', '--set-research', '--set-fallback'];
 

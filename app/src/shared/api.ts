@@ -4,7 +4,6 @@ import {
   storeAuthToken,
 } from '@/shared/authToken';
 import type { ScheduledTaskInput, UsageDashboardRange } from '@/shared/types';
-import { IS_PLATFORM } from '@/shared/utils';
 
 // Headers are a plain record rather than the full `HeadersInit` union so the
 // defaults below can be merged with a caller's headers by spreading.
@@ -26,7 +25,7 @@ export const authenticatedFetch = (
     defaultHeaders['Content-Type'] = 'application/json';
   }
 
-  if (!IS_PLATFORM && token) {
+  if (token) {
     defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
@@ -227,10 +226,6 @@ export const api = {
     }),
     refresh: () => post('/api/auth/refresh'),
     user: () => get('/api/auth/user'),
-    // Cookie-authenticated gateway activity; ordinary API calls never renew idle time.
-    webdesktopActivity: () => fetch(`${import.meta.env.BASE_URL}__webdesktop/activity`, {
-      method: 'POST', credentials: 'same-origin', cache: 'no-store',
-    }),
   },
 
   // Protected endpoints
@@ -320,7 +315,7 @@ export const api = {
     cancel: (id: string) => del(`/api/scheduled-messages/${encodeURIComponent(id)}`),
   },
 
-  // Browser panel: the desktop's Chromium through WebDesktop's gateway. Replies are the
+  // Browser panel: the server's Chromium through the browser relay. Replies are the
   // gateway's own `{ code }` JSON (or the PNG for an image read).
   browser: {
     available: () => get('/api/browser/available'),
@@ -666,7 +661,7 @@ export const api = {
     cancel: (importId: string) => del(`/api/backup/imports/${encodeURIComponent(importId)}`),
   },
 
-  // Settings > About: the prebuilt ClaudeWeb updates itself through WebDesktop's root updater.
+  // Settings > About: ClaudeWeb updates itself through the root updater.
   claudewebUpdate: {
     status: () => get('/api/claudeweb-update/status'),
     check: () => post('/api/claudeweb-update/check', {}),

@@ -16,7 +16,7 @@ import { getPluginPort, startPluginServer, stopPluginServer } from '../plugin-pr
 test('dashboard RPC reads real history even when an older user plugin returns 404', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'usage-dashboard-compat-'));
   const config = path.join(root, 'config');
-  const project = path.join(config, 'projects', '-home-wdguest-Code');
+  const project = path.join(config, 'projects', '-home-claudeweb-Code');
   fs.mkdirSync(project, { recursive: true });
   fs.writeFileSync(path.join(project, 'session.jsonl'), JSON.stringify({ timestamp: '2026-01-01T00:00:00Z', message: {
     id: 'fixture-message', model: 'claude-opus-test', usage: { input_tokens: 10, output_tokens: 5 },
@@ -61,7 +61,7 @@ test('dashboard RPC reads real history even when an older user plugin returns 40
   assert.ok(mounted && typeof mounted !== 'string');
   const base = `http://127.0.0.1:${mounted.port}/api/plugins/claude-usage/rpc`;
   const check = async () => {
-    const response = await fetch(`${base}/dashboard?range=all&timeZone=Asia%2FKuala_Lumpur&excludeProject=%2Fhome%2Fwdguest`);
+    const response = await fetch(`${base}/dashboard?range=all&timeZone=Asia%2FKuala_Lumpur&excludeProject=%2Fhome%2Fclaudeweb`);
     assert.equal(response.status, 200);
     const body = await response.json() as { summary: { messages: number; total: number }; byModel: unknown[] };
     assert.equal(body.summary.messages, 1);

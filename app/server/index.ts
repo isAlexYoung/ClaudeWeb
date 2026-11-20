@@ -9,7 +9,7 @@ import http from 'http';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 
-import { AppError, findApplicationRoot, getModuleDirectory, IS_PLATFORM, terminalTextStyles } from '@/shared/utils.js';
+import { AppError, findApplicationRoot, getModuleDirectory, terminalTextStyles } from '@/shared/utils.js';
 import {
     closeSessionsWatcher,
     initializeSessionsWatcher,
@@ -103,7 +103,6 @@ chatRunRegistry.setRetentionGuard((sessionId) => providerRuntimeService.hasBackg
 
 createWebSocketServer(server, {
     verifyClient: {
-        isPlatform: IS_PLATFORM,
         authenticateWebSocket,
     },
     chat: {
@@ -183,9 +182,9 @@ app.use('/api/settings', authenticateToken, settingsRoutes);
 app.use('/api/backup', authenticateToken, backupRoutes);
 app.use('/api/backup-download', backupDownloadRoutes);
 
-// Settings > About: update the prebuilt ClaudeWeb through WebDesktop's root updater (protected)
+// Settings > About: update ClaudeWeb through the root updater (protected)
 app.use('/api/claudeweb-update', authenticateToken, claudeWebUpdateRoutes);
-// The browser panel: the desktop's own Chromium, relayed through WebDesktop's gateway.
+// The browser panel: the server's Chromium, relayed over a local socket.
 app.use('/api/browser', authenticateToken, browserRoutes);
 
 app.use('/api/notifications', authenticateToken, notificationRoutes);
@@ -280,7 +279,9 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
 });
 
 const SERVER_PORT = Number.parseInt(process.env.SERVER_PORT || '3001', 10);
-const HOST = process.env.HOST || '0.0.0.0';
+// Local only unless HOST says otherwise: without a domain ClaudeWeb is reached
+// through an SSH tunnel, and Cloudflare Tunnel also connects to localhost.
+const HOST = process.env.HOST || '127.0.0.1';
 const DISPLAY_HOST = getConnectableHost(HOST);
 const VITE_PORT = process.env.VITE_PORT || 5173;
 const LOCAL_SERVER_MARKER_PATH = path.join(os.homedir(), '.claudeweb', 'local-server.json');
@@ -352,8 +353,8 @@ async function startServer() {
 
         console.log(`${terminalTextStyles.info('[INFO]')} To run in development mode with hot-module replacement, go to http://${DISPLAY_HOST}:${VITE_PORT}`);
    
-        // WebDesktop modification: systemd passes the listening socket (fd 3), so only
-        // the WebDesktop gateway can reach the server.
+        // When systemd passes the listening socket (fd 3), use it; otherwise listen on
+        // HOST and SERVER_PORT.
         const listenTarget = process.env.LISTEN_FDS === '1' && process.env.LISTEN_PID === String(process.pid)
             ? [{ fd: 3 }] : [SERVER_PORT, HOST];
         server.listen(...(listenTarget as [number, string]), async () => {
@@ -389,14 +390,6 @@ async function startServer() {
                 console.warn('[WARN] Could not index earlier uploads:', getErrorMessage(error));
             });
 
-            // The browser module was removed from the WebDesktop build; a user who had
-            // turned it on still has its MCP entry in their Claude config, pointing at
-            // a command that no longer exists. Drop it so Claude stops trying to start it.
-            Promise.all(['cloudcli-browser', 'cloudcli-browser-use'].map((name) =>
-                providerMcpService.removeMcpServerFromAllProviders({ name, scope: 'user' }),
-            )).catch(err => {
-                console.error('[MCP] Error removing the retired browser MCP entry:', getErrorMessage(err));
-            });
 
             // Start server-side plugin processes for enabled plugins
             startEnabledPluginServers().catch(err => {

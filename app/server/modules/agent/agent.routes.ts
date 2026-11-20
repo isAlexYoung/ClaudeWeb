@@ -23,8 +23,6 @@ type AgentRouterDependencies = {
   crypto: typeof import('node:crypto');
   homeDirectory(): string;
   spawnProcess: typeof import('cross-spawn').default;
-  platformMode: boolean;
-  users: { getFirstUser(): unknown };
   apiKeys: { validateApiKey(apiKey: string): unknown };
   githubTokens: { getActiveGithubToken(userId: number): string | null };
   projects: { createProjectPath(projectPath: string, customName: string | null): unknown };
@@ -50,8 +48,6 @@ export function createAgentRouter(dependencies: AgentRouterDependencies): expres
   const crypto = dependencies.crypto;
   const os = { homedir: dependencies.homeDirectory };
   const spawn = dependencies.spawnProcess;
-  const IS_PLATFORM = dependencies.platformMode;
-  const userDb = dependencies.users;
   const apiKeysDb = dependencies.apiKeys;
   const githubTokensDb = dependencies.githubTokens;
   const projectsDb = dependencies.projects;
@@ -63,34 +59,10 @@ export function createAgentRouter(dependencies: AgentRouterDependencies): expres
   const router = express.Router();
 
   /**
-   * Middleware to authenticate agent API requests.
-   *
-   * Supports two authentication modes:
-   * 1. Platform mode (IS_PLATFORM=true): For managed/hosted deployments where
-   *    authentication is handled by an external proxy. Requests are trusted and
-   *    the default user context is used.
-   *
-   * 2. API key mode (default): For self-hosted deployments where users authenticate
-   *    via API keys created in the UI. Keys are validated against the local database.
+   * Authenticates agent API requests with an API key created in the UI, sent
+   * in the x-api-key header or the apiKey query parameter.
    */
   const validateExternalApiKey = (req, res, next) => {
-    // Platform mode: Authentication is handled externally (e.g., by a proxy layer).
-    // Trust the request and use the default user context.
-    if (IS_PLATFORM) {
-      try {
-        const user = userDb.getFirstUser();
-        if (!user) {
-          return res.status(500).json({ error: 'Platform mode: No user found in database' });
-        }
-        req.user = user;
-        return next();
-      } catch (error) {
-        console.error('Platform mode error:', error);
-        return res.status(500).json({ error: 'Platform mode: Failed to fetch user' });
-      }
-    }
-
-    // Self-hosted mode: Validate API key from header or query parameter
     const apiKey = req.headers['x-api-key'] || req.query.apiKey;
 
     if (!apiKey) {

@@ -32,7 +32,7 @@ test('clicking a notification opens the session under the ClaudeWeb subpath', as
   await pending;
   expect(self.clients.openWindow).toHaveBeenCalledWith('https://example.test/claude/session/id%2F1');
 });
-test('clicking a notification focuses ClaudeWeb rather than a different WebDesktop app', async () => {
+test('clicking a notification focuses ClaudeWeb rather than another app on the same host', async () => {
   const { self, listeners } = worker();
   const other = { url: 'https://example.test/desktop/', focus: vi.fn() };
   const current = { url: 'https://example.test/claude/', focus: vi.fn(), postMessage: vi.fn() };

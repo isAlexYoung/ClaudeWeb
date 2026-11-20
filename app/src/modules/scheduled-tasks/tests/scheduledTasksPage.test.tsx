@@ -48,7 +48,7 @@ vi.mock('@/shared/context/WebSocketContext', () => ({
 const TASK: ScheduledTask = {
   id: 'task-1',
   name: 'Morning report',
-  projectPath: '/home/wdguest',
+  projectPath: '/home/claudeweb',
   prompt: 'Summarise yesterday',
   schedule: { kind: 'daily', time: '09:00' },
   timezone: 'UTC',
@@ -78,7 +78,7 @@ beforeEach(() => {
   harness.api.create.mockImplementation(async () => json({ success: true, data: TASK }));
   harness.api.projects.mockImplementation(async () => json([
     { projectId: 'p1', displayName: 'Website', fullPath: '/srv/website' },
-    { projectId: 'chat', displayName: 'Chat', fullPath: '/home/wdguest' },
+    { projectId: 'chat', displayName: 'Chat', fullPath: '/home/claudeweb' },
   ]));
   harness.api.models.mockImplementation(async () => json({ success: true, data: { models: [{ value: 'opus', label: 'Opus' }] } }));
 });

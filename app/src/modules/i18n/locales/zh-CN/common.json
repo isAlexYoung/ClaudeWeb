@@ -441,7 +441,7 @@
       "waiting": "{{stage}}（已等待 {{seconds}} 秒）",
       "reconnecting": "连接中断，正在重新连接…浏览器仍在运行（已等待 {{seconds}} 秒）",
       "ended": "浏览器连接已结束，请重新打开或联系管理员检查日志。",
-      "unavailable": "浏览器面板暂不可用：需要 WebDesktop 3.0.3 或更新版本。若已更新，请稍等几秒后点“重新打开”。",
+      "unavailable": "浏览器面板在这台服务器上暂不可用。",
       "reopen": "重新打开",
       "clipboardInput": "远程剪贴板输入",
       "closeNotice": "关闭",

@@ -28,10 +28,10 @@ type TasksSettingsContextValue = {
 };
 
 /**
- * WebDesktop bundles TaskMaster and enables Tasks for new users. Other builds
- * keep the upstream off-by-default behavior; explicit user choices always win.
+ * ClaudeWeb bundles TaskMaster and enables Tasks for new users; explicit user
+ * choices always win.
  */
-const TASKS_ENABLED_DEFAULT = import.meta.env.VITE_WEBDESKTOP === 'true';
+const TASKS_ENABLED_DEFAULT = true;
 
 const TasksSettingsContext = createContext<TasksSettingsContextValue>({
   tasksEnabled: TASKS_ENABLED_DEFAULT,

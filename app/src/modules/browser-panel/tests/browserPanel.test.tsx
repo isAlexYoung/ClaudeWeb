@@ -10,7 +10,7 @@ const browserApi = vi.hoisted(() => ({ available: vi.fn(), status: vi.fn(), end:
 vi.mock('@/shared/api', () => ({ api: { browser: browserApi } }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
-// Fake elements, as in WebDesktop's clipboard tests: jsdom cannot make a trusted event.
+// Fake elements: jsdom cannot make a trusted event.
 type Handler = (event: Record<string, unknown>) => void;
 function element() {
   const handlers = new Map<string, Handler[]>();
@@ -71,7 +71,7 @@ test('Ctrl+V pastes the local text, then presses Ctrl+V in the browser', async (
   unbind();
 });
 
-test('without WebDesktop 3.0.3 the panel says what is needed and does not connect', async () => {
+test('without a browser relay the panel says it is unavailable and does not connect', async () => {
   browserApi.available.mockResolvedValue({ ok: true, json: async () => ({ available: false }) });
   const view = render(<BrowserPanel visible />);
   await waitFor(() => assert.equal(view.getByTestId('browser-panel').dataset.status, 'unavailable'));

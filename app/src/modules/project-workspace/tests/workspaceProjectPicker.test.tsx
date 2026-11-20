@@ -10,13 +10,13 @@ const fixture = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('@/modules/project-workspace/context/ProjectsStateContext', () => ({ useProjectSidebarState: () => ({ sidebarSharedProps: {
   onRefresh: fixture.refresh,
   projects: [
-    { projectId: 'chat', fullPath: '/home/wdguest', displayName: 'Chat' },
-    { projectId: 'code', fullPath: '/home/wdguest/Code', displayName: 'Code' },
-    { projectId: 'api', fullPath: '/home/wdguest/projects/api', displayName: 'API' },
+    { projectId: 'chat', fullPath: '/home/claudeweb', displayName: 'Chat' },
+    { projectId: 'code', fullPath: '/home/claudeweb/Code', displayName: 'Code' },
+    { projectId: 'api', fullPath: '/home/claudeweb/projects/api', displayName: 'API' },
   ],
 } }) }));
 vi.mock('@/modules/project-creation-wizard', () => ({ ProjectCreationWizard: ({ onClose, onProjectCreated }: { onClose: () => void; onProjectCreated: (project: unknown) => void }) =>
-  <div role="dialog" aria-label="Create project"><button onClick={onClose}>Cancel creation</button><button onClick={() => onProjectCreated({ projectId: 'new', fullPath: '/home/wdguest/projects/new', displayName: 'New folder' })}>Finish creation</button></div>,
+  <div role="dialog" aria-label="Create project"><button onClick={onClose}>Cancel creation</button><button onClick={() => onProjectCreated({ projectId: 'new', fullPath: '/home/claudeweb/projects/new', displayName: 'New folder' })}>Finish creation</button></div>,
 }));
 
 beforeEach(async () => { resetUserPreferences(); fixture.refresh.mockClear(); await i18n.changeLanguage('en'); });

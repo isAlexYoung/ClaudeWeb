@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { AppError } from '@/shared/utils.js';
 
-/** One newer version offered by the root updater's catalogue (fa-build claudeweb.json). */
+/** One newer version offered by the root updater's catalogue (the release list). */
 export type ClaudeWebAvailableVersion = {
   version: string;
   notes: string;
@@ -24,7 +24,7 @@ export type ClaudeWebUpdateStatus = {
 
 type Dependencies = {
   appRoot: string;
-  /** Root's request socket; unset outside WebDesktop. */
+  /** Root's request socket; unset when no root updater is installed. */
   socketPath: string | undefined;
   statusPath: string | undefined;
   /** Sends one JSON line and resolves the one-line JSON reply (replaceable in tests). */
@@ -68,7 +68,7 @@ function socketRequest(socketPath: string, message: object): Promise<Record<stri
 
 /**
  * Created by the claudeweb-update module for Settings > About: reads the installed
- * prebuilt version and asks WebDesktop's root updater (wd-claudeweb-update.socket) to
+ * prebuilt version and asks the root updater to
  * check or install a newer one. Root decides what is allowed; this only relays.
  */
 export function createClaudeWebUpdateService(dependencies: Dependencies) {
@@ -104,13 +104,13 @@ export function createClaudeWebUpdateService(dependencies: Dependencies) {
 
   async function ask(message: object): Promise<Record<string, unknown>> {
     if (!(await supported())) {
-      throw new AppError('Updating ClaudeWeb is only available inside WebDesktop.', { code: 'CLAUDEWEB_UPDATE_UNSUPPORTED', statusCode: 409 });
+      throw new AppError('Updating from Settings is not available on this server; run "claudeweb update" as root.', { code: 'CLAUDEWEB_UPDATE_UNSUPPORTED', statusCode: 409 });
     }
     let reply: Record<string, unknown>;
     try {
       reply = await send(dependencies.socketPath as string, message);
     } catch {
-      throw new AppError('The WebDesktop updater did not answer.', { code: 'CLAUDEWEB_UPDATER_UNAVAILABLE', statusCode: 502 });
+      throw new AppError('The ClaudeWeb updater did not answer.', { code: 'CLAUDEWEB_UPDATER_UNAVAILABLE', statusCode: 502 });
     }
     if (reply.ok !== true) {
       const code = typeof reply.error === 'string' && /^[A-Z][A-Z0-9_]{2,63}$/.test(reply.error) ? reply.error : 'CLAUDEWEB_UPDATE_FAILED';
@@ -125,7 +125,7 @@ export function createClaudeWebUpdateService(dependencies: Dependencies) {
       return { supported: await supported(), installed: await installedVersion(), status: await readStatus() };
     },
 
-    /** Newer versions in the catalogue, newest first, with whether this WebDesktop can run them. */
+    /** Newer versions in the catalogue, newest first, with whether this server can run them. */
     async check() {
       const reply = await ask({ op: 'check' });
       const newer = Array.isArray(reply.newer) ? (reply.newer as ClaudeWebAvailableVersion[]) : [];

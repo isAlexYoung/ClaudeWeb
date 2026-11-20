@@ -19,8 +19,8 @@ const state = {
   autoMemoryDirectory: null as string | null,
   autoDreamEnabled: null as boolean | null,
   settingsStatus: 'ok',
-  settingsPath: '/home/wdguest/.claude/settings.json',
-  claudeMdPath: '/home/wdguest/.claude/CLAUDE.md',
+  settingsPath: '/home/claudeweb/.claude/settings.json',
+  claudeMdPath: '/home/claudeweb/.claude/CLAUDE.md',
 };
 const api = vi.hoisted(() => ({ yourClaude: vi.fn(), updateYourClaude: vi.fn() }));
 vi.mock('@/shared/api', async (importOriginal) => {

@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { api } from '@/shared/api';
-import { IS_PLATFORM } from '@/shared/utils';
 import { useAuth } from '@/modules/auth';
 import { useWebSocket } from '@/shared/context/WebSocketContext';
 import type { Project, ServerEvent, TaskMasterProject, TaskMasterProjectInfo, TaskMasterTask } from '@/shared/types';
@@ -102,7 +101,7 @@ export function useTaskMaster() {
 export function TaskMasterProvider({ children }: { children: React.ReactNode }) {
   const { subscribe } = useWebSocket();
   const { user, token, isLoading: isAuthLoading } = useAuth();
-  const canAccessTasks = !isAuthLoading && Boolean(user) && (IS_PLATFORM || Boolean(token));
+  const canAccessTasks = !isAuthLoading && Boolean(user) && Boolean(token);
 
   const [currentProject, setCurrentProjectState] = useState<TaskMasterProject | null>(null);
   const [projectTaskMaster, setProjectTaskMaster] = useState<TaskMasterProjectInfo | null>(null);

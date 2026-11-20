@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 type BootstrapResult = {
   command: string | null;
   environmentFileReads: number;
-  mode: string | null;
+  databaseFromEnvFile: boolean;
   authNextCalled: boolean;
   authStatus: number;
   authenticatedUsername: string | null;
@@ -23,7 +23,7 @@ function sourceModuleUrl(...segments: string[]): string {
   return pathToFileURL(path.join(applicationRoot, ...segments)).href;
 }
 
-async function runCliBootstrapFixture(isPlatform: boolean): Promise<BootstrapResult> {
+async function runCliBootstrapFixture(): Promise<BootstrapResult> {
   const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), 'claudeweb-cli-bootstrap-'));
   const fixtureServerDirectory = path.join(fixtureRoot, 'server');
   const fixtureCliDirectory = path.join(fixtureServerDirectory, 'modules', 'cli');
@@ -44,7 +44,6 @@ async function runCliBootstrapFixture(isPlatform: boolean): Promise<BootstrapRes
     await writeFile(
       path.join(fixtureRoot, '.env'),
       [
-        `VITE_IS_PLATFORM=${String(isPlatform)}`,
         `DATABASE_PATH=${fixtureDatabasePath.replace(/\\/g, '/')}`,
       ].join('\n'),
       'utf8',
@@ -106,7 +105,7 @@ export function createCliApplication() {
       console.log(${JSON.stringify(RESULT_PREFIX)} + JSON.stringify({
         command: argumentsList[0] ?? null,
         environmentFileReads,
-        mode: process.env.VITE_IS_PLATFORM ?? null,
+        databaseFromEnvFile: process.env.DATABASE_PATH === ${JSON.stringify(fixtureDatabasePath.replace(/\\/g, '/'))},
         authNextCalled,
         authStatus: response.statusCode,
         authenticatedUsername: request.user?.username ?? null,
@@ -120,7 +119,6 @@ export function createCliApplication() {
     await writeFile(path.join(fixtureCliDirectory, 'index.ts'), fixtureIndexSource, 'utf8');
 
     const childEnvironment = { ...process.env };
-    delete childEnvironment.VITE_IS_PLATFORM;
     delete childEnvironment.DATABASE_PATH;
     const stdout = execFileSync(
       process.execPath,
@@ -148,26 +146,13 @@ export function createCliApplication() {
   }
 }
 
-test('CLI bootstrap selects Platform authentication from .env', async () => {
-  const result = await runCliBootstrapFixture(true);
+test('CLI bootstrap loads .env before the server modules read it, and requests still need a token', async () => {
+  const result = await runCliBootstrapFixture();
 
   assert.deepEqual(result, {
     command: 'status',
     environmentFileReads: 0,
-    mode: 'true',
-    authNextCalled: true,
-    authStatus: 200,
-    authenticatedUsername: 'bootstrap-user',
-  });
-});
-
-test('CLI bootstrap selects OSS authentication from .env', async () => {
-  const result = await runCliBootstrapFixture(false);
-
-  assert.deepEqual(result, {
-    command: 'status',
-    environmentFileReads: 0,
-    mode: 'false',
+    databaseFromEnvFile: true,
     authNextCalled: false,
     authStatus: 401,
     authenticatedUsername: null,

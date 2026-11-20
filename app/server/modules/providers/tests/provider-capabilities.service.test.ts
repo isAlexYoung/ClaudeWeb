@@ -6,7 +6,7 @@ import { providerCapabilitiesService } from '@/modules/providers/services/provid
 import type { LLMProvider, ProviderModelsDefinition } from '@/shared/types.js';
 
 /**
- * The full curated catalogs. The WebDesktop build registers Claude only.
+ * The full curated catalogs. ClaudeWeb registers Claude only.
  */
 const CURATED_CATALOGS: Record<LLMProvider, ProviderModelsDefinition> = {
   claude: CLAUDE_PREDEFINED_MODELS,

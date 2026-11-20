@@ -27,7 +27,7 @@ describe('Code home usage dashboard', () => {
     const request = vi.spyOn(api, 'usageDashboard').mockResolvedValue(response());
     render(<UsageDashboard />);
     await screen.findByText('Model messages');
-    expect(request).toHaveBeenCalledWith('all', expect.any(String), '/home/wdguest');
+    expect(request).toHaveBeenCalledWith('all', expect.any(String), '/home/claudeweb');
     expect(screen.getByText('4')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Daily token activity' })).toBeTruthy();
     fireEvent.click(screen.getByRole('tab', { name: 'Limits' }));

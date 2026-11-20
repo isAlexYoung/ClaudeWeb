@@ -37,8 +37,8 @@ const PROJECT = {
 const CHAT_PROJECT = {
   projectId: 'chat-project',
   displayName: 'Renamed chat folder',
-  fullPath: '/home/wdguest',
-  path: '/home/wdguest',
+  fullPath: '/home/claudeweb',
+  path: '/home/claudeweb',
   sessions: [{ id: 'chat-1', summary: 'Hello', __provider: 'claude' }],
 } as unknown as Project;
 

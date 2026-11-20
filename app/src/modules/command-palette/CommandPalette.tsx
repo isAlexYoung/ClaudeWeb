@@ -40,8 +40,8 @@ import { useGitActions } from '@/modules/command-palette/hooks/useGitActions';
 
 type Page = 'actions' | 'files' | 'sessions' | 'commits' | 'branches';
 
-// The integrated workspace temporarily hides Git entries, while keeping their implementation.
-const SHOW_GIT_ENTRIES = import.meta.env.VITE_WEBDESKTOP !== 'true';
+// The workspace hides Git entries for now, while keeping their implementation.
+const SHOW_GIT_ENTRIES: boolean = false;
 
 type CommandPaletteProps = {
   selectedProject: Project | null;

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { bindBrowserClipboard, writeLocalText } from '@/modules/browser-panel/browserClipboard';
 import { api } from '@/shared/api';
 import { getStoredAuthToken } from '@/shared/authToken';
-import { IS_PLATFORM } from '@/shared/utils';
 
 type Rfb = {
   disconnect(): void;
@@ -23,7 +22,7 @@ type NoVncModule = {
 };
 type PanelState = 'connecting' | 'open' | 'reconnecting' | 'closed' | 'unavailable';
 
-// The gateway's progress stages, worded as in WebDesktop's browser window.
+// The browser relay's progress stages.
 const STAGES: Record<string, string> = {
   request: 'request', authenticated: 'authenticated', resource_check: 'resources',
   lease_ready: 'service', gui_socket: 'service', gui_worker: 'environment', x11_ready: 'desktop',
@@ -68,13 +67,12 @@ async function replyCode(response: Response) {
 function browserSocketUrl(sid: string, width: number, height: number) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = `${protocol}//${window.location.host}/browser-ws?sid=${sid}&w=${width}&h=${height}`;
-  if (IS_PLATFORM) return url;
   const token = getStoredAuthToken();
   return token ? `${url}&token=${encodeURIComponent(token)}` : null;
 }
 
 /**
- * The desktop's Chromium, shown through WebDesktop's gateway (relayed by the
+ * The server's Chromium, shown through the browser relay (relayed by the
  * ClaudeWeb server, so it also works without the domain). Opening it here
  * takes the browser over from the desktop window and the other way round.
  *

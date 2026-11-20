@@ -100,7 +100,7 @@ const server = http.createServer(async (req, res) => {
       // Local history works independently of OAuth, including when /live returns 401.
       const sessions = await loadSessions(path.join(CLAUDE_DIR, 'projects'));
       res.end(JSON.stringify(aggregateDashboard(sessions, range as 'all' | '30' | '7', timeZone,
-        url.searchParams.get('excludeProject') ?? '/home/wdguest')));
+        url.searchParams.get('excludeProject') ?? '/home/claudeweb')));
       return;
     }
     if (req.method === 'GET' && url.pathname === '/live') {

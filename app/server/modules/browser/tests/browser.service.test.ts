@@ -14,7 +14,7 @@ import { createBrowserService } from '../browser.service.js';
 const linux = process.platform === 'linux';
 const SID = 'a'.repeat(24);
 
-/** A stand-in for WebDesktop's gateway entrance on a unix socket, recording what reaches it. */
+/** A stand-in for the browser relay on a unix socket, recording what reaches it. */
 async function fakeGateway() {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeweb-browser-'));
   const socketPath = path.join(directory, 'gateway.sock');
@@ -75,7 +75,7 @@ const until = async (check: () => boolean) => {
   assert.ok(check(), 'condition not reached');
 };
 
-test('without WebDesktop the browser is reported unavailable instead of failing obscurely', async () => {
+test('without a browser relay the browser is reported unavailable instead of failing obscurely', async () => {
   const service = createBrowserService({ socketPath: undefined });
   assert.equal(await service.available(), false);
   await assert.rejects(service.status(SID), { code: 'BROWSER_UNAVAILABLE' });

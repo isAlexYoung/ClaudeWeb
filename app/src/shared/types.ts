@@ -4,7 +4,7 @@ import type { NavigateFunction } from 'react-router-dom';
 
 //----------------- LLM PROVIDER MODEL CATALOG ------------
 
-/** Identifies which coding-agent CLI backs a session, project selection or model list. The WebDesktop build is Claude-only. */
+/** Identifies which coding-agent CLI backs a session, project selection or model list. ClaudeWeb is Claude-only. */
 export type LLMProvider = 'claude';
 
 /** One selectable model in a provider's model menu, including its optional reasoning-effort choices. */
@@ -1458,7 +1458,7 @@ export type ClaudeWebAvailableVersion = {
   download_bytes: number;
 };
 
-/** `POST /api/claudeweb-update/check`: what this WebDesktop can install, newest first. */
+/** `POST /api/claudeweb-update/check`: what this server can install, newest first. */
 export type ClaudeWebUpdateCheck = {
   installed: string | null;
   webdesktop: string | null;

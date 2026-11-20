@@ -1,7 +1,7 @@
 {
   "name": "ClaudeWeb",
   "short_name": "ClaudeWeb",
-  "description": "ClaudeWeb: Claude in the browser, on your WebDesktop server",
+  "description": "ClaudeWeb: Claude in the browser, on your own server",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",

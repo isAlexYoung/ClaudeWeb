@@ -37,12 +37,6 @@ export function getWorkspaceSessionMode(
 
 //----------------- DEPLOYMENT MODE ------------
 
-/**
- * Indicates whether the app runs in Platform mode (hosted) or OSS mode (self-hosted).
- * Read it to hide or gate features that only exist in one of the two deployments.
- */
-export const IS_PLATFORM = import.meta.env?.VITE_IS_PLATFORM === 'true';
-
 // ---------------------------
 
 /** File references that chat can open as deliverables in the right preview dock. */

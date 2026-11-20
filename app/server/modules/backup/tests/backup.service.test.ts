@@ -117,7 +117,7 @@ function tarFile(entryPath: string, content: string | Buffer): Buffer[] {
   return [encodeTarFileHeader(entryPath, body.length, new Date('2026-11-01T00:00:00Z')), body, tarPadding(body.length)];
 }
 
-const MANIFEST = JSON.stringify({ format: 'claudeweb-backup', version: 1, createdAt: '2026-11-01T00:00:00.000Z', sourceHome: '/home/wdguest' });
+const MANIFEST = JSON.stringify({ format: 'claudeweb-backup', version: 1, createdAt: '2026-11-01T00:00:00.000Z', sourceHome: '/home/claudeweb' });
 
 function handMadeArchive(...parts: Buffer[][]): Buffer {
   return gzipSync(Buffer.concat([...tarFile('manifest.json', MANIFEST), ...parts.flat(), TAR_END_OF_ARCHIVE]));

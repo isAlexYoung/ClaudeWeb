@@ -1,4 +1,4 @@
-// WebDesktop modification: the UI is served under a sub-path (Vite `base`, for
+// ClaudeWeb modification: the UI can be served under a sub-path (Vite `base`, for
 // example /claude/). The app addresses its server by root paths such as
 // /api/..., /ws and /shell, so same-origin requests to those paths get the
 // prefix here, before any module issues one. Imported first by main.tsx.

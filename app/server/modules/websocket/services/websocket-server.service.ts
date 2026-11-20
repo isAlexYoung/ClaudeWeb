@@ -14,7 +14,7 @@ type WebSocketServerDependencies = {
   chat: Parameters<typeof handleChatConnection>[2];
   shell: Parameters<typeof handleShellConnection>[1];
   getPluginPort: Parameters<typeof handlePluginWsProxy>[2];
-  /** The browser panel's picture connection, relayed to WebDesktop's desktop browser. */
+  /** The browser panel's picture connection, relayed to the server's browser. */
   browser?: { relay: (ws: WebSocket, url: URL) => void };
 };
 

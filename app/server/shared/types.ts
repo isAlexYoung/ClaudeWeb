@@ -64,7 +64,7 @@ export type AuthenticatedWebSocketRequest = IncomingMessage & {
  * Providers supported by the unified server runtime.
  *
  * Use this as the source of truth whenever a function or payload needs to identify
- * a specific LLM integration. The WebDesktop build is Claude-only; the upstream
+ * a specific LLM integration. ClaudeWeb is Claude-only; the upstream
  * Codex, Cursor and OpenCode integrations were removed.
  */
 export type LLMProvider = 'claude';

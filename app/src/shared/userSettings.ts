@@ -70,7 +70,7 @@ const LEGACY_STORAGE_KEYS: Record<UserPreferenceKey, string> = {
   uiPreferences: 'uiPreferences',
   selectedProvider: 'selected-provider',
   workspaceSessions: 'workspace-sessions',
-  // New in the WebDesktop build; nothing to migrate.
+  // New in ClaudeWeb; nothing to migrate.
   workspaceFonts: '',
   transcriptAppearance: '',
   workspaceProfile: '',

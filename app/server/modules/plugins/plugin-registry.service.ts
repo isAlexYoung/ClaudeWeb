@@ -345,7 +345,7 @@ export function updatePluginFromGit(name) {
     }
 
     if (scanPlugins().find(plugin => plugin.name === name)?.bundled) {
-      return reject(new Error('Bundled plugins are updated with WebDesktop.'));
+      return reject(new Error('Bundled plugins are updated with ClaudeWeb.'));
     }
 
     // Only fast-forward to avoid silent divergence
@@ -417,7 +417,7 @@ export async function uninstallPlugin(name) {
   }
 
   if (scanPlugins().find(plugin => plugin.name === name)?.bundled) {
-    throw new Error('Bundled plugins are managed by WebDesktop; disable this plugin instead.');
+    throw new Error('Bundled plugins are managed by ClaudeWeb; disable this plugin instead.');
   }
 
   // On Windows, file handles may be released slightly after process exit.

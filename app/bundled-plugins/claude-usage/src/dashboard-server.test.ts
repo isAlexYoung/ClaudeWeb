@@ -14,7 +14,7 @@ test('dashboard RPC reads real transcript files without OAuth, validates filters
   const record = (id: string) => JSON.stringify({ timestamp: '2024-01-01T00:00:00Z', message: {
     id, model: 'claude-opus-4-8', usage: { input_tokens: 10, output_tokens: 5 },
   } });
-  for (const [folder, id] of [['-home-wdguest', 'chat'], ['-home-wdguest-projects-api', 'code']]) {
+  for (const [folder, id] of [['-home-claudeweb', 'chat'], ['-home-claudeweb-projects-api', 'code']]) {
     const project = path.join(directory, 'projects', folder);
     fs.mkdirSync(project, { recursive: true });
     fs.writeFileSync(path.join(project, 'session.jsonl'), record(id));
@@ -41,7 +41,7 @@ test('dashboard RPC reads real transcript files without OAuth, validates filters
   });
   const base = `http://127.0.0.1:${port}`;
   assert.equal((await fetch(`${base}/live`)).status, 401);
-  const response = await fetch(`${base}/dashboard?range=all&timeZone=Asia%2FKuala_Lumpur&excludeProject=%2Fhome%2Fwdguest`);
+  const response = await fetch(`${base}/dashboard?range=all&timeZone=Asia%2FKuala_Lumpur&excludeProject=%2Fhome%2Fclaudeweb`);
   assert.equal(response.status, 200);
   const data = await response.json() as { summary: { messages: number; total: number }; start: string };
   assert.equal(data.summary.messages, 1);

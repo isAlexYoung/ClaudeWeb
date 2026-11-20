@@ -17,8 +17,8 @@ export function runBuildIfNeeded(dir: string, packageJsonPath: string, onSuccess
     return onSuccess(); // Unreadable package.json — skip build
   }
 
-  // The shared WebDesktop home is noexec. Node may read the compiler's JS there,
-  // whereas a shell cannot execute node_modules/.bin/tsc on that mount.
+  // A home mounted noexec still lets Node read the compiler's JS, whereas a
+  // shell cannot execute node_modules/.bin/tsc on that mount.
   // Keep npm for other scripts and for packages that declare lifecycle hooks.
   const nodeTsc = pkg.scripts.build.trim() === 'tsc' && !pkg.scripts.prebuild && !pkg.scripts.postbuild;
   const buildProcess = spawn(nodeTsc ? process.execPath : 'npm',

@@ -1,6 +1,5 @@
-// The same gesture-only clipboard bridge as WebDesktop's browser window
-// (src/components/desktop/gui-clipboard.mjs), without the desktop's file
-// selection: no polling, history or automatic clipboard reads on focus.
+// A gesture-only clipboard bridge for the remote browser: no polling,
+// history or automatic clipboard reads on focus.
 
 export type RemoteKeys = {
   focus(): void;

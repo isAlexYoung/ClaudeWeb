@@ -1,7 +1,7 @@
 {
   "name": "@ai-sdk/xai",
-  "version": "0.0.0-webdesktop",
-  "description": "WebDesktop stand-in: TaskMaster here runs on Claude Code only, so @ai-sdk/xai is not installed.",
+  "version": "0.0.0-claudeweb",
+  "description": "ClaudeWeb stand-in: TaskMaster here runs on Claude Code only, so @ai-sdk/xai is not installed.",
   "type": "module",
   "main": "index.js",
   "exports": "./index.js",

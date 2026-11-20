@@ -35,7 +35,7 @@ const GITHUB_ISSUES_BOARD_PLUGIN_URL = 'https://github.com/szmidtpiotr/claude-gi
 const AGENT_MONITOR_PLUGIN_URL = 'https://github.com/notetook/cloudcli-plugin-agent-monitor';
 
 /**
- * Plugins WebDesktop installs and drives itself: the usage plugin feeds the
+ * Plugins ClaudeWeb installs and drives itself: the usage plugin feeds the
  * composer's quota ring, so it is part of the system rather than something the
  * user manages here, and listing it would invite disabling the ring by accident.
  */

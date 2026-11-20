@@ -16,7 +16,7 @@ async function withDirectory(run: (directory: string) => Promise<void>) {
   }
 }
 
-test('status reports the installed prebuilt version and the updater progress, and no support outside WebDesktop', async () => {
+test('status reports the installed prebuilt version and the updater progress, and no support without a root updater', async () => {
   await withDirectory(async (directory) => {
     await writeFile(path.join(directory, 'claudeweb.json'), JSON.stringify({ version: '1.0.0' }));
     await writeFile(path.join(directory, 'status.json'), JSON.stringify({ state: 'downloading', version: '1.0.1' }));

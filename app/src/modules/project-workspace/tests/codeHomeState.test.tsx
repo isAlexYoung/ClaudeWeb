@@ -14,9 +14,9 @@ vi.mock('@/shared/api', () => ({ api: {
   user: { savePreferences: async () => ({ ok: true, json: async () => ({}) }) },
 } }));
 const project = (projectId: string, fullPath: string): Project => ({ projectId, fullPath, path: fullPath, displayName: projectId, sessions: [] });
-const chat = project('chat', '/home/wdguest');
-const code = project('code', '/home/wdguest/Code');
-const custom = project('custom', '/home/wdguest/projects/custom');
+const chat = project('chat', '/home/claudeweb');
+const code = project('code', '/home/claudeweb/Code');
+const custom = project('custom', '/home/claudeweb/projects/custom');
 const ok = (value: unknown) => ({ ok: true, json: async () => value });
 const navigate = vi.fn();
 const subscribe = () => () => {};
@@ -59,7 +59,7 @@ describe('Code home working directory and resume routing', () => {
     await waitFor(() => expect(result.current.state.selectedProject?.projectId).toBe('chat'));
     act(() => result.current.experience.openHome('project'));
     await waitFor(() => expect(result.current.state.selectedProject?.projectId).toBe('code'));
-    expect(fixture.create).toHaveBeenCalledWith({ path: '/home/wdguest/Code', customName: 'Code' });
+    expect(fixture.create).toHaveBeenCalledWith({ path: '/home/claudeweb/Code', customName: 'Code' });
     const trigger = result.current.state.newSessionTrigger;
     act(() => result.current.experience.selectHomeProject(custom));
     await waitFor(() => expect(result.current.state.selectedProject?.projectId).toBe('custom'));

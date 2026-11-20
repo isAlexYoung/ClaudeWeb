@@ -43,7 +43,7 @@ import { AppError } from '@/shared/utils.js';
 
 /**
  * Size of one upload piece. Requests through Cloudflare are capped at 100 MB
- * and the WebDesktop entrance gives each request five minutes, so a backup of
+ * and a proxy may give each request only a few minutes, so a backup of
  * any size is sent as many small requests. Used by the Backup routes to cap
  * the raw body parser.
  */
@@ -66,7 +66,7 @@ type BackupServiceDependencies = {
   homeDirectory: string;
   claudeHome: string;
   claudewebHome: string;
-  /** Where uploads are kept. Not /tmp: the ClaudeWeb sandbox gives /tmp only 256 MB of memory. */
+  /** Where uploads are kept. Not /tmp: /tmp may be a small memory-backed mount. */
   uploadsDirectory: string;
   database: {
     exportSnapshot(userId: number): BackupDatabaseSnapshot;

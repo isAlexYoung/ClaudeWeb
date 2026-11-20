@@ -32,7 +32,7 @@ beforeEach(() => {
   for (const fn of Object.values(api)) fn.mockReset();
   api.archivedProjects.mockImplementation(() => json({ data: { projects: archivedProjects.map((id) => ({ projectId: id, displayName: 'Old project', isArchived: true })) } }));
   api.getArchivedSessions.mockImplementation(() => json({ data: { sessions: archived.map((id) => ({
-    sessionId: id, sessionTitle: `Chat ${id}`, projectDisplayName: 'wdguest', projectId: 'p1', provider: 'claude',
+    sessionId: id, sessionTitle: `Chat ${id}`, projectDisplayName: 'claudeweb', projectId: 'p1', provider: 'claude',
   })) } }));
   api.restoreSession.mockImplementation((id: string) => { archived = archived.filter((item) => item !== id); return json({ success: true }); });
   api.deleteSession.mockImplementation((id: string) => { archived = archived.filter((item) => item !== id); return json({ success: true }); });

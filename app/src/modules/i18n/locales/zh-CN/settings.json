@@ -850,7 +850,7 @@
     },
     "licensed": "采用 AGPL-3.0 许可证",
     "modifiedVersion": "ClaudeWeb 是 CloudCLI UI（https://github.com/siteboon/claudecodeui）的修改版本，基于上游提交 58a28e0，并非原版 CloudCLI UI。",
-    "sourceChanges": "查看 WebDesktop 修改源码",
+    "sourceChanges": "查看 ClaudeWeb 源码",
     "title": "关于",
     "basedOn": "ClaudeWeb 基于开源项目 CloudCLI UI（Claude Code UI）开发。",
     "githubLink": "CloudCLI UI 的 GitHub 仓库",

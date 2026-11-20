@@ -7,7 +7,7 @@ import {
 } from '@/shared/userSettings';
 
 /**
- * WebDesktop's own appearance and profile settings, stored in `auth.db`
+ * ClaudeWeb's own appearance and profile settings, stored in `auth.db`
  * alongside the other user preferences.
  *
  * The profile is a local label for the bottom-left account button only: it is

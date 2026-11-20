@@ -21,9 +21,9 @@ import { AppError } from '@/shared/utils.js';
 export const ATTACHMENT_CHUNK_BYTES = 8 * 1024 * 1024;
 export const MAX_ATTACHMENT_BYTES = 256 * 1024 * 1024;
 // Free space kept on the disk after an upload, so a big file cannot fill it:
-// a tenth of the disk, at most 512 MB. WebDesktop keeps the guest home on its
-// own disk of about 1 GB, where a fixed 512 MB could never be left free and
-// every upload, however small, was refused.
+// a tenth of the disk, at most 512 MB. On a small disk (about 1 GB) a fixed
+// 512 MB could never be left free and every upload, however small, would be
+// refused.
 const MAX_DISK_RESERVE_BYTES = 512 * 1024 * 1024;
 const DISK_RESERVE_SHARE = 0.1;
 // An upload nobody has written to for this long is dropped with its temporary file.

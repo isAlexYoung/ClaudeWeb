@@ -8,7 +8,7 @@ type LLMProviderLogoProps = {
 
 /**
  * Used by the chat, onboarding, project-workspace, settings and sidebar modules to show which coding agent a
- * session or project belongs to. The WebDesktop build is Claude-only, so every provider renders the Claude mark.
+ * session or project belongs to. ClaudeWeb is Claude-only, so every provider renders the Claude mark.
  */
 export function LLMProviderLogo({
   className = 'w-5 h-5',
