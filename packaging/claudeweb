@@ -1,0 +1,263 @@
+#!/usr/bin/env bash
+# claudeweb: management command for a ClaudeWeb server. Run as root.
+# Installed by install.sh as /usr/local/bin/claudeweb -> /opt/claudeweb/current/bin/claudeweb.
+set -euo pipefail
+
+readonly OPT_DIR=/opt/claudeweb
+readonly CURRENT="$OPT_DIR/current"
+readonly ETC_DIR=/etc/claudeweb
+readonly ENV_FILE="$ETC_DIR/claudeweb.env"
+readonly DATA_DIR=/var/lib/claudeweb
+readonly LOG_DIR=/var/log/claudeweb
+readonly SERVICE=claudeweb.service
+readonly UNIT_FILE=/etc/systemd/system/claudeweb.service
+readonly SERVICE_USER=claudeweb
+readonly SERVICE_HOME=/home/claudeweb
+readonly PROJECTS_DIR="$SERVICE_HOME/projects"
+readonly SWAP_FILE=/swap.claudeweb
+readonly IPV6_SYSCTL=/etc/sysctl.d/90-claudeweb-disable-ipv6.conf
+readonly PORT=3001
+
+die() { echo "claudeweb: $*" >&2; exit 1; }
+need_root() { [[ $EUID -eq 0 ]] || die "run this as root (for example: sudo claudeweb $1)"; }
+
+show_help() {
+  cat <<'EOF'
+claudeweb - manage ClaudeWeb on this server (run as root)
+
+Usage: claudeweb <command> [options]
+
+Commands:
+  help                       Show this list
+  status                     Version, service state, address, swap and disk
+  logs [--follow]            Recent service log (--follow keeps printing)
+  doctor                     Diagnostic report for a bug report (no passwords or keys)
+  password                   Show the login password
+  password --set             Set a new, generated login password; every device signs out
+  password --set --stdin     Set a login password you type instead
+  swap                       Show swap
+  swap --size=<N>G           Create or resize ClaudeWeb's swap file to N GiB (1-16)
+  swap --auto                Add swap sized from this machine if there is none
+  swap --off                 Remove ClaudeWeb's swap file
+  update                     Update to the latest stable release (not available yet)
+  rollback                   Return to the previous version (not available yet)
+  uninstall                  Remove ClaudeWeb; keeps /home/claudeweb/projects
+  uninstall --delete-projects
+                             Remove ClaudeWeb and the project folders too
+
+Open ClaudeWeb through an SSH tunnel from your computer:
+  ssh -L 3001:127.0.0.1:3001 root@<this server>     then visit http://localhost:3001
+EOF
+}
+
+installed_version() { [[ -f "$CURRENT/VERSION" ]] && cat "$CURRENT/VERSION" || echo "not installed"; }
+node_bin() { echo "$CURRENT/node/bin/node"; }
+
+# ------------------------------------------------------------------ status
+cmd_status() {
+  need_root status
+  echo "ClaudeWeb $(installed_version) ($(sed -n 's/.*"channel": "\(.*\)".*/\1/p' "$CURRENT/release.json" 2>/dev/null || echo unknown))"
+  echo "Service:   $(systemctl is-active "$SERVICE" 2>/dev/null || true) ($(systemctl is-enabled "$SERVICE" 2>/dev/null || echo not installed))"
+  if curl -fsS -m 5 "http://127.0.0.1:$PORT/api/auth/status" >/dev/null 2>&1; then
+    echo "Address:   http://127.0.0.1:$PORT (answering)"
+  else
+    echo "Address:   http://127.0.0.1:$PORT (not answering)"
+  fi
+  echo "Password:  $([[ -f $ETC_DIR/login.json ]] && echo set || echo 'not set (claudeweb password --set)')"
+  local claude="$SERVICE_HOME/.local/bin/claude"
+  if [[ -x $claude ]]; then
+    echo "Claude CLI: $(runuser -u "$SERVICE_USER" -- "$claude" --version 2>/dev/null | head -n1 || echo 'installed, version unknown')"
+  else
+    echo "Claude CLI: not installed"
+  fi
+  echo "Swap:      $(swap_summary)"
+  echo "Disk:      $(df -h --output=avail "$SERVICE_HOME" 2>/dev/null | tail -n1 | tr -d ' ') free in $SERVICE_HOME"
+}
+
+# ------------------------------------------------------------------ logs
+cmd_logs() {
+  need_root logs
+  if [[ ${1:-} == --follow ]]; then
+    exec journalctl -u "$SERVICE" -n 100 -f --no-pager
+  fi
+  [[ $# -eq 0 ]] || die "usage: claudeweb logs [--follow]"
+  journalctl -u "$SERVICE" -n 200 --no-pager
+}
+
+# ------------------------------------------------------------------ doctor
+cmd_doctor() {
+  need_root doctor
+  # Only facts about the machine and the service: never the password files,
+  # the database, Claude's credentials or the browser profile.
+  echo "== ClaudeWeb doctor report ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+  echo "Version:   $(installed_version)"
+  [[ -f $CURRENT/release.json ]] && cat "$CURRENT/release.json" && echo
+  echo "== System"
+  grep -E '^(PRETTY_NAME|VERSION_ID)=' /etc/os-release || true
+  echo "Kernel:    $(uname -r) $(uname -m)"
+  echo "Virt:      $(systemd-detect-virt 2>/dev/null || echo unknown)"
+  echo "CPUs:      $(nproc)"
+  free -h
+  echo "Swap:      $(swap_summary)"
+  df -h / "$SERVICE_HOME" "$OPT_DIR" 2>/dev/null || true
+  echo "IPv6:      $(sysctl -n net.ipv6.conf.all.disable_ipv6 2>/dev/null | sed 's/1/disabled/;s/0/enabled/')"
+  echo "== Service"
+  systemctl status "$SERVICE" --no-pager -l 2>&1 | head -n 15 || true
+  ss -ltnp "sport = :$PORT" 2>/dev/null || true
+  echo "== Files"
+  ls -ld "$OPT_DIR" "$CURRENT" "$ETC_DIR" "$DATA_DIR" "$SERVICE_HOME" 2>&1 || true
+  ls -l "$ETC_DIR" 2>&1 || true
+  echo "== Settings ($ENV_FILE)"
+  cat "$ENV_FILE" 2>/dev/null || echo "missing"
+  echo "== Claude CLI"
+  if [[ -x $SERVICE_HOME/.local/bin/claude ]]; then
+    runuser -u "$SERVICE_USER" -- "$SERVICE_HOME/.local/bin/claude" --version 2>&1 | head -n1 || true
+  else
+    echo "not installed"
+  fi
+  echo "== Last 80 log lines"
+  journalctl -u "$SERVICE" -n 80 --no-pager 2>&1 || true
+}
+
+# ------------------------------------------------------------------ password
+cmd_password() {
+  need_root password
+  [[ -x $(node_bin) ]] || die "ClaudeWeb is not installed"
+  local env_args=()
+  if [[ -f $ENV_FILE ]]; then
+    while IFS= read -r line; do
+      [[ $line =~ ^[A-Z_][A-Z0-9_]*= ]] && env_args+=("$line")
+    done < "$ENV_FILE"
+  fi
+  # As root: the password copy is root's alone, and new files in /etc/claudeweb
+  # take the directory's group so the service can read login.json.
+  env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 HOME=/root "${env_args[@]}" \
+    "$(node_bin)" "$CURRENT/app/dist-server/server/modules/cli/cli.js" password "$@"
+}
+
+# ------------------------------------------------------------------ swap
+ram_mib() { awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo; }
+swap_summary() {
+  local total
+  total="$(awk '/^SwapTotal:/ {print int($2/1024)}' /proc/meminfo)"
+  if [[ $total -eq 0 ]]; then echo "none"; return; fi
+  echo "${total} MiB$( [[ -f $SWAP_FILE ]] && echo " (ClaudeWeb's $SWAP_FILE: $(( $(stat -c %s "$SWAP_FILE") / 1048576 )) MiB)")"
+}
+
+swap_remove() {
+  if [[ -f $SWAP_FILE ]]; then
+    swapoff "$SWAP_FILE" 2>/dev/null || true
+    rm -f "$SWAP_FILE"
+  fi
+  sed -i "\|^$SWAP_FILE |d" /etc/fstab
+}
+
+swap_create() {
+  local size_mib=$1
+  local free_mib
+  free_mib="$(df --output=avail -m / | tail -n1 | tr -d ' ')"
+  # Keep at least 5 GiB free for projects and updates after the swap file.
+  if (( free_mib - size_mib < 5120 )); then
+    die "not enough disk for ${size_mib} MiB of swap (${free_mib} MiB free, 5 GiB must stay free)"
+  fi
+  if systemd-detect-virt --container >/dev/null 2>&1; then
+    die "this is a container; its swap is managed by the host"
+  fi
+  swap_remove
+  fallocate -l "${size_mib}M" "$SWAP_FILE" 2>/dev/null || dd if=/dev/zero of="$SWAP_FILE" bs=1M count="$size_mib" status=none
+  chmod 0600 "$SWAP_FILE"
+  mkswap -q "$SWAP_FILE"
+  swapon "$SWAP_FILE"
+  echo "$SWAP_FILE none swap sw 0 0" >> /etc/fstab
+  echo "Swap file $SWAP_FILE: ${size_mib} MiB"
+}
+
+cmd_swap() {
+  need_root swap
+  case "${1:-}" in
+    "") echo "Swap: $(swap_summary)"; swapon --show 2>/dev/null || true ;;
+    --size=*)
+      local size="${1#--size=}"
+      [[ $size =~ ^([1-9]|1[0-6])G$ ]] || die "use --size=<1-16>G"
+      swap_create $(( ${size%G} * 1024 )) ;;
+    --auto)
+      # Only when the machine has no swap at all; existing swap is left alone.
+      if [[ "$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)" -gt 0 ]]; then
+        echo "Swap already present: $(swap_summary)"; return 0
+      fi
+      if systemd-detect-virt --container >/dev/null 2>&1; then
+        echo "Container: swap is managed by the host, skipped"; return 0
+      fi
+      # As much as the memory, at least 2 GiB and at most 4 GiB.
+      local size_mib
+      size_mib="$(ram_mib)"
+      (( size_mib < 2048 )) && size_mib=2048
+      (( size_mib > 4096 )) && size_mib=4096
+      swap_create "$size_mib" ;;
+    --off) swap_remove; echo "ClaudeWeb's swap file removed. Swap now: $(swap_summary)" ;;
+    *) die "usage: claudeweb swap [--size=<N>G | --auto | --off]" ;;
+  esac
+}
+
+# ------------------------------------------------------------------ uninstall
+cmd_uninstall() {
+  need_root uninstall
+  local delete_projects=0
+  case "${1:-}" in
+    "") ;;
+    --delete-projects) delete_projects=1 ;;
+    *) die "usage: claudeweb uninstall [--delete-projects]" ;;
+  esac
+
+  echo "This removes ClaudeWeb from this server:"
+  echo "  program, settings and login password: $OPT_DIR, $ETC_DIR"
+  echo "  data, chats and Claude's login:       $DATA_DIR, $SERVICE_HOME (except projects)"
+  echo "  the service, the claudeweb user, ClaudeWeb's swap file"
+  if (( delete_projects )); then
+    echo "  YOUR PROJECTS WILL BE DELETED:        $PROJECTS_DIR"
+  else
+    echo "Your projects are kept in $PROJECTS_DIR."
+  fi
+  local answer
+  read -r -p "Uninstall ClaudeWeb? [y/n] " answer
+  [[ $answer == y || $answer == Y ]] || { echo "Stopped; nothing was changed."; return 0; }
+
+  systemctl disable --now "$SERVICE" 2>/dev/null || true
+  rm -f "$UNIT_FILE"
+  systemctl daemon-reload
+  swap_remove
+  rm -f "$IPV6_SYSCTL"   # IPv6 stays off until the next reboot; it is not turned back on here.
+  pkill -u "$SERVICE_USER" 2>/dev/null || true
+  sleep 1
+  pkill -KILL -u "$SERVICE_USER" 2>/dev/null || true
+  if (( delete_projects )); then
+    rm -rf "$SERVICE_HOME"
+  elif [[ -d $SERVICE_HOME ]]; then
+    find "$SERVICE_HOME" -mindepth 1 -maxdepth 1 ! -name projects -exec rm -rf {} +
+  fi
+  userdel "$SERVICE_USER" 2>/dev/null || true
+  rm -rf "$ETC_DIR" "$DATA_DIR" "$LOG_DIR"
+  rm -f /usr/local/bin/claudeweb
+  rm -rf "$OPT_DIR"
+  if (( delete_projects )); then
+    echo "ClaudeWeb and its projects were removed."
+  else
+    echo "ClaudeWeb was removed. Projects remain in $PROJECTS_DIR (owned by the old claudeweb user id)."
+  fi
+}
+
+# ------------------------------------------------------------------ main
+command="${1:-help}"
+[[ $# -gt 0 ]] && shift
+case "$command" in
+  help|-h|--help) show_help ;;
+  status) cmd_status "$@" ;;
+  logs) cmd_logs "$@" ;;
+  doctor) cmd_doctor "$@" ;;
+  password) cmd_password "$@" ;;
+  swap) cmd_swap "$@" ;;
+  update|rollback)
+    echo "claudeweb $command is not available yet: it comes with signed releases." >&2; exit 2 ;;
+  uninstall) cmd_uninstall "$@" ;;
+  *) echo "Unknown command: $command" >&2; echo >&2; show_help >&2; exit 1 ;;
+esac

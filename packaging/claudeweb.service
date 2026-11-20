@@ -1,0 +1,34 @@
+[Unit]
+Description=ClaudeWeb, a web interface for Claude Code
+Documentation=https://github.com/isAlexYoung/ClaudeWeb
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=claudeweb
+Group=claudeweb
+WorkingDirectory=/home/claudeweb
+# HOST, SERVER_PORT, DATABASE_PATH and the other settings; written by install.sh.
+EnvironmentFile=/etc/claudeweb/claudeweb.env
+Environment=HOME=/home/claudeweb USER=claudeweb LOGNAME=claudeweb SHELL=/bin/bash
+Environment=LANG=C.UTF-8 LC_ALL=C.UTF-8 NODE_ENV=production
+# npm and the processes ClaudeWeb starts use the bundled Node; TaskMaster's CLI is on PATH.
+Environment=PATH=/opt/claudeweb/current/node/bin:/opt/claudeweb/current/app/tools/taskmaster/node_modules/.bin:/home/claudeweb/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=npm_config_include=dev
+ExecStart=/opt/claudeweb/current/node/bin/node /opt/claudeweb/current/app/dist-server/server/index.js
+Restart=on-failure
+RestartSec=3
+KillMode=control-group
+TimeoutStopSec=15
+# No memory, CPU or task quotas: ClaudeWeb uses what the server has, including
+# memory added later. A process killed for lack of memory must not stop the
+# service (OOMPolicy). No OOMScoreAdjust yet: children would inherit it and be
+# protected over sshd; the app has to raise its children's score first.
+OOMPolicy=continue
+TasksMax=infinity
+LimitNOFILE=65536
+UMask=0007
+
+[Install]
+WantedBy=multi-user.target

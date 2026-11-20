@@ -35,7 +35,10 @@ try {
     }
   });
 } catch (e: any) {
-  console.error('No .env file found or error reading it:', e.message);
+  // An installed server has no .env: systemd passes the settings instead.
+  if (e?.code !== 'ENOENT') {
+    console.error('Could not read .env:', e.message);
+  }
 }
 
 // Keep the default database in a stable user-level location so rebuilding dist-server

@@ -16,6 +16,17 @@ release is a test release.
 - Sessions are kept on the server: signing out ends only that device, and a
   new password signs out every device.
 
+- `install.sh` installs ClaudeWeb from a release package on Debian 12 amd64:
+  the `claudeweb` user, its folders, the official Claude Code CLI, swap when
+  the machine has none, IPv6 turned off, a generated login password, and the
+  `claudeweb` service on 127.0.0.1:3001. Running it again repairs the install
+  and keeps the password and data.
+- The `claudeweb` command for root: `help`, `status`, `logs`, `doctor`,
+  `password`, `swap`, `uninstall` (projects are kept unless
+  `--delete-projects`).
+- `packaging/build-release.sh` builds the release package, with its own
+  Node.js 22.
+
 ### Changed
 
 - ClaudeWeb is now a standalone project, independent of WebDesktop. The

@@ -8,8 +8,8 @@ ClaudeWeb 是 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview
 使用官方 Claude CLI。
 
 > **状态：开发中。** 第一个独立版本 ClaudeWeb 2.0.0 还没有发布。
-> 下面提到的一键安装、登录、更新和浏览器运行环境正在本仓库中开发。
-> 在正式版发布之前，暂时没有可以安装的版本。
+> 安装程序、登录和 `claudeweb` 管理命令已经可用；可下载的发布包、更新、域名访问和内置浏览器还在开发。
+> 在第一个版本发布之前，可以自己构建安装包（见[开发](#开发)）。
 
 ## 与 Anthropic 无关
 
@@ -42,8 +42,9 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 - 只在 `127.0.0.1` 上监听 3001 端口。没有域名时通过 SSH 隧道访问；有域名时通过
   Cloudflare Tunnel 访问。手机和平板需要域名。
 
-计划中的管理命令（以 root 运行）：`claudeweb help`、`status`、`logs`、`doctor`、
-`update`、`rollback`、`password`、`swap`、`uninstall`。
+管理命令（以 root 运行）：`claudeweb help`、`status`、`logs`、`doctor`、`password`、`swap`、
+`uninstall`（默认保留 `/home/claudeweb/projects`，加 `--delete-projects` 才删除项目）。
+`update` 和 `rollback` 随签名发布包一起提供。
 
 ## 安全设计
 
@@ -67,6 +68,15 @@ npm run lint
 npm test             # server tests
 npm run test:client  # browser-side tests
 ```
+
+在测试服务器（Debian 12 amd64，需要 `build-essential`、`python3`、`git`、`curl`、`xz-utils`）上构建并安装：
+
+```bash
+bash packaging/build-release.sh --version=2.0.0
+sudo bash install.sh --package=release-out/claudeweb-2.0.0-linux-x64.tar.xz
+```
+
+`packaging/test-install.sh` 会在一台可丢弃的机器上完整跑一遍安装、重复安装和卸载。
 
 2.0.0 的计划见 [`doc/PROJECT_CHECKLIST.md`](doc/PROJECT_CHECKLIST.md)。
 欢迎贡献代码，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。

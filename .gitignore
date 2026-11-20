@@ -12,3 +12,4 @@ Thumbs.db
 # Local-only notes (machine paths, test environment)
 doc/LOCAL_NOTES.md
 doc/WSL_DEBIAN12.md
+release-out/

@@ -8,9 +8,10 @@ chats, projects, a terminal, a file panel, scheduled tasks, a task board and a
 built-in browser, all running on that server with the official Claude CLI.
 
 > **Status: in development.** ClaudeWeb 2.0.0, the first standalone release,
-> is not out yet. The one-click installer, login, updater and browser runtime
-> described below are being built in this repository. Until a stable release
-> is published there is nothing to install.
+> is not out yet. The installer, the login and the `claudeweb` command work;
+> releases to download, updates, domains and the built-in browser are still
+> being built. Until the first release you can build a package yourself (see
+> [Development](#development)).
 
 ## Not affiliated with Anthropic
 
@@ -52,8 +53,10 @@ Planned requirements:
   an SSH tunnel; with a domain, through Cloudflare Tunnel. Phones and tablets
   need a domain.
 
-Planned management commands (run as root): `claudeweb help`, `status`, `logs`,
-`doctor`, `update`, `rollback`, `password`, `swap`, `uninstall`.
+Management commands (run as root): `claudeweb help`, `status`, `logs`,
+`doctor`, `password`, `swap`, `uninstall` (keeps `/home/claudeweb/projects`
+unless you add `--delete-projects`). `update` and `rollback` come with signed
+releases.
 
 ## Security model
 
@@ -78,6 +81,17 @@ npm run lint
 npm test             # server tests
 npm run test:client  # browser-side tests
 ```
+
+To build a release package and install it on a test server (Debian 12 amd64,
+with `build-essential`, `python3`, `git`, `curl` and `xz-utils`):
+
+```bash
+bash packaging/build-release.sh --version=2.0.0
+sudo bash install.sh --package=release-out/claudeweb-2.0.0-linux-x64.tar.xz
+```
+
+`packaging/test-install.sh` runs the whole install, repair and uninstall
+cycle on a disposable machine.
 
 [`doc/PROJECT_CHECKLIST.md`](doc/PROJECT_CHECKLIST.md) tracks the plan for
 2.0.0. Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
