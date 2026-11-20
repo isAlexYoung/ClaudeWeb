@@ -847,12 +847,12 @@
     "update": {
       "title": "ClaudeWeb version",
       "installed": "Installed version",
-      "builtOnServer": "Built on this server by an earlier installer; updating installs the prebuilt version.",
+      "builtOnServer": "This installation has no version record.",
       "unknown": "Unknown",
       "check": "Check for updates",
       "upToDate": "ClaudeWeb is up to date.",
       "available": "Version {{version}} is available ({{size}} MB download).",
-      "needsWebDesktop": "Version {{version}} needs WebDesktop {{webdesktop}} or newer. Update WebDesktop from the desktop Settings first.",
+      "needsWebDesktop": "Version {{version}} cannot be installed on this server.",
       "install": "Update to {{version}}",
       "confirm": "ClaudeWeb restarts during the update, so conversations that are running now are interrupted. Your conversation history and settings are kept, and the database is backed up first.",
       "confirmButton": "Update to {{version}} now",
@@ -869,14 +869,13 @@
         "failed": "The update failed."
       },
       "errors": {
-        "CLAUDEWEB_DISK_REQUIRED": "Not enough free disk space for the update. Free some space (for example old WebDesktop versions in the desktop Settings) and try again.",
+        "CLAUDEWEB_DISK_REQUIRED": "Not enough free disk space for the update. Free some space and try again.",
         "CLAUDEWEB_UPDATE_TOO_SOON": "An update was requested a moment ago. Wait two minutes and try again.",
         "CLAUDEWEB_UPDATE_RUNNING": "An update is already running.",
-        "CLAUDEWEB_START_FAILED_ROLLED_BACK": "The new version did not start, so the previous version and its data were restored.",
+        "CLAUDEWEB_START_FAILED_ROLLED_BACK": "The new version did not start, so the previous version was started again. Your data was kept.",
         "CLAUDEWEB_DOWNLOAD_FAILED": "The download failed. Check the server's connection to GitHub and try again.",
         "CLAUDEWEB_CATALOGUE_UNAVAILABLE": "The list of versions could not be loaded. Try again later.",
-        "CLAUDEWEB_UPDATER_UNAVAILABLE": "The WebDesktop updater did not answer. Try again later.",
-        "CLAUDEWEB_WEBDESKTOP_TOO_OLD": "This version needs a newer WebDesktop. Update WebDesktop from the desktop Settings first.",
+        "CLAUDEWEB_UPDATER_UNAVAILABLE": "The ClaudeWeb updater did not answer. Try again later.",
         "other": "The update failed ({{code}})."
       }
     }

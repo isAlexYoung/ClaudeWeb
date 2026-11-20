@@ -857,12 +857,12 @@
     "update": {
       "title": "ClaudeWeb 版本",
       "installed": "当前版本",
-      "builtOnServer": "由早期安装程序在本服务器上编译；更新后会换成预编译版本。",
+      "builtOnServer": "这个安装没有版本记录。",
       "unknown": "未知",
       "check": "检查更新",
       "upToDate": "已是最新版本。",
       "available": "有新版本 {{version}}（下载约 {{size}} MB）。",
-      "needsWebDesktop": "{{version}} 需要 WebDesktop {{webdesktop}} 或更新版本，请先在桌面「设置」里更新 WebDesktop。",
+      "needsWebDesktop": "{{version}} 无法安装在这台服务器上。",
       "install": "更新到 {{version}}",
       "confirm": "更新时 ClaudeWeb 会重启，正在运行的对话会中断。对话记录和设置都会保留，更新前会先备份数据库。",
       "confirmButton": "立即更新到 {{version}}",
@@ -879,14 +879,13 @@
         "failed": "更新失败。"
       },
       "errors": {
-        "CLAUDEWEB_DISK_REQUIRED": "磁盘空间不足，无法更新。请先腾出空间（例如在桌面「设置 → 更新」里清理旧版本）后重试。",
+        "CLAUDEWEB_DISK_REQUIRED": "磁盘空间不足，无法更新。请先腾出空间后重试。",
         "CLAUDEWEB_UPDATE_TOO_SOON": "刚刚已经发起过更新，请两分钟后再试。",
         "CLAUDEWEB_UPDATE_RUNNING": "已有更新正在进行。",
-        "CLAUDEWEB_START_FAILED_ROLLED_BACK": "新版本没能启动，已自动恢复到原来的版本和数据。",
+        "CLAUDEWEB_START_FAILED_ROLLED_BACK": "新版本没能启动，已自动换回原来的版本，数据保留。",
         "CLAUDEWEB_DOWNLOAD_FAILED": "下载失败，请检查服务器到 GitHub 的网络后重试。",
         "CLAUDEWEB_CATALOGUE_UNAVAILABLE": "无法获取版本列表，请稍后重试。",
-        "CLAUDEWEB_UPDATER_UNAVAILABLE": "WebDesktop 更新程序没有响应，请稍后重试。",
-        "CLAUDEWEB_WEBDESKTOP_TOO_OLD": "这个版本需要更新的 WebDesktop，请先在桌面「设置」里更新 WebDesktop。",
+        "CLAUDEWEB_UPDATER_UNAVAILABLE": "ClaudeWeb 更新程序没有响应，请稍后重试。",
         "other": "更新失败（{{code}}）。"
       }
     }

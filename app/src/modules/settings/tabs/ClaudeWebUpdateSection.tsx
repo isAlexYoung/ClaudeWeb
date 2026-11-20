@@ -11,7 +11,7 @@ import { Button } from '@/shared/ui';
 // Codes the root updater reports that have their own explanation; anything else shows the code.
 const KNOWN_ERRORS = new Set([
   'CLAUDEWEB_DISK_REQUIRED', 'CLAUDEWEB_UPDATE_TOO_SOON', 'CLAUDEWEB_UPDATE_RUNNING', 'CLAUDEWEB_START_FAILED_ROLLED_BACK',
-  'CLAUDEWEB_DOWNLOAD_FAILED', 'CLAUDEWEB_CATALOGUE_UNAVAILABLE', 'CLAUDEWEB_UPDATER_UNAVAILABLE', 'CLAUDEWEB_WEBDESKTOP_TOO_OLD',
+  'CLAUDEWEB_DOWNLOAD_FAILED', 'CLAUDEWEB_CATALOGUE_UNAVAILABLE', 'CLAUDEWEB_UPDATER_UNAVAILABLE',
 ]);
 
 function megabytes(bytes: number) {
@@ -24,8 +24,8 @@ type ClaudeWebUpdateSectionProps = {
 };
 
 /**
- * Rendered by AboutTab in the WebDesktop build: the installed ClaudeWeb version and, when
- * WebDesktop's root updater is reachable, a check for and install of a newer prebuilt version.
+ * Rendered by AboutTab: the installed ClaudeWeb version and, when the root updater's socket
+ * is there, a check for and install of a newer stable release.
  */
 export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectionProps) {
   const { t } = useTranslation('settings');

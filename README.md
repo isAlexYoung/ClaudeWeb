@@ -8,9 +8,9 @@ chats, projects, a terminal, a file panel, scheduled tasks, a task board and a
 built-in browser, all running on that server with the official Claude CLI.
 
 > **Status: in development.** ClaudeWeb 2.0.0, the first standalone release,
-> is not out yet. The installer, the login and the `claudeweb` command work;
-> releases to download, updates, domains and the built-in browser are still
-> being built. Until the first release you can build a package yourself (see
+> is not out yet. The installer, the login, the `claudeweb` command and signed
+> updates work; domains and the built-in browser are still being built. No
+> release is published yet, so for now build a package yourself (see
 > [Development](#development)).
 
 ## Not affiliated with Anthropic
@@ -55,8 +55,14 @@ Planned requirements:
 
 Management commands (run as root): `claudeweb help`, `status`, `logs`,
 `doctor`, `password`, `swap`, `uninstall` (keeps `/home/claudeweb/projects`
-unless you add `--delete-projects`). `update` and `rollback` come with signed
-releases.
+unless you add `--delete-projects`), `update` and `rollback`.
+
+Updates come from a release list signed with ClaudeWeb's key; a package is
+only used when it matches that list. `claudeweb update` (or Settings > About)
+installs the latest stable release, backs up the database, and returns to
+the previous version by itself if the new one does not start.
+`claudeweb rollback` returns to the previous version at any time. See
+[doc/RELEASING.md](doc/RELEASING.md).
 
 ## Security model
 

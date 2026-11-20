@@ -80,7 +80,7 @@ echo "== Management files"
 mkdir -p "$STAGE/bin" "$STAGE/share"
 cp "$WORK/packaging/claudeweb" "$STAGE/bin/claudeweb"
 chmod 0755 "$STAGE/bin/claudeweb"
-cp "$WORK/packaging/claudeweb.service" "$STAGE/share/claudeweb.service"
+cp "$WORK/packaging/claudeweb.service" "$WORK/packaging/claudeweb-update.socket" "$WORK/packaging/claudeweb-update@.service" "$STAGE/share/"
 git -C "$REPO_ROOT" archive --format=tar HEAD LICENSE NOTICE THIRD_PARTY_NOTICES.md | tar -x -C "$STAGE"
 source_commit="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 python3 - "$STAGE/release.json" "$VERSION" "$CHANNEL" "$source_commit" "$NODE_VERSION" <<'EOF'
@@ -91,6 +91,8 @@ json.dump({"version": version, "channel": channel, "source_commit": commit,
           open(path, "w"), indent=1)
 EOF
 echo "$VERSION" > "$STAGE/VERSION"
+# Settings > About reads the installed version from here.
+printf '{"version": "%s"}\n' "$VERSION" > "$STAGE/app/claudeweb.json"
 
 echo "== Package"
 archive="$OUT/$NAME-linux-x64.tar.xz"

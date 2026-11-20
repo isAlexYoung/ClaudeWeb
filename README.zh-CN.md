@@ -8,8 +8,8 @@ ClaudeWeb 是 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview
 使用官方 Claude CLI。
 
 > **状态：开发中。** 第一个独立版本 ClaudeWeb 2.0.0 还没有发布。
-> 安装程序、登录和 `claudeweb` 管理命令已经可用；可下载的发布包、更新、域名访问和内置浏览器还在开发。
-> 在第一个版本发布之前，可以自己构建安装包（见[开发](#开发)）。
+> 安装程序、登录、`claudeweb` 管理命令和带签名的更新已经可用；域名访问和内置浏览器还在开发。
+> 目前还没有发布任何版本，可以先自己构建安装包（见[开发](#开发)）。
 
 ## 与 Anthropic 无关
 
@@ -43,8 +43,9 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
   Cloudflare Tunnel 访问。手机和平板需要域名。
 
 管理命令（以 root 运行）：`claudeweb help`、`status`、`logs`、`doctor`、`password`、`swap`、
-`uninstall`（默认保留 `/home/claudeweb/projects`，加 `--delete-projects` 才删除项目）。
-`update` 和 `rollback` 随签名发布包一起提供。
+`uninstall`（默认保留 `/home/claudeweb/projects`，加 `--delete-projects` 才删除项目）、`update`、`rollback`。
+
+更新来自用 ClaudeWeb 密钥签名的版本清单，安装包与清单一致才会被使用。`claudeweb update`（或网页的「设置 → 关于」）安装最新正式版，先备份数据库；新版本启动失败会自动换回原版本。`claudeweb rollback` 随时可以退回上一个版本。详见 [doc/RELEASING.md](doc/RELEASING.md)。
 
 ## 安全设计
 

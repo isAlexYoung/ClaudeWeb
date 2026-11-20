@@ -17,6 +17,19 @@ readonly PROJECTS_DIR="$SERVICE_HOME/projects"
 readonly SWAP_FILE=/swap.claudeweb
 readonly IPV6_SYSCTL=/etc/sysctl.d/90-claudeweb-disable-ipv6.conf
 readonly PORT=3001
+readonly RELEASES="$OPT_DIR/releases"
+readonly INSTALL_RECORD="$ETC_DIR/install.json"
+readonly UPDATE_CONF="$ETC_DIR/update.conf"
+readonly UPDATE_DIR=/var/lib/claudeweb-update
+readonly UPDATE_STATE="$UPDATE_DIR/state.json"
+readonly UPDATE_LOCK=/run/claudeweb-update.lock
+readonly STATUS_DIR=/run/claudeweb-update
+readonly STATUS_FILE="$STATUS_DIR/status.json"
+readonly DEFAULT_RELEASES_URL=https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/releases
+# The only key release lists are trusted under (minisign, key id 8D95EBD30103FEDD).
+readonly RELEASE_PUBKEY=RWTd/gMB0+uVjUjFTKV/03UUGdQIoF+X+FIvGW8kdn9eDoqh3M2JMG39
+readonly KEEP_RELEASES=3
+readonly KEEP_BACKUPS=3
 
 die() { echo "claudeweb: $*" >&2; exit 1; }
 need_root() { [[ $EUID -eq 0 ]] || die "run this as root (for example: sudo claudeweb $1)"; }
@@ -39,8 +52,11 @@ Commands:
   swap --size=<N>G           Create or resize ClaudeWeb's swap file to N GiB (1-16)
   swap --auto                Add swap sized from this machine if there is none
   swap --off                 Remove ClaudeWeb's swap file
-  update                     Update to the latest stable release (not available yet)
-  rollback                   Return to the previous version (not available yet)
+  update                     Update to the latest stable release
+  update --check             Only say whether a newer stable release exists
+  update --version=X.Y.Z     Update to that release (also test releases)
+  rollback                   Return to the previous version; works in any unfinished
+                             update state and keeps all user data as it is
   uninstall                  Remove ClaudeWeb; keeps /home/claudeweb/projects
   uninstall --delete-projects
                              Remove ClaudeWeb and the project folders too
@@ -199,6 +215,272 @@ cmd_swap() {
   esac
 }
 
+# ------------------------------------------------------------------ update
+releases_url() {
+  local url=""
+  [[ -f $UPDATE_CONF ]] && url="$(sed -n 's/^RELEASES_URL=//p' "$UPDATE_CONF" | tail -n1)"
+  echo "${url:-$DEFAULT_RELEASES_URL}"
+}
+
+# Downloads the release list into $1 and checks its signature. Nothing in it
+# is used unless the signature checks out under RELEASE_PUBKEY.
+fetch_release_list() {
+  local work=$1 base
+  base="$(releases_url)"
+  curl -fsSL --retry 3 -m 60 -o "$work/releases.json" "$base/releases.json" \
+    && curl -fsSL --retry 3 -m 60 -o "$work/releases.json.minisig" "$base/releases.json.minisig" \
+    || { echo "cannot download the release list from $base" >&2; return 1; }
+  minisign -Vq -P "$RELEASE_PUBKEY" -m "$work/releases.json" -x "$work/releases.json.minisig" >/dev/null 2>&1 \
+    || { echo "the release list signature is not valid" >&2; return 1; }
+  jq -e '.schema == 1 and (.releases | type == "array")' "$work/releases.json" >/dev/null 2>&1 \
+    || { echo "the release list is malformed" >&2; return 1; }
+}
+
+# Stable releases newer than $2, newest first, from the verified list in $1.
+newer_stable() {
+  jq -c --arg current "$2" '
+    def v: split(".") | map(tonumber);
+    [.releases[] | select(.channel == "stable" and ((.version | v) > ($current | v)))]
+    | sort_by(.version | v) | reverse' "$1"
+}
+
+# Progress for Settings > About, which polls this file (readable by everyone; no secrets).
+write_status() {  # write_status <state> <version> [error code]
+  install -d -m 0755 "$STATUS_DIR"
+  printf '{"state": "%s", "version": "%s", "installed": "%s", "error": %s, "updated_at": %s}\n' \
+    "$1" "$2" "$(installed_version)" "$( [[ -n ${3:-} ]] && printf '"%s"' "$3" || echo null)" "$(date +%s)" > "$STATUS_FILE.new"
+  chmod 0644 "$STATUS_FILE.new"
+  mv -f "$STATUS_FILE.new" "$STATUS_FILE"
+}
+
+UPDATE_TARGET=""
+update_failed() {  # update_failed <code> <message>
+  write_status failed "$UPDATE_TARGET" "$1"
+  die "$2"
+}
+
+health_ok() {
+  local _
+  for _ in $(seq 1 "${1:-120}"); do
+    curl -fsS -m 3 "http://127.0.0.1:$PORT/api/auth/status" >/dev/null 2>&1 && return 0
+    sleep 1
+  done
+  return 1
+}
+
+record_install() {  # record_install <version> <previous version or empty>
+  printf '{\n "version": "%s",\n "previous": %s,\n "updated_at": "%s"\n}\n' "$1" \
+    "$( [[ -n $2 ]] && printf '"%s"' "$2" || echo null)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$INSTALL_RECORD.new"
+  chmod 0644 "$INSTALL_RECORD.new"
+  mv -f "$INSTALL_RECORD.new" "$INSTALL_RECORD"
+}
+
+# Points `current` at a release, installs that release's units and starts it.
+switch_to() {
+  local version=$1 unit
+  [[ -d $RELEASES/$version ]] || die "release $version is not on this server"
+  systemctl stop "$SERVICE" 2>/dev/null || true
+  ln -sfn "$RELEASES/$version" "$CURRENT.new"
+  mv -Tf "$CURRENT.new" "$CURRENT"
+  for unit in claudeweb.service claudeweb-update.socket claudeweb-update@.service; do
+    [[ -f $RELEASES/$version/share/$unit ]] && install -m 0644 "$RELEASES/$version/share/$unit" "/etc/systemd/system/$unit"
+  done
+  systemctl daemon-reload
+  systemctl start "$SERVICE"
+}
+
+backup_database() {  # copies auth.db while the service is stopped; never restored automatically
+  local from=$1 target file
+  target="$UPDATE_DIR/backups/$from-$(date -u +%Y%m%dT%H%M%SZ)"
+  install -d -m 0700 "$target"
+  for file in "$DATA_DIR"/auth.db "$DATA_DIR"/auth.db-wal "$DATA_DIR"/auth.db-shm; do
+    [[ -f $file ]] && cp -p "$file" "$target/"
+  done
+  { ls -1dt "$UPDATE_DIR/backups"/*/ 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -rf; } || true
+  echo "$target"
+}
+
+prune_releases() {  # keeps the newest few, and always the current and previous ones
+  local keep_a=$1 keep_b=$2 dir name count=0
+  while IFS= read -r dir; do
+    name="$(basename "$dir")"
+    count=$((count + 1))
+    if (( count > KEEP_RELEASES )) && [[ $name != "$keep_a" && $name != "$keep_b" ]]; then rm -rf "$dir"; fi
+  done < <(ls -1d "$RELEASES"/*/ 2>/dev/null | sed 's:/$::' | sort -t/ -k5 -V -r)
+}
+
+cmd_update() {
+  need_root update
+  local wanted="" check_only=0 argument
+  for argument in "$@"; do
+    case "$argument" in
+      --check) check_only=1 ;;
+      --version=*) wanted="${argument#--version=}" ;;
+      *) die "usage: claudeweb update [--check | --version=X.Y.Z]" ;;
+    esac
+  done
+  exec 9>"$UPDATE_LOCK"
+  flock -n 9 || die "another update or rollback is running"
+  if [[ -f $UPDATE_STATE ]]; then
+    UPDATE_TARGET="$(jq -r '.to // empty' "$UPDATE_STATE" 2>/dev/null)"
+    update_failed CLAUDEWEB_UPDATE_RUNNING \
+      "an earlier update did not finish ($(jq -r '"\(.from) -> \(.to), \(.phase)"' "$UPDATE_STATE" 2>/dev/null)); run: claudeweb rollback"
+  fi
+
+  local current work target entry
+  current="$(installed_version)"
+  UPDATE_TARGET="$wanted"
+  (( check_only )) || write_status checking "$wanted"
+  work="$(mktemp -d)"
+  trap "rm -rf '$work'" EXIT   # expanded now: $work is local and gone by exit time
+  fetch_release_list "$work" || update_failed CLAUDEWEB_CATALOGUE_UNAVAILABLE "the release list could not be used; nothing was changed"
+  if [[ -n $wanted ]]; then
+    entry="$(jq -c --arg v "$wanted" '.releases[] | select(.version == $v)' "$work/releases.json")"
+    [[ -n $entry ]] || update_failed CLAUDEWEB_VERSION_UNKNOWN "release $wanted is not in the release list"
+  else
+    entry="$(newer_stable "$work/releases.json" "$current" | jq -c '.[0] // empty')"
+    if [[ -z $entry ]]; then
+      (( check_only )) || write_status idle "$current"
+      echo "ClaudeWeb $current is up to date."
+      return 0
+    fi
+  fi
+  target="$(jq -r .version <<<"$entry")"
+  UPDATE_TARGET="$target"
+  if [[ $target == "$current" ]]; then
+    (( check_only )) || write_status idle "$current"
+    echo "ClaudeWeb $current is installed; nothing to do."
+    return 0
+  fi
+  if (( check_only )); then
+    echo "ClaudeWeb $target is available ($(jq -r .channel <<<"$entry")); installed: $current. Update with: claudeweb update"
+    return 0
+  fi
+
+  echo "Updating ClaudeWeb $current -> $target"
+  local url bytes sha free_mib
+  url="$(jq -r .package.url <<<"$entry")"; bytes="$(jq -r .package.bytes <<<"$entry")"; sha="$(jq -r .package.sha256 <<<"$entry")"
+  free_mib="$(df --output=avail -m "$OPT_DIR" | tail -n1 | tr -d ' ')"
+  (( free_mib > bytes / 1048576 * 8 + 1024 )) || update_failed CLAUDEWEB_DISK_REQUIRED "not enough free disk space for the update (${free_mib} MiB free)"
+  if [[ ! -d $RELEASES/$target ]]; then
+    write_status downloading "$target"
+    curl -fsSL --retry 3 -o "$work/package.tar.xz" "$url" || update_failed CLAUDEWEB_DOWNLOAD_FAILED "cannot download $url"
+    [[ "$(stat -c %s "$work/package.tar.xz")" == "$bytes" ]] \
+      || update_failed CLAUDEWEB_DOWNLOAD_FAILED "the downloaded package has the wrong size; nothing was changed"
+    [[ "$(sha256sum "$work/package.tar.xz" | cut -d' ' -f1)" == "$sha" ]] \
+      || update_failed CLAUDEWEB_DOWNLOAD_FAILED "the downloaded package does not match the release list; nothing was changed"
+    write_status installing "$target"
+    tar -xJf "$work/package.tar.xz" -C "$work"
+    [[ "$(cat "$work/claudeweb-$target/VERSION" 2>/dev/null)" == "$target" ]] \
+      || update_failed CLAUDEWEB_DOWNLOAD_FAILED "the package does not contain ClaudeWeb $target"
+    chown -R root:root "$work/claudeweb-$target"
+    rm -rf "$RELEASES/$target.partial"
+    mv "$work/claudeweb-$target" "$RELEASES/$target.partial"
+    mv "$RELEASES/$target.partial" "$RELEASES/$target"
+  fi
+
+  install -d -m 0700 "$UPDATE_DIR"
+  printf '{"from": "%s", "to": "%s", "phase": "switching", "started_at": "%s"}\n' "$current" "$target" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$UPDATE_STATE"
+  write_status restarting "$target"
+  systemctl stop "$SERVICE" 2>/dev/null || true
+  local backup
+  backup="$(backup_database "$current")"
+  echo "Database copied to $backup"
+  switch_to "$target"
+  if health_ok 120; then
+    record_install "$target" "$current"
+    rm -f "$UPDATE_STATE"
+    prune_releases "$target" "$current"
+    write_status done "$target"
+    echo "ClaudeWeb $target is running. Return to $current with: claudeweb rollback"
+    return 0
+  fi
+  echo "ClaudeWeb $target did not start; returning to $current." >&2
+  switch_to "$current"
+  if health_ok 120; then
+    rm -f "$UPDATE_STATE"
+    update_failed CLAUDEWEB_START_FAILED_ROLLED_BACK "the update failed and ClaudeWeb $current is running again (see: claudeweb logs)"
+  fi
+  update_failed CLAUDEWEB_START_FAILED "ClaudeWeb $current did not start either; see claudeweb logs, then run claudeweb rollback"
+}
+
+cmd_rollback() {
+  need_root rollback
+  [[ $# -eq 0 ]] || die "usage: claudeweb rollback"
+  exec 9>"$UPDATE_LOCK"
+  flock -n 9 || die "another update or rollback is running"
+  local current previous=""
+  current="$(installed_version)"
+  # An unfinished update knows where it came from; otherwise install.json does.
+  if [[ -f $UPDATE_STATE ]]; then
+    previous="$(jq -r '.from // empty' "$UPDATE_STATE" 2>/dev/null)"
+  fi
+  [[ -n $previous ]] || previous="$(jq -r '.previous // empty' "$INSTALL_RECORD" 2>/dev/null)"
+  if [[ -z $previous || $previous == "$current" ]]; then
+    if [[ -f $UPDATE_STATE ]]; then
+      # The update never left this version: only restart it and clear the state.
+      switch_to "$current"
+      health_ok 120 || die "ClaudeWeb $current did not start; see: claudeweb logs"
+      rm -f "$UPDATE_STATE"
+      write_status idle "$current"
+      echo "The unfinished update was cleared; ClaudeWeb $current is running."
+      return 0
+    fi
+    die "there is no previous version to return to"
+  fi
+  [[ -d $RELEASES/$previous ]] || die "release $previous is no longer on this server"
+  echo "Returning ClaudeWeb $current -> $previous (user data is kept as it is)"
+  switch_to "$previous"
+  health_ok 120 || die "ClaudeWeb $previous did not start; see: claudeweb logs"
+  record_install "$previous" "$current"
+  rm -f "$UPDATE_STATE"
+  write_status idle "$previous"
+  echo "ClaudeWeb $previous is running."
+}
+
+# Answers one request from ClaudeWeb (Settings > About) on the root-owned
+# socket claudeweb-update.socket, which only root and the claudeweb group can
+# open. Only two requests exist: "check" and "update" to a stable release
+# newer than the installed one. The update itself runs as its own job.
+cmd_serve_update() {
+  [[ $EUID -eq 0 ]] || die "serve-update runs as root from claudeweb-update.socket"
+  reply() { printf '%s\n' "$1"; }
+  local line op version work current newer
+  IFS= read -r -t 10 -n 4096 line || { reply '{"ok": false, "error": "CLAUDEWEB_BAD_REQUEST"}'; return 0; }
+  op="$(jq -r 'if type == "object" then .op // empty else empty end' <<<"$line" 2>/dev/null || true)"
+  current="$(installed_version)"
+  work="$(mktemp -d)"
+  trap "rm -rf '$work'" EXIT
+  case "$op" in
+    check)
+      fetch_release_list "$work" 2>/dev/null || { reply '{"ok": false, "error": "CLAUDEWEB_CATALOGUE_UNAVAILABLE"}'; return 0; }
+      newer="$(newer_stable "$work/releases.json" "$current")"
+      jq -cn --arg installed "$current" --argjson newer "$newer" '{
+        ok: true, installed: $installed, latest: ($newer[0].version // $installed),
+        newer: [$newer[] | {version, notes: (.notes // ""), requires_webdesktop: "", compatible: true, download_bytes: .package.bytes}]
+      }'
+      ;;
+    update)
+      version="$(jq -r '.version // empty' <<<"$line")"
+      [[ $version =~ ^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$ ]] \
+        || { reply '{"ok": false, "error": "CLAUDEWEB_VERSION_INVALID"}'; return 0; }
+      if [[ -f $UPDATE_STATE ]] || ! flock -n "$UPDATE_LOCK" true; then
+        reply '{"ok": false, "error": "CLAUDEWEB_UPDATE_RUNNING"}'; return 0
+      fi
+      fetch_release_list "$work" 2>/dev/null || { reply '{"ok": false, "error": "CLAUDEWEB_CATALOGUE_UNAVAILABLE"}'; return 0; }
+      if ! newer_stable "$work/releases.json" "$current" | jq -e --arg v "$version" 'any(.[]; .version == $v)' >/dev/null; then
+        reply '{"ok": false, "error": "CLAUDEWEB_NOT_NEWER"}'; return 0
+      fi
+      write_status queued "$version"
+      systemd-run --quiet --collect --no-block --unit="claudeweb-update-job-$(date +%s)" \
+        "$CURRENT/bin/claudeweb" update --version="$version" >/dev/null 2>&1 \
+        || { write_status failed "$version" CLAUDEWEB_UPDATE_FAILED; reply '{"ok": false, "error": "CLAUDEWEB_UPDATE_FAILED"}'; return 0; }
+      reply '{"ok": true}'
+      ;;
+    *) reply '{"ok": false, "error": "CLAUDEWEB_BAD_REQUEST"}' ;;
+  esac
+}
+
 # ------------------------------------------------------------------ uninstall
 cmd_uninstall() {
   need_root uninstall
@@ -222,8 +504,8 @@ cmd_uninstall() {
   read -r -p "Uninstall ClaudeWeb? [y/n] " answer
   [[ $answer == y || $answer == Y ]] || { echo "Stopped; nothing was changed."; return 0; }
 
-  systemctl disable --now "$SERVICE" 2>/dev/null || true
-  rm -f "$UNIT_FILE"
+  systemctl disable --now "$SERVICE" claudeweb-update.socket 2>/dev/null || true
+  rm -f "$UNIT_FILE" /etc/systemd/system/claudeweb-update.socket /etc/systemd/system/claudeweb-update@.service
   systemctl daemon-reload
   swap_remove
   rm -f "$IPV6_SYSCTL"   # IPv6 stays off until the next reboot; it is not turned back on here.
@@ -236,7 +518,7 @@ cmd_uninstall() {
     find "$SERVICE_HOME" -mindepth 1 -maxdepth 1 ! -name projects -exec rm -rf {} +
   fi
   userdel "$SERVICE_USER" 2>/dev/null || true
-  rm -rf "$ETC_DIR" "$DATA_DIR" "$LOG_DIR"
+  rm -rf "$ETC_DIR" "$DATA_DIR" "$LOG_DIR" "$UPDATE_DIR"
   rm -f /usr/local/bin/claudeweb
   rm -rf "$OPT_DIR"
   if (( delete_projects )); then
@@ -256,8 +538,9 @@ case "$command" in
   doctor) cmd_doctor "$@" ;;
   password) cmd_password "$@" ;;
   swap) cmd_swap "$@" ;;
-  update|rollback)
-    echo "claudeweb $command is not available yet: it comes with signed releases." >&2; exit 2 ;;
+  update) cmd_update "$@" ;;
+  rollback) cmd_rollback "$@" ;;
+  serve-update) cmd_serve_update "$@" ;;
   uninstall) cmd_uninstall "$@" ;;
   *) echo "Unknown command: $command" >&2; echo >&2; show_help >&2; exit 1 ;;
 esac

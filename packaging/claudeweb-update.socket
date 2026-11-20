@@ -1,0 +1,15 @@
+[Unit]
+Description=ClaudeWeb update requests from Settings > About
+
+[Socket]
+ListenStream=/run/claudeweb-update.sock
+Accept=yes
+MaxConnections=4
+# Only root and the claudeweb service account can connect.
+SocketUser=root
+SocketGroup=claudeweb
+SocketMode=0660
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

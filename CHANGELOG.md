@@ -26,6 +26,12 @@ release is a test release.
   `--delete-projects`).
 - `packaging/build-release.sh` builds the release package, with its own
   Node.js 22.
+- Signed releases: `install.sh` installs the latest stable release from a
+  list signed with ClaudeWeb's minisign key (`--version` for test releases).
+- `claudeweb update` and Settings > About update to the latest stable
+  release: download checked against the list, database copied, automatic
+  return to the previous version when the new one does not start.
+  `claudeweb rollback` returns to the previous version from any state.
 
 ### Changed
 

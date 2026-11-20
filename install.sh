@@ -4,6 +4,8 @@
 # Options:
 #   --version=X.Y.Z   install that release (default: the latest stable one)
 #   --package=FILE    install from a local release package instead of downloading
+# The release list is verified with the minisign key below before anything
+# from it is used.
 # Running it again repairs an installation of the same version and never
 # replaces the login password or user data.
 set -euo pipefail
@@ -25,6 +27,12 @@ readonly PORT=3001
 readonly IPV6_SYSCTL=/etc/sysctl.d/90-claudeweb-disable-ipv6.conf
 readonly MIN_MEMORY_MIB=1800   # a "2 GB" VPS reports a little less than 2048 MiB
 readonly MIN_CPUS=2
+readonly UPDATE_CONF="$ETC_DIR/update.conf"
+readonly DEFAULT_RELEASES_URL=https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/releases
+# The only key release lists are trusted under (minisign, key id 8D95EBD30103FEDD).
+readonly RELEASE_PUBKEY=RWTd/gMB0+uVjUjFTKV/03UUGdQIoF+X+FIvGW8kdn9eDoqh3M2JMG39
+# Where the signed list lives; overridable for testing with a mirror.
+readonly RELEASES_URL="${CLAUDEWEB_RELEASES_URL:-$DEFAULT_RELEASES_URL}"
 
 VERSION=""
 PACKAGE=""
@@ -93,17 +101,42 @@ if ss -ltnH "sport = :$PORT" | grep -q . && ! systemctl is-active --quiet "$SERV
   fail "port $PORT is already in use by another program (see: ss -ltnp 'sport = :$PORT')"
 fi
 
+# ------------------------------------------------------------------ system
+step "Installing system packages"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -q
+apt-get install -y -q --no-install-recommends ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq minisign
+
 # ------------------------------------------------------------------ package
 step "Getting the release package"
 WORK="$(mktemp -d)"
 if [[ -z $PACKAGE ]]; then
-  # Signed release lists come with the first published release; until then
-  # only local packages can be installed.
-  fail "no ClaudeWeb release has been published yet; install a local package with --package=FILE"
-fi
-[[ -f $PACKAGE ]] || fail "package not found: $PACKAGE"
-if [[ -f $PACKAGE.sha256 ]]; then
-  (cd "$(dirname "$PACKAGE")" && sha256sum -c --status "$(basename "$PACKAGE").sha256") || fail "the package does not match its .sha256 file"
+  # The signed list decides what is installed: nothing in it is used unless
+  # the signature checks out under RELEASE_PUBKEY.
+  curl -fsSL --retry 3 -o "$WORK/releases.json" "$RELEASES_URL/releases.json" \
+    || fail "cannot download the release list from $RELEASES_URL"
+  curl -fsSL --retry 3 -o "$WORK/releases.json.minisig" "$RELEASES_URL/releases.json.minisig" \
+    || fail "cannot download the release list signature"
+  minisign -Vq -P "$RELEASE_PUBKEY" -m "$WORK/releases.json" -x "$WORK/releases.json.minisig" \
+    || fail "the release list signature is not valid"
+  if [[ -n $VERSION ]]; then
+    entry="$(jq -c --arg v "$VERSION" '.releases[] | select(.version == $v)' "$WORK/releases.json")"
+    [[ -n $entry ]] || fail "release $VERSION is not in the release list"
+  else
+    entry="$(jq -c '[.releases[] | select(.channel == "stable")] | sort_by(.version | split(".") | map(tonumber)) | last // empty' "$WORK/releases.json")"
+    [[ -n $entry ]] || fail "no stable release is published yet; a test release can be installed with --version=X.Y.Z"
+  fi
+  say "Downloading ClaudeWeb $(jq -r .version <<<"$entry") ($(jq -r .channel <<<"$entry"))"
+  PACKAGE="$WORK/$(jq -r .package.name <<<"$entry")"
+  curl -fsSL --retry 3 -o "$PACKAGE" "$(jq -r .package.url <<<"$entry")" || fail "cannot download the package"
+  [[ "$(stat -c %s "$PACKAGE")" == "$(jq -r .package.bytes <<<"$entry")" ]] || fail "the downloaded package has the wrong size"
+  [[ "$(sha256sum "$PACKAGE" | cut -d' ' -f1)" == "$(jq -r .package.sha256 <<<"$entry")" ]] \
+    || fail "the downloaded package does not match the release list"
+else
+  [[ -f $PACKAGE ]] || fail "package not found: $PACKAGE"
+  if [[ -f $PACKAGE.sha256 ]]; then
+    (cd "$(dirname "$PACKAGE")" && sha256sum -c --status "$(basename "$PACKAGE").sha256") || fail "the package does not match its .sha256 file"
+  fi
 fi
 free_mib="$(df --output=avail -m "$(dirname "$OPT_DIR")" | tail -n1 | tr -d ' ')"
 package_mib=$(( $(stat -c %s "$PACKAGE") / 1048576 + 1 ))
@@ -118,12 +151,6 @@ if [[ -n $installed_version && $installed_version != "$package_version" ]]; then
   fail "ClaudeWeb $installed_version is installed; update it with: claudeweb update"
 fi
 say "ClaudeWeb $package_version$( [[ -n $installed_version ]] && echo ' (repairing the existing installation)')"
-
-# ------------------------------------------------------------------ system
-step "Installing system packages"
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -q
-apt-get install -y -q --no-install-recommends ca-certificates curl git tar xz-utils procps util-linux iproute2 less
 
 step "Creating the claudeweb user and folders"
 if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
@@ -159,8 +186,15 @@ CLAUDEWEB_LOGIN_FILE=$ETC_DIR/login.json
 CLAUDEWEB_PASSWORD_FILE=$ETC_DIR/password
 EOF
 fi
+# Settings added after the first release are appended, never changed.
+ensure_setting() { grep -q "^$1=" "$ENV_FILE" || echo "$1=$2" >> "$ENV_FILE"; }
+ensure_setting CLAUDEWEB_UPDATE_SOCKET /run/claudeweb-update.sock
+ensure_setting CLAUDEWEB_UPDATE_STATUS /run/claudeweb-update/status.json
 chown root:"$SERVICE_USER" "$ENV_FILE"
 chmod 0640 "$ENV_FILE"
+# `claudeweb update` reads the list from the same place this installer did.
+printf '# Where `claudeweb update` finds the signed release list.\nRELEASES_URL=%s\n' "$RELEASES_URL" > "$UPDATE_CONF"
+chmod 0644 "$UPDATE_CONF"
 
 step "Installing the Claude Code CLI"
 if [[ ! -x $SERVICE_HOME/.local/bin/claude ]]; then
@@ -201,7 +235,11 @@ fi
 
 step "Starting the service"
 install -m 0644 "$CURRENT/share/claudeweb.service" "$UNIT_FILE"
+# Settings > About asks root for updates through this socket.
+install -m 0644 "$CURRENT/share/claudeweb-update.socket" /etc/systemd/system/claudeweb-update.socket
+install -m 0644 "$CURRENT/share/claudeweb-update@.service" /etc/systemd/system/claudeweb-update@.service
 systemctl daemon-reload
+systemctl enable --now claudeweb-update.socket >/dev/null 2>&1
 systemctl enable "$SERVICE" >/dev/null 2>&1
 systemctl restart "$SERVICE"
 for _ in $(seq 1 120); do
@@ -211,8 +249,11 @@ done
 curl -fsS -m 3 "http://127.0.0.1:$PORT/api/auth/status" >/dev/null 2>&1 \
   || fail "ClaudeWeb did not start; see: claudeweb logs"
 
-printf '{\n "version": "%s",\n "installed_at": "%s"\n}\n' "$package_version" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$INSTALL_RECORD"
-chmod 0644 "$INSTALL_RECORD"
+# A repair keeps the record, which also names the version `claudeweb rollback` returns to.
+if [[ -z $installed_version ]]; then
+  printf '{\n "version": "%s",\n "previous": null,\n "installed_at": "%s"\n}\n' "$package_version" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$INSTALL_RECORD"
+  chmod 0644 "$INSTALL_RECORD"
+fi
 
 # Old release folders are kept for rollback; only the newest few stay.
 { ls -1dt "$RELEASES"/*/ 2>/dev/null | tail -n +4 | grep -v "/$package_version/\$" | xargs -r rm -rf; } || true

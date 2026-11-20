@@ -88,7 +88,7 @@ test('explains refusals, a version that needs a newer WebDesktop, and hides the 
   mocks.check.mockResolvedValueOnce(json({ ...offer, newer: [{ ...offer.newer[0], compatible: false, requires_webdesktop: '3.1.0' }] }));
   const { unmount } = render(<ClaudeWebUpdateSection reload={vi.fn()} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Check for updates' }));
-  expect(await screen.findByText(/Version 1.0.1 needs WebDesktop 3.1.0 or newer/)).toBeTruthy();
+  expect(await screen.findByText(/Version 1.0.1 cannot be installed on this server/)).toBeTruthy();
 
   mocks.check.mockResolvedValueOnce(refusal('CLAUDEWEB_DISK_REQUIRED'));
   fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
