@@ -13,7 +13,7 @@ CMCP 连接、从 WebDesktop 迁移，以及常见问题。所有 `claudeweb` �
 以 root 运行（现在只有测试版，需要指定版本）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.1
+curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.2
 ```
 
 用有 sudo 权限的普通用户登录时，把 `bash` 换成 `sudo bash`。安装程序会：

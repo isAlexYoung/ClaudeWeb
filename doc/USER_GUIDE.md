@@ -15,7 +15,7 @@ cores and 2 GB of memory.
 As root (only test releases exist so far, so name the version):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.1
+curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.2
 ```
 
 Signed in as a user with sudo, write `sudo bash` instead of `bash`. The installer:
