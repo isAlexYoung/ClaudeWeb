@@ -13,6 +13,7 @@ Thumbs.db
 doc/LOCAL_NOTES.md
 doc/WSL_DEBIAN12.md
 release-out/
+__pycache__/
 # CI output (packaging/ci)
 test-releases/
 vm-results/
