@@ -3,11 +3,19 @@ import * as nodeCrypto from 'node:crypto';
 import { EventEmitter, once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import { PassThrough } from 'node:stream';
-import test from 'node:test';
+import test, { after, mock } from 'node:test';
 
 import express from 'express';
 
 import { createAgentRouter } from '../agent.routes.js';
+
+// The routes log every step (clone progress, errors) to the console. Under the
+// test runner that output shares the test process's stdout with the runner's
+// own messages, and on Linux it broke one of them ("Unable to deserialize
+// cloned data"). These tests check responses, not logs.
+mock.method(console, 'log', () => {});
+mock.method(console, 'error', () => {});
+after(() => mock.restoreAll());
 
 type AgentDependencies = Parameters<typeof createAgentRouter>[0];
 
