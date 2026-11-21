@@ -127,7 +127,22 @@ and sign-ins inside the browser.
 - `claudeweb rollback` returns to the previous version at any time and keeps
   all data as it is.
 
-## 7. Common problems
+## 7. Limits of permissions and resources
+
+- **No sandbox per conversation**: every conversation, the terminal and the
+  built-in browser run as the same user `claudeweb` and reach the same
+  projects and files. Claude in one conversation can read and change another
+  conversation's project. The browser keeps Chromium's own sandbox.
+- **The sensitive-information prompt and the sudo confirmation** only catch
+  the accesses they recognise; they cannot stop every program running as the
+  same user from reading those files, and commands you type in the terminal
+  yourself are not asked about.
+- **Resources**: ClaudeWeb sets no memory, CPU or process quotas and can use
+  the whole server, but the VPS plan, the operating system, the filesystem and
+  the runtimes still have their own limits. When the disk or memory runs out,
+  work fails or is ended.
+
+## 8. Common problems
 
 **Forgot the login password**: `claudeweb password` shows it;
 `claudeweb password --set` sets a new one (every device signs out).

@@ -352,6 +352,10 @@ switch_to() {
   for unit in claudeweb.service claudeweb-update.socket claudeweb-update@.service; do
     [[ -f $RELEASES/$version/share/$unit ]] && install -m 0644 "$RELEASES/$version/share/$unit" "/etc/systemd/system/$unit"
   done
+  # The domain's tunnel unit, only where a domain is set up; cloudflared keeps running.
+  if [[ -f $DOMAIN_STATE && -f $RELEASES/$version/share/claudeweb-tunnel.service ]]; then
+    install -m 0644 "$RELEASES/$version/share/claudeweb-tunnel.service" "$TUNNEL_UNIT"
+  fi
   systemctl daemon-reload
   systemctl start "$SERVICE"
 }

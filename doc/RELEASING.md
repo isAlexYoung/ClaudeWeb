@@ -68,6 +68,16 @@ On Debian 12 amd64 with `build-essential`, `python3`, `git`, `curl`,
 
 Versions are never replaced: a broken release is followed by a new version.
 
+## Bundled components
+
+Node.js and Playwright's Chromium ship inside each release package and are
+updated with ClaudeWeb's own releases. A serious security hole in one of them
+is fixed by a separate release, for the latest stable release only.
+
+Updates change only the program under `/opt/claudeweb` (and its units); they
+never change the `claudeweb` user, its home folder, the paths in the table of
+`doc/PROJECT_CHECKLIST.md` or any resource limit.
+
 ## Database rule
 
 A new version must not need a database change that the previous version
@@ -75,3 +85,7 @@ cannot run on: `claudeweb rollback` and an update that fails its health check
 return to the previous version without restoring the database (a copy is kept
 in `/var/lib/claudeweb-update/backups`). Schema changes therefore only add
 tables or columns that the previous version can ignore.
+
+The health check after an update only asks whether the new version answers;
+it never compares the database, so writes while the new version starts
+(additive migrations, cleanup) cannot make an update look failed.
