@@ -21,6 +21,7 @@ const AUTH_ERROR_MESSAGES = {
   invalidPassword: 'login.errors.invalidPassword',
   passwordNotSet: 'login.passwordNotSet',
   locked: 'login.errors.locked',
+  cmcpExpired: 'login.errors.cmcpExpired',
   networkError: 'errors.networkError',
   sessionExpired: 'errors.sessionExpired',
 } as const;
@@ -68,6 +69,10 @@ type AuthContextValue = {
   passwordConfigured: boolean;
   hasCompletedOnboarding: boolean;
   error: string | null;
+  /** CMCP opened this page with a one-time sign-in code: login('') signs in with it. */
+  cmcpSignIn: boolean;
+  /** Drops the CMCP code, so the form asks for the password instead. */
+  cancelCmcpSignIn: () => void;
   login: (password: string, choice?: LoginChoice) => Promise<AuthActionResult>;
   logout: () => void;
   refreshOnboardingStatus: () => Promise<void>;
@@ -97,6 +102,17 @@ const clearStoredToken = () => {
   localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 };
 
+/**
+ * CMCP opens ClaudeWeb at `/#cmcp=<code>`. The code is taken out of the
+ * address at once, so it stays out of history and bookmarks.
+ */
+export function takeCmcpCode(): string | null {
+  const match = /^#cmcp=([A-Za-z0-9_-]{20,200})$/.exec(window.location.hash);
+  if (!match) return null;
+  window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+  return match[1];
+}
+
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {
@@ -115,6 +131,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [passwordConfigured, setPasswordConfigured] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cmcpCode, setCmcpCode] = useState<string | null>(() => takeCmcpCode());
 
   const clearSession = useCallback(() => {
     setUser(null);
@@ -242,6 +259,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setUser(userPayload.user);
+      // Already signed in on this browser: the CMCP code is not needed.
+      setCmcpCode(null);
       await checkOnboardingStatus();
     } catch (caughtError) {
       console.error('[Auth] Auth status check failed:', caughtError);
@@ -306,7 +325,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async (password, choice) => {
       try {
         setError(null);
-        const response = await api.auth.login(password, choice);
+        const viaCmcp = !password && cmcpCode !== null;
+        const response = viaCmcp
+          ? await api.auth.cmcpRedeem(cmcpCode as string, choice)
+          : await api.auth.login(password, choice);
         const payload = await parseJsonSafely<AuthSessionPayload & AuthErrorPayload>(response);
 
         if (!response.ok || !payload?.token || !payload.user) {
@@ -326,6 +348,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
               choice: { logins: details.logins as SignedInDevice[], max: typeof details.max === 'number' ? details.max : 3 },
             };
           }
+          if (code === 'AUTH_CMCP_CODE_INVALID') {
+            setCmcpCode(null);
+            return { success: false, error: t(AUTH_ERROR_MESSAGES.cmcpExpired) };
+          }
           if (code === 'AUTH_PASSWORD_NOT_SET') {
             setPasswordConfigured(false);
             return { success: false, error: t(AUTH_ERROR_MESSAGES.passwordNotSet) };
@@ -336,6 +362,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return { success: false, error: message };
         }
 
+        if (viaCmcp) setCmcpCode(null);
         await publishSession(payload.user, payload.token);
         return { success: true };
       } catch (caughtError) {
@@ -344,8 +371,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return { success: false, error: t(AUTH_ERROR_MESSAGES.networkError) };
       }
     },
-    [publishSession, t],
+    [cmcpCode, publishSession, t],
   );
+
+  const cancelCmcpSignIn = useCallback(() => setCmcpCode(null), []);
 
   const logout = useCallback(() => {
     // The server forgets this device's session, so the token is dead even if
@@ -365,11 +394,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       passwordConfigured,
       hasCompletedOnboarding,
       error,
+      cmcpSignIn: cmcpCode !== null,
+      cancelCmcpSignIn,
       login,
       logout,
       refreshOnboardingStatus,
     }),
     [
+      cancelCmcpSignIn,
+      cmcpCode,
       error,
       hasCompletedOnboarding,
       isLoading,

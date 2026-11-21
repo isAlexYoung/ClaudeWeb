@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Lock, MonitorSmartphone } from 'lucide-react';
@@ -29,11 +29,13 @@ const DANGER = `${BUTTON} bg-red-600 text-white hover:bg-red-500`;
  * this server. After too many wrong passwords the form counts down the
  * lockout the server reports. When other devices are signed in, it asks
  * whether to join them or take over (signing them out), and when three are in
- * already, which one to sign out.
+ * already, which one to sign out. Opened by CMCP with a one-time code, it
+ * signs in with that code at once and asks for the password only when the
+ * code no longer works.
  */
 export default function LoginForm() {
   const { t } = useTranslation('auth');
-  const { error: sessionError, login, passwordConfigured } = useAuth();
+  const { error: sessionError, login, passwordConfigured, cmcpSignIn, cancelCmcpSignIn } = useAuth();
 
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -50,7 +52,7 @@ export default function LoginForm() {
 
   const submit = useCallback(async (answer?: LoginChoice) => {
     setErrorMessage('');
-    if (!password) {
+    if (!password && !cmcpSignIn) {
       setErrorMessage(t('login.errors.requiredFields'));
       return;
     }
@@ -68,7 +70,14 @@ export default function LoginForm() {
       }
     }
     setIsSubmitting(false);
-  }, [login, password, t]);
+  }, [cmcpSignIn, login, password, t]);
+
+  const cmcpStarted = useRef(false);
+  useEffect(() => {
+    if (!cmcpSignIn || cmcpStarted.current) return;
+    cmcpStarted.current = true;
+    void submit();
+  }, [cmcpSignIn, submit]);
 
   const handleSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -130,7 +139,7 @@ export default function LoginForm() {
                 {t('login.choice.takeover')}
               </button>
               <button type="button" disabled={isSubmitting} className="w-full py-1 text-sm text-muted-foreground hover:text-foreground"
-                onClick={() => { setChoice(null); setPassword(''); }}>
+                onClick={() => { setChoice(null); setPassword(''); cancelCmcpSignIn(); }}>
                 {t('login.choice.cancel')}
               </button>
             </div>
@@ -143,7 +152,7 @@ export default function LoginForm() {
   return (
     <AuthScreenLayout
       title={t('login.title')}
-      description={t('login.description')}
+      description={t(cmcpSignIn ? 'login.cmcpSigningIn' : 'login.description')}
       footerText={t('login.footerText')}
     >
       <form onSubmit={handleSubmit} className="space-y-4">

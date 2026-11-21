@@ -32,6 +32,14 @@ function resolveClientIp(req: express.Request): string {
   return peer || 'unknown';
 }
 
+/** A lockout refusal also says when to retry, in the standard header. */
+function setRetryAfter(res: express.Response, error: unknown) {
+  if (error instanceof AppError && error.code === 'AUTH_LOCKED') {
+    const seconds = (error.details as { retryAfterSeconds?: number } | undefined)?.retryAfterSeconds;
+    if (seconds) res.setHeader('Retry-After', String(seconds));
+  }
+}
+
 /**
  * Creates the Auth transport adapter. Handlers only parse request data and
  * delegate authentication behavior to the injected application service.
@@ -61,10 +69,39 @@ export function createAuthRouter(
         replace: body.replace,
       }));
     } catch (error) {
-      if (error instanceof AppError && error.code === 'AUTH_LOCKED') {
-        const seconds = (error.details as { retryAfterSeconds?: number } | undefined)?.retryAfterSeconds;
-        if (seconds) res.setHeader('Retry-After', String(seconds));
-      }
+      setRetryAfter(res, error);
+      next(error);
+    }
+  });
+
+  // CMCP sign-in. The protocol name tells CMCP this is standalone ClaudeWeb;
+  // CMCP releases that only know WebDesktop's "cmcp-" protocols treat it as a
+  // CloudCLI with its own login page.
+  router.get('/cmcp', (_req, res) => {
+    res.json({ protocol: 'claudeweb-cmcp', version: 1 });
+  });
+
+  router.post('/cmcp/code', async (req, res, next) => {
+    try {
+      const body = (req.body ?? {}) as { password?: unknown };
+      res.json(await service.createCmcpCode({ password: body.password, ip: resolveClientIp(req) }));
+    } catch (error) {
+      setRetryAfter(res, error);
+      next(error);
+    }
+  });
+
+  router.post('/cmcp/redeem', (req, res, next) => {
+    try {
+      const body = (req.body ?? {}) as { code?: unknown; mode?: unknown; replace?: unknown };
+      res.json(service.redeemCmcpCode({
+        code: body.code,
+        ip: resolveClientIp(req),
+        userAgent: req.get('user-agent')?.slice(0, 512) ?? null,
+        mode: body.mode,
+        replace: body.replace,
+      }));
+    } catch (error) {
       next(error);
     }
   });

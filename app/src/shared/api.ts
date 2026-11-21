@@ -220,6 +220,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password, ...(choice ?? {}) }),
     }),
+    // Signs in with the one-time code CMCP put in the address; answers like login.
+    cmcpRedeem: (code: string, choice?: { mode: 'join' | 'takeover'; replace?: string }) => fetch('/api/auth/cmcp/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, ...(choice ?? {}) }),
+    }),
     refresh: () => post('/api/auth/refresh'),
     // Ends this device's session on the server; other devices stay signed in.
     logout: () => post('/api/auth/logout'),

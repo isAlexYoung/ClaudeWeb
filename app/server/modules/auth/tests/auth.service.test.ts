@@ -232,3 +232,51 @@ test('a browser login ends after an hour without real use; requests alone do not
   assert.equal(harness.service.authenticateSession({ userId: 1, sid: 'session-1' }), null);
   assert.throws(() => harness.service.recordActivity('session-1'), rejectsWith('AUTH_TOKEN_EXPIRED'));
 });
+
+const redeem = (harness: ReturnType<typeof createHarness>, code: string, extra: { mode?: string; replace?: string } = {}) =>
+  harness.service.redeemCmcpCode({ code, ip: '127.0.0.1', userAgent: 'test', ...extra });
+
+test('CMCP trades the password for a one-time code; the page signs in with it as a CMCP login', async () => {
+  const harness = createHarness();
+  const { code, expiresInSeconds } = await harness.service.createCmcpCode({ password: 'right-password', ip: '127.0.0.1' });
+  assert.ok(code.length >= 40);
+  assert.equal(expiresInSeconds, 120);
+  const result = redeem(harness, code);
+  assert.equal(result.token, 'token:session-1');
+  assert.equal(harness.sessions.get('session-1')?.via, 'cmcp');
+  assert.throws(() => redeem(harness, code), rejectsWith('AUTH_CMCP_CODE_INVALID'), 'a code works once');
+
+  // CMCP logins are not ended by the idle hour.
+  harness.advance(3 * 60 * 60_000);
+  assert.ok(harness.service.authenticateSession({ userId: 1, sid: 'session-1' }));
+  assert.equal(harness.service.listDevices('session-1').logins[0].via, 'cmcp');
+});
+
+test('a CMCP code needs the right password, counts against the lockout, and expires', async () => {
+  const harness = createHarness();
+  await assert.rejects(harness.service.createCmcpCode({ password: 'wrong', ip: '127.0.0.1' }), rejectsWith('AUTH_INVALID_PASSWORD'));
+  for (let i = 0; i < 3; i += 1) await harness.service.createCmcpCode({ password: 'wrong', ip: '127.0.0.1' }).catch(() => undefined);
+  await assert.rejects(harness.service.createCmcpCode({ password: 'wrong', ip: '127.0.0.1' }), rejectsWith('AUTH_LOCKED'));
+  await assert.rejects(harness.service.createCmcpCode({ password: 'right-password', ip: '127.0.0.1' }), rejectsWith('AUTH_LOCKED'));
+
+  const other = createHarness();
+  const { code } = await other.service.createCmcpCode({ password: 'right-password', ip: '127.0.0.1' });
+  other.advance(121_000);
+  assert.throws(() => redeem(other, code), rejectsWith('AUTH_CMCP_CODE_INVALID'));
+  assert.throws(() => redeem(other, 'made-up'), rejectsWith('AUTH_CMCP_CODE_INVALID'));
+
+  const changed = createHarness();
+  const second = await changed.service.createCmcpCode({ password: 'right-password', ip: '127.0.0.1' });
+  changed.setGeneration('gen-2');
+  assert.throws(() => redeem(changed, second.code), rejectsWith('AUTH_CMCP_CODE_INVALID'), 'a new password voids codes');
+});
+
+test('a CMCP code asks the device question like a password and stays usable while the user chooses', async () => {
+  const harness = createHarness();
+  await login(harness, 'right-password');
+  const { code } = await harness.service.createCmcpCode({ password: 'right-password', ip: '127.0.0.1' });
+  assert.throws(() => redeem(harness, code), rejectsWith('AUTH_CHOICE_REQUIRED'));
+  const joined = redeem(harness, code, { mode: 'join' });
+  assert.equal(joined.token, 'token:session-2');
+  assert.equal(harness.service.sessionAlive('session-1'), true);
+});

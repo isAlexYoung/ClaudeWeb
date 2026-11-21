@@ -49,6 +49,13 @@ release is a test release.
   Connections of a signed-out device close within 15 seconds.
   Scripts calling `POST /api/auth/login` should send `"mode": "join"` or
   `"takeover"`.
+- CMCP sign-in (CMCP 4.24.0 and later): `GET /api/auth/cmcp` names the
+  protocol `claudeweb-cmcp`; CMCP trades the saved password for a one-time
+  code (`POST /api/auth/cmcp/code`, two minutes, under the same IP lockout)
+  and opens the page at `/#cmcp=<code>`, which signs itself in through
+  `POST /api/auth/cmcp/redeem` with the same join / take over question.
+  CMCP logins are listed as CMCP and do not end after an idle hour. Older
+  CMCP releases open the page with the normal password form.
 
 ### Changed
 

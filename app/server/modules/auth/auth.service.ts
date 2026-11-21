@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import { AppError } from '@/shared/utils.js';
 
@@ -58,6 +58,10 @@ const SESSION_UNUSED_LIMIT_MS = 8 * 24 * 60 * 60_000;
 // A device signed in by hand in a browser ends after an hour without real use
 // (input, or a chat that is working). Background polling does not count.
 const WEB_IDLE_LIMIT_MS = 60 * 60_000;
+// CMCP trades the password for a code and opens the page with it; the page
+// signs in with the code. A code is used once and lives two minutes.
+const CMCP_CODE_LIFETIME_MS = 2 * 60_000;
+const CMCP_CODES_KEPT = 20;
 
 /** The device list never shows session ids, only this stand-in for one. */
 function sessionRef(sessionId: string): string {
@@ -99,6 +103,90 @@ function lockedError(seconds: number): AppError {
 export function createAuthService<User extends AuthUser>(dependencies: AuthDependencies<User>) {
   const idle = (session: LoginSessionRecord, now: number) =>
     session.via === 'web' && now - session.last_active_at > WEB_IDLE_LIMIT_MS;
+  const cmcpCodes = new Map<string, { generation: string; expiresAt: number }>();
+
+  /** Checks the password against the per-IP lockout; returns its generation. */
+  async function checkPassword(input: { password: unknown; ip: string }): Promise<string> {
+    const password = typeof input.password === 'string' ? input.password : '';
+    if (!password) {
+      throw new AppError('Enter the password', { code: 'AUTH_PASSWORD_REQUIRED', statusCode: 400 });
+    }
+    const secondsLocked = dependencies.lockout.secondsLocked(input.ip);
+    if (secondsLocked > 0) throw lockedError(secondsLocked);
+
+    const result = await dependencies.password.verify(password);
+    if (!result) {
+      throw new AppError('No login password is set on this server. As root, run: claudeweb password --set', {
+        code: 'AUTH_PASSWORD_NOT_SET',
+        statusCode: 503,
+      });
+    }
+    if (!result.matches) {
+      const failure = dependencies.lockout.recordFailure(input.ip);
+      if (failure.lockedForSeconds > 0) throw lockedError(failure.lockedForSeconds);
+      throw new AppError('Wrong password', {
+        code: 'AUTH_INVALID_PASSWORD',
+        statusCode: 401,
+        details: { attemptsBeforeLock: failure.attemptsBeforeLock },
+      });
+    }
+    dependencies.lockout.recordSuccess(input.ip);
+    return result.generation;
+  }
+
+  /**
+   * Signs this device in. When other devices are signed in, the caller first
+   * gets AUTH_CHOICE_REQUIRED with their list and must say `join` (keep them;
+   * when three are in, `replace` names the one to sign out) or `takeover`
+   * (sign all of them out).
+   */
+  function openSession(generation: string, input: { ip: string; userAgent: string | null; mode?: unknown; replace?: unknown; via: 'web' | 'cmcp' }) {
+    const mode = input.mode === 'join' || input.mode === 'takeover' ? input.mode : null;
+    const now = dependencies.now();
+    dependencies.sessions.deleteStale(generation, now - SESSION_UNUSED_LIMIT_MS);
+    const others = liveSessions(generation);
+    if (others.length > 0) {
+      if (!mode) {
+        throw new AppError('Another device is signed in', {
+          code: 'AUTH_CHOICE_REQUIRED', statusCode: 409, details: describe(others, null),
+        });
+      }
+      if (mode === 'takeover') {
+        for (const session of others) dependencies.sessions.delete(session.id);
+      } else if (others.length >= MAX_DEVICES) {
+        const replaced = others.find((session) => sessionRef(session.id) === input.replace);
+        if (!replaced) {
+          throw new AppError(`At most ${MAX_DEVICES} devices can be signed in. Choose one to sign out.`, {
+            code: 'AUTH_DEVICE_LIMIT', statusCode: 409, details: describe(others, null),
+          });
+        }
+        dependencies.sessions.delete(replaced.id);
+      }
+    }
+
+    const user = dependencies.owner.ensure();
+    const sessionId = dependencies.createSessionId();
+    dependencies.sessions.create({
+      id: sessionId,
+      user_id: user.id,
+      password_generation: generation,
+      via: input.via,
+      ip: input.ip,
+      user_agent: input.userAgent,
+      created_at: now,
+    });
+    dependencies.owner.recordLogin(user.id);
+
+    return {
+      success: true,
+      user: { id: user.id, username: user.username },
+      token: dependencies.signToken({ userId: user.id, username: user.username, sid: sessionId }),
+    };
+  }
+
+  function dropExpiredCodes(now: number) {
+    for (const [code, entry] of cmcpCodes) if (entry.expiresAt <= now) cmcpCodes.delete(code);
+  }
 
   /** Sessions that still count as signed in, oldest first; ended ones are removed. */
   function liveSessions(generation: string): LoginSessionRecord[] {
@@ -152,80 +240,44 @@ export function createAuthService<User extends AuthUser>(dependencies: AuthDepen
       };
     },
 
+    /** Checks the password and signs this browser in (see openSession for other devices). */
+    async login(input: { password: unknown; ip: string; userAgent: string | null; mode?: unknown; replace?: unknown }) {
+      const generation = await checkPassword(input);
+      return openSession(generation, { ...input, via: 'web' });
+    },
+
     /**
-     * Checks the password and signs this device in. When other devices are
-     * signed in, the caller first gets AUTH_CHOICE_REQUIRED with their list and
-     * must say `join` (keep them; when three are in, `replace` names the one to
-     * sign out) or `takeover` (sign all of them out).
+     * CMCP's sign-in, first half: the saved password, checked under the same
+     * lockout, becomes a one-time code that CMCP puts in the address it opens.
      */
-    async login(input: { password: unknown; ip: string; userAgent: string | null; mode?: unknown; replace?: unknown; via?: 'web' | 'cmcp' }) {
-      const password = typeof input.password === 'string' ? input.password : '';
-      if (!password) {
-        throw new AppError('Enter the password', { code: 'AUTH_PASSWORD_REQUIRED', statusCode: 400 });
-      }
-      const mode = input.mode === 'join' || input.mode === 'takeover' ? input.mode : null;
-
-      const secondsLocked = dependencies.lockout.secondsLocked(input.ip);
-      if (secondsLocked > 0) throw lockedError(secondsLocked);
-
-      const result = await dependencies.password.verify(password);
-      if (!result) {
-        throw new AppError('No login password is set on this server. As root, run: claudeweb password --set', {
-          code: 'AUTH_PASSWORD_NOT_SET',
-          statusCode: 503,
-        });
-      }
-      if (!result.matches) {
-        const failure = dependencies.lockout.recordFailure(input.ip);
-        if (failure.lockedForSeconds > 0) throw lockedError(failure.lockedForSeconds);
-        throw new AppError('Wrong password', {
-          code: 'AUTH_INVALID_PASSWORD',
-          statusCode: 401,
-          details: { attemptsBeforeLock: failure.attemptsBeforeLock },
-        });
-      }
-      dependencies.lockout.recordSuccess(input.ip);
-
+    async createCmcpCode(input: { password: unknown; ip: string }) {
+      const generation = await checkPassword(input);
       const now = dependencies.now();
-      dependencies.sessions.deleteStale(result.generation, now - SESSION_UNUSED_LIMIT_MS);
-      const others = liveSessions(result.generation);
-      if (others.length > 0) {
-        if (!mode) {
-          throw new AppError('Another device is signed in', {
-            code: 'AUTH_CHOICE_REQUIRED', statusCode: 409, details: describe(others, null),
-          });
-        }
-        if (mode === 'takeover') {
-          for (const session of others) dependencies.sessions.delete(session.id);
-        } else if (others.length >= MAX_DEVICES) {
-          const replaced = others.find((session) => sessionRef(session.id) === input.replace);
-          if (!replaced) {
-            throw new AppError(`At most ${MAX_DEVICES} devices can be signed in. Choose one to sign out.`, {
-              code: 'AUTH_DEVICE_LIMIT', statusCode: 409, details: describe(others, null),
-            });
-          }
-          dependencies.sessions.delete(replaced.id);
-        }
+      dropExpiredCodes(now);
+      while (cmcpCodes.size >= CMCP_CODES_KEPT) cmcpCodes.delete(cmcpCodes.keys().next().value as string);
+      const code = randomBytes(32).toString('base64url');
+      cmcpCodes.set(code, { generation, expiresAt: now + CMCP_CODE_LIFETIME_MS });
+      return { code, expiresInSeconds: CMCP_CODE_LIFETIME_MS / 1000 };
+    },
+
+    /**
+     * Second half: the page signs in with the code. The device choice works as
+     * for a password; the code stays usable while the user chooses. CMCP logins
+     * do not end after an idle hour.
+     */
+    redeemCmcpCode(input: { code: unknown; ip: string; userAgent: string | null; mode?: unknown; replace?: unknown }) {
+      const now = dependencies.now();
+      dropExpiredCodes(now);
+      const entry = typeof input.code === 'string' ? cmcpCodes.get(input.code) : undefined;
+      if (!entry || entry.generation !== dependencies.password.currentGeneration()) {
+        if (typeof input.code === 'string') cmcpCodes.delete(input.code);
+        throw new AppError('This CMCP sign-in link has expired. Open ClaudeWeb from CMCP again, or enter the password.', {
+          code: 'AUTH_CMCP_CODE_INVALID', statusCode: 401,
+        });
       }
-
-      const user = dependencies.owner.ensure();
-      const sessionId = dependencies.createSessionId();
-      dependencies.sessions.create({
-        id: sessionId,
-        user_id: user.id,
-        password_generation: result.generation,
-        via: input.via ?? 'web',
-        ip: input.ip,
-        user_agent: input.userAgent,
-        created_at: now,
-      });
-      dependencies.owner.recordLogin(user.id);
-
-      return {
-        success: true,
-        user: { id: user.id, username: user.username },
-        token: dependencies.signToken({ userId: user.id, username: user.username, sid: sessionId }),
-      };
+      const result = openSession(entry.generation, { ...input, via: 'cmcp' });
+      cmcpCodes.delete(input.code as string);
+      return result;
     },
 
     /**

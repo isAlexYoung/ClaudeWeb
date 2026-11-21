@@ -102,6 +102,30 @@ describe('the login page', () => {
     });
   });
 
+  it('signs in with the code CMCP put in the address, and takes the code out of it', async () => {
+    const code = 'c'.repeat(43);
+    window.history.replaceState(null, '', `/#cmcp=${code}`);
+    const fetchMock = stubAuthApi({
+      '/api/auth/status': configured,
+      '/api/auth/cmcp/redeem': { status: 401, body: envelope('AUTH_CMCP_CODE_INVALID', 'expired') },
+    });
+
+    render(
+      <AuthProvider>
+        <LoginForm />
+      </AuthProvider>,
+    );
+
+    expect(window.location.hash).toBe('');
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'The CMCP sign-in link has expired. Enter the password, or open ClaudeWeb from CMCP again.',
+    );
+    const sent = fetchMock.mock.calls.filter(([url]) => url === '/api/auth/cmcp/redeem') as unknown as [string, RequestInit][];
+    expect(sent.map(([, init]) => JSON.parse(String(init.body)))).toEqual([{ code }]);
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/auth/login')).toBe(false);
+  });
+
   it('says how to set a password when the server has none', async () => {
     stubAuthApi({ '/api/auth/status': { status: 200, body: { passwordConfigured: false, isAuthenticated: false } } });
 

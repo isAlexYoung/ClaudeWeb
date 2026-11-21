@@ -67,6 +67,25 @@ const f = await login({ mode: 'takeover' });
 check('take over signs every other device out', f.status === 200 && !(await alive(c.body.token)) && !(await alive(d.body.token)) && !(await alive(e2.body.token)));
 check('after take over only this device is listed', (await (await authed(f.body.token, '/api/auth/devices')).json()).logins?.length === 1);
 
+// CMCP: the saved password becomes a one-time code; the page signs in with it as a CMCP login.
+const post = async (path, body) => {
+  const response = await fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', 'cf-connecting-ip': `198.51.100.${ip++}` }, body: JSON.stringify(body) });
+  return { status: response.status, body: await response.json() };
+};
+const protocol = await (await fetch(`${base}/api/auth/cmcp`)).json();
+check('CMCP finds the standalone ClaudeWeb protocol', protocol.protocol === 'claudeweb-cmcp' && protocol.version === 1);
+check('a wrong password gets no CMCP code', (await post('/api/auth/cmcp/code', { password: `${password}-wrong` })).status === 401);
+const issued = await post('/api/auth/cmcp/code', { password });
+check('the right password gets a one-time code', issued.status === 200 && /^[A-Za-z0-9_-]{40,}$/.test(issued.body.code ?? ''));
+const asked = await post('/api/auth/cmcp/redeem', { code: issued.body.code });
+check('the code asks the device question like a password', asked.status === 409 && asked.body.error?.code === 'AUTH_CHOICE_REQUIRED');
+const viaCmcp = await post('/api/auth/cmcp/redeem', { code: issued.body.code, mode: 'join' });
+check('joining with the code signs CMCP in', viaCmcp.status === 200 && await alive(viaCmcp.body.token));
+check('the device list shows the CMCP login', (await (await authed(f.body.token, '/api/auth/devices')).json()).logins?.some((login) => login.via === 'cmcp'));
+const reused = await post('/api/auth/cmcp/redeem', { code: issued.body.code, mode: 'join' });
+check('a code works only once', reused.status === 401 && reused.body.error?.code === 'AUTH_CMCP_CODE_INVALID');
+await authed(viaCmcp.body.token, '/api/auth/logout', { method: 'POST' });
+
 const logout = await authed(f.body.token, '/api/auth/logout', { method: 'POST' });
 check('logout ends this device', logout.status === 200 && !(await alive(f.body.token)));
 
