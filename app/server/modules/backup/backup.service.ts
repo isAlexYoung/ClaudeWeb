@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { createReadStream, createWriteStream, type Stats } from 'node:fs';
-import { link, lstat, mkdir, open, readdir, rename, rm, stat, utimes } from 'node:fs/promises';
+import { link, lstat, mkdir, open, readFile, readdir, rename, rm, stat, utimes } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable, Transform, type TransformCallback, type Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -19,6 +19,8 @@ import {
   BACKUP_PASSWORD_MIN_LENGTH,
   BackupDecryptStream,
   BackupEncryptStream,
+  CLAUDE_USER_FILES,
+  CLAUDE_USER_FOLDERS,
   ENCRYPTED_HEADER_BYTES,
   TAR_END_OF_ARCHIVE,
   classifyBackupEntryPath,
@@ -421,6 +423,64 @@ function manifestPlugins(value: unknown): Array<Omit<BackupPlugin, 'installed'>>
   return plugins;
 }
 
+/** The preview entry for Claude's user settings; chosen or not like a project. */
+const CLAUDE_USER_ID = '@claude-user';
+
+/** `env` entries that hold secrets are left out of a backup, like the sign-in itself. */
+const SECRET_SETTING = /KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH/i;
+
+/** Claude's user settings.json without secret `env` entries; null when it is not a JSON object. */
+function settingsWithoutSecrets(raw: string): Buffer | null {
+  let settings: unknown;
+  try {
+    settings = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return null;
+  const copy = { ...(settings as Record<string, unknown>) };
+  if (copy.env && typeof copy.env === 'object' && !Array.isArray(copy.env)) {
+    copy.env = Object.fromEntries(Object.entries(copy.env as Record<string, unknown>).filter(([name]) => !SECRET_SETTING.test(name)));
+  }
+  return Buffer.from(`${JSON.stringify(copy, null, 2)}\n`);
+}
+
+/** Every string under the old home folder in a JSON document, moved to the new one (hook and status-line paths). */
+class JsonRelocation extends Transform {
+  private chunks: Buffer[] = [];
+  private size = 0;
+
+  constructor(private readonly relocation: Relocation) {
+    super();
+  }
+
+  override _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback): void {
+    this.size += chunk.length;
+    if (this.size > MAX_MANIFEST_BYTES) {
+      callback(new AppError('A Claude settings file in the backup is too large', { code: 'BACKUP_UNSAFE_ENTRY', statusCode: 400 }));
+      return;
+    }
+    this.chunks.push(chunk);
+    callback();
+  }
+
+  override _flush(callback: TransformCallback): void {
+    const raw = Buffer.concat(this.chunks).toString('utf8');
+    const move = (value: unknown): unknown => {
+      if (typeof value === 'string') return relocatePath(this.relocation, value);
+      if (Array.isArray(value)) return value.map(move);
+      if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, move(item)]));
+      return value;
+    };
+    try {
+      this.push(Buffer.from(`${JSON.stringify(move(JSON.parse(raw)), null, 2)}\n`));
+    } catch {
+      this.push(Buffer.from(raw));
+    }
+    callback();
+  }
+}
+
 /** Project folders listed in a manifest: relative, "/"-separated, not hidden, no "..". */
 function manifestProjectFiles(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -533,6 +593,7 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     fileHistory: path.join(dependencies.claudeHome, 'file-history'),
     todos: path.join(dependencies.claudeHome, 'todos'),
     assets: path.join(dependencies.claudewebHome, 'assets'),
+    claudeUser: dependencies.claudeHome,
     workspace: path.resolve(dependencies.homeDirectory),
   };
 
@@ -653,6 +714,10 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
 
     for (const { area, prefix } of BACKUP_AREAS) {
       if (area === 'workspace') continue;
+      if (area === 'claudeUser') {
+        yield* claudeUserEntries(prefix);
+        continue;
+      }
       for await (const file of walkFiles(areaRoots[area])) {
         const name = prefix + file.relative;
         try {
@@ -680,6 +745,41 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
       }
     }
     yield TAR_END_OF_ARCHIVE;
+  }
+
+  /** Claude's user settings: only the listed files and folders, settings.json without secrets. */
+  async function* claudeUserEntries(prefix: string): AsyncGenerator<Buffer> {
+    for (const name of CLAUDE_USER_FILES) {
+      const absolute = path.join(areaRoots.claudeUser, name);
+      let stats: Stats;
+      try {
+        stats = await lstat(absolute);
+      } catch (error) {
+        if (isMissing(error)) continue;
+        throw error;
+      }
+      if (!stats.isFile()) continue;
+      if (name === 'settings.json') {
+        const content = settingsWithoutSecrets(await readFile(absolute, 'utf8'));
+        if (content) yield* memoryEntry(prefix + name, content);
+        else logger.error(`[Backup] Skipping ${absolute}: it is not a JSON object`);
+      } else {
+        yield* fileEntry(prefix + name, absolute, stats);
+      }
+    }
+    for (const folder of CLAUDE_USER_FOLDERS) {
+      for await (const file of walkFiles(path.join(areaRoots.claudeUser, folder))) {
+        const name = `${prefix}${folder}/${file.relative}`;
+        try {
+          classifyBackupEntryPath(name);
+        } catch {
+          logger.error(`[Backup] Skipping ${file.absolute}: its name cannot be restored safely`);
+          continue;
+        }
+        // Skills may carry scripts; their execute bits are kept, set-id bits never.
+        yield* fileEntry(name, file.absolute, file.stats, (file.stats.mode & 0o755) | 0o600);
+      }
+    }
   }
 
   // ---------------------------------------------------------------- import helpers
@@ -1049,6 +1149,21 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     let sharedNewBytes = 0;
     for (const file of files) {
       const target = { kind: 'file' as const, area: file.area, segments: file.segments };
+      if (file.area === 'claudeUser') {
+        let settings = projects.get(CLAUDE_USER_ID);
+        if (!settings) {
+          settings = {
+            id: CLAUDE_USER_ID, name: 'Claude user settings', path: null, pathExists: true,
+            sessionCount: 0, existingSessionCount: 0, newBytes: 0, fileCount: 0, fileBytes: 0,
+          };
+          projects.set(CLAUDE_USER_ID, settings);
+        }
+        if (await exists(destinationOf(target))) continue;
+        settings.newBytes += file.size;
+        settings.fileBytes += file.size;
+        settings.fileCount += 1;
+        continue;
+      }
       if (file.area === 'workspace') {
         const owner = workspaceOwner(workspaceDirs, file.segments);
         if (!owner || await exists(destinationOf(target))) continue;
@@ -1067,6 +1182,7 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     }
 
     for (const project of projects.values()) {
+      if (project.id === CLAUDE_USER_ID) continue;
       project.pathExists = project.path ? await exists(project.path) : false;
     }
 
@@ -1138,6 +1254,23 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
       async onManifest(entry) { entry.resume(); },
       async onData(entry) { entry.resume(); },
       async onFile(entry, target) {
+        if (target.area === 'claudeUser') {
+          const settingsFile = target.segments.length === 1 && target.segments[0] === 'settings.json';
+          // A file only at a listed file name or inside a listed folder.
+          const allowed = target.segments.length === 1
+            ? (CLAUDE_USER_FILES as readonly string[]).includes(target.segments[0])
+            : target.segments.length >= 2;
+          if (!selectedFolders.has(CLAUDE_USER_ID) || !allowed) {
+            entry.resume();
+            return;
+          }
+          await prepareParent(target);
+          const mode = settingsFile ? 0o600 : typeof entry.mode === 'number' ? (entry.mode & 0o755) | 0o600 : 0o600;
+          const transform = settingsFile && plan.relocation ? new JsonRelocation(plan.relocation) : null;
+          if (await writeNewFile(entry, destinationOf(target), mode, transform)) restoredFiles += 1;
+          else skippedExistingFiles += 1;
+          return;
+        }
         if (target.area === 'workspace') {
           const owner = workspaceOwner(plan.workspaceDirs, target.segments);
           if (!owner || !selectedFolders.has(owner.projectId)) {

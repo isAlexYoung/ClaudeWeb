@@ -15,6 +15,8 @@ import { Button, Input } from '@/shared/ui';
 import { cn } from '@/shared/utils';
 
 const MIN_PASSWORD_LENGTH = 8;
+// The preview entry the server uses for Claude's user settings.
+const CLAUDE_USER_ID = '@claude-user';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -214,6 +216,24 @@ function PreviewPanel({
           {preview.projects.map((project) => {
             const checked = !excluded.includes(project.id);
             const newSessions = project.sessionCount - project.existingSessionCount;
+            // Claude's user settings are listed like a project, so they can be left out too.
+            if (project.id === CLAUDE_USER_ID) {
+              return (
+                <li key={project.id}>
+                  <label className="flex cursor-pointer items-start gap-3 px-4 py-3">
+                    <input type="checkbox" className="mt-1 h-4 w-4 flex-shrink-0 accent-primary" checked={checked} onChange={() => toggle(project.id)} />
+                    <span className="min-w-0 flex-1 space-y-1">
+                      <span className="block text-sm font-medium text-foreground">{t('backup.import.userSettings')}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {project.fileCount > 0
+                          ? t('backup.import.userSettingsFiles', { count: project.fileCount, size: formatBytes(project.fileBytes) })
+                          : t('backup.import.userSettingsExisting')}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              );
+            }
             return (
               <li key={project.id}>
                 <label className="flex cursor-pointer items-start gap-3 px-4 py-3">

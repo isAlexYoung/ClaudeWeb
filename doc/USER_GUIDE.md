@@ -113,6 +113,10 @@ a backup file:
    Both servers need rsync (`apt-get install -y rsync`). Keep the same path under the home folder (`/home/wdguest/X` →
    `/home/claudeweb/X`) so the conversations find their project.
 
+Claude's user settings (settings.json without keys, CLAUDE.md, commands,
+agents, skills, output styles) are in the backup too and can be left out when
+importing; files that exist here are kept.
+
 Plugins are not copied: after the import the page lists the plugins the
 backup has and this server lacks; Install puts each back from its source (its
 keys and settings need to be entered again).

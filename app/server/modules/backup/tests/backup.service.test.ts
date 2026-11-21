@@ -174,6 +174,7 @@ test('export contains transcripts, memory, checkpoints, task lists, images and d
     'claude/projects/-home-u-proj/bbbb-2222.jsonl',
     'claude/projects/-home-u-proj/memory/MEMORY.md',
     'claude/todos/aaaa-1111-agent-aaaa-1111.json',
+    'claude/user/settings.json',
     'claudeweb/assets/picture.png',
     'claudeweb/data.json',
     'manifest.json',
@@ -233,6 +234,7 @@ test('preview lists projects, counts sessions, marks existing ones and missing p
     sessions: project.sessionCount, existing: project.existingSessionCount,
   })), [
     { id: '-', name: '-', path: '/', pathExists: true, sessions: 1, existing: 1 },
+    { id: '@claude-user', name: 'Claude user settings', path: null, pathExists: true, sessions: 0, existing: 0 },
     { id: '-home-u-proj', name: 'My project', path: '/home/u/proj', pathExists: false, sessions: 2, existing: 1 },
   ]);
   assert.ok(preview.projects[1].newBytes > 0);
@@ -332,6 +334,7 @@ for (const [name, archive, code] of [
   ['a hard link', handMadeArchive(linkEntry('claude/projects/-p/link', 'Link', '/etc/passwd')), 'BACKUP_UNSAFE_ENTRY'],
   ['Claude credentials', handMadeArchive(tarFile('claude/.credentials.json', '{}')), 'BACKUP_UNSAFE_ENTRY'],
   ['a file for a hidden folder of the home folder', handMadeArchive(tarFile('files/.ssh/authorized_keys', 'key')), 'BACKUP_UNSAFE_ENTRY'],
+  ['Claude credentials among the user settings', handMadeArchive(tarFile('claude/user/.credentials.json', '{}')), 'BACKUP_UNSAFE_ENTRY'],
   ['a file at an area root', handMadeArchive(tarFile('claude/projects', 'x')), 'BACKUP_UNSAFE_ENTRY'],
   ['no manifest', gzipSync(Buffer.concat([...tarFile('claude/projects/-p/a.jsonl', '{}'), TAR_END_OF_ARCHIVE])), 'BACKUP_FORMAT_UNKNOWN'],
   ['a zip file', Buffer.from('PK\u0003\u0004 not a backup'), 'BACKUP_FORMAT_UNKNOWN'],
@@ -555,6 +558,59 @@ test('a backup lists plugins installed from a repository, and the preview says w
   }
   assert.equal(status.state, 'ready', JSON.stringify(status.error));
   assert.deepEqual(status.preview!.plugins.map((plugin) => [plugin.name, plugin.installed, plugin.enabled]), [['notes', false, false], ['shared', true, true]]);
+});
+
+test('Claude user settings are backed up without secrets and restored without replacing anything', async (t) => {
+  const source = await createHarness();
+  const target = await createHarness();
+  t.after(async () => {
+    await rm(source.root, { recursive: true, force: true });
+    await rm(target.root, { recursive: true, force: true });
+  });
+  const sourceHome = path.resolve(source.home);
+  await writeTree(path.join(source.home, '.claude'), {
+    'settings.json': JSON.stringify({
+      model: 'opus',
+      env: { ANTHROPIC_API_KEY: 'sk-secret', GITHUB_TOKEN: 'ghp-secret', MY_FLAG: '1' },
+      statusLine: { type: 'command', command: path.join(sourceHome, 'bin', 'status.sh') },
+    }),
+    'CLAUDE.md': 'I like short answers.',
+    'commands/review.md': 'Review the diff',
+    'skills/fmt/SKILL.md': 'Format code',
+    '.credentials.json': '{"claudeAiOauth":{}}',
+    'hooks/other.sh': 'not listed',
+  });
+  const archive = await exportBackup(source);
+  const entries = await listEntries(gunzipSync(archive));
+  assert.deepEqual([...entries.keys()].filter((name) => name.startsWith('claude/user/')).sort(), [
+    'claude/user/CLAUDE.md', 'claude/user/commands/review.md', 'claude/user/settings.json', 'claude/user/skills/fmt/SKILL.md',
+  ]);
+  const saved = JSON.parse(entries.get('claude/user/settings.json')!.toString());
+  assert.deepEqual(saved.env, { MY_FLAG: '1' }, 'keys and tokens never go into a backup');
+  assert.ok(!gunzipSync(archive).includes(Buffer.from('sk-secret')));
+
+  // The new server already has its own CLAUDE.md; it is kept.
+  await writeTree(path.join(target.home, '.claude'), { 'CLAUDE.md': 'KEEP' });
+  const importId = await upload(target, archive);
+  target.service.startPreview(1, importId, undefined);
+  const ready = await waitForState(target, importId, ['ready', 'failed']);
+  assert.equal(ready.state, 'ready', JSON.stringify(ready.error));
+  const settings = ready.preview!.projects.find((project) => project.id === '@claude-user');
+  assert.equal(settings?.fileCount, 3);
+  await target.service.startApply(1, importId, ['@claude-user']);
+  const done = await waitForState(target, importId, ['done', 'failed']);
+  assert.equal(done.state, 'done', JSON.stringify(done.error));
+  const claude = path.join(target.home, '.claude');
+  assert.equal(await readFile(path.join(claude, 'CLAUDE.md'), 'utf8'), 'KEEP');
+  assert.equal(await readFile(path.join(claude, 'commands', 'review.md'), 'utf8'), 'Review the diff');
+  assert.equal(await readFile(path.join(claude, 'skills', 'fmt', 'SKILL.md'), 'utf8'), 'Format code');
+  const restored = JSON.parse(await readFile(path.join(claude, 'settings.json'), 'utf8'));
+  assert.equal(restored.model, 'opus');
+  if (sourceHome.startsWith('/')) {
+    // Linux: the home folder moves with the backup, so the status-line script follows.
+    assert.equal(restored.statusLine.command, path.join(path.resolve(target.home), 'bin', 'status.sh'));
+  }
+  await assert.rejects(stat(path.join(claude, '.credentials.json')), { code: 'ENOENT' });
 });
 
 function chunkSize8MiB(): number {

@@ -31,6 +31,12 @@ release is a test release.
   `files/` with their Git history and permissions (no links, no set-id
   bits); an import restores them under the home folder, never into its
   hidden folders and never over an existing file.
+- Backups include Claude's user settings: settings.json (its `env` entries
+  whose names mention a key, token, secret, password, credential or auth are
+  left out), CLAUDE.md, and the commands, agents, skills and output-styles
+  folders; never the sign-in or `.claude.json`. The import lists them as one
+  entry that can be left out, keeps files that exist, and moves paths under
+  the old home folder in settings.json to the new one.
 - Backups list the plugins installed from a repository (name, source,
   enabled), never their code or keys. After an import, Settings > Backup &
   restore lists the ones this server lacks with an Install button that puts

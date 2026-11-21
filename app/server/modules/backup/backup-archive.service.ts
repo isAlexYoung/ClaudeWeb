@@ -23,6 +23,8 @@ import { AppError } from '@/shared/utils.js';
 //   claude/file-history/<sid>/...    code checkpoints used by rewind
 //   claude/todos/<file>              task lists
 //   claudeweb/assets/...              images attached to chats
+//   claude/user/<name>               Claude's user settings: settings.json (keys removed),
+//                                    CLAUDE.md, commands/, agents/, skills/, output-styles/
 //   files/<path under home>/...      project folders chosen at export (optional)
 //
 // Paths are recorded as they were on the exporting server; an import onto a
@@ -47,11 +49,19 @@ export const BACKUP_AREAS = [
   { area: 'fileHistory', prefix: 'claude/file-history/' },
   { area: 'todos', prefix: 'claude/todos/' },
   { area: 'assets', prefix: 'claudeweb/assets/' },
+  { area: 'claudeUser', prefix: 'claude/user/' },
   { area: 'workspace', prefix: 'files/' },
 ] as const;
 
 /** One of the restorable directories. */
 export type BackupArea = (typeof BACKUP_AREAS)[number]['area'];
+
+/**
+ * What `claude/user/` may hold: two files and four folders of Claude's home.
+ * Never the sign-in (.credentials.json) or .claude.json.
+ */
+export const CLAUDE_USER_FILES = ['settings.json', 'CLAUDE.md'] as const;
+export const CLAUDE_USER_FOLDERS = ['commands', 'agents', 'skills', 'output-styles'] as const;
 
 /** Where a validated archive entry goes; `segments` is empty for an area or parent directory itself. */
 export type BackupEntryTarget =
@@ -121,6 +131,11 @@ export function classifyBackupEntryPath(entryPath: string): BackupEntryTarget {
       // Project files go under the home folder, but never into its hidden
       // folders (shell start-up files, SSH keys, Claude's own settings).
       if (area === 'workspace' && segments[0].startsWith('.')) throw unsafeEntry(entryPath, 'hidden folder in the home folder');
+      if (area === 'claudeUser') {
+        const file = segments.length === 1 && (CLAUDE_USER_FILES as readonly string[]).includes(segments[0]);
+        const folder = (CLAUDE_USER_FOLDERS as readonly string[]).includes(segments[0]);
+        if (!file && !folder) throw unsafeEntry(entryPath, 'not a Claude user setting');
+      }
       return { kind: 'file', area, segments };
     }
   }
