@@ -1,0 +1,42 @@
+name: Check a published release
+
+# Installs a published release in a fresh Debian 12 VM exactly as the README
+# says, from the public install.sh, the signed list and the GitHub Release.
+# Run it after publishing, and again after promoting a release to stable.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Published version, for example 2.0.0'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  public-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: VM tools
+        run: |
+          sudo apt-get update -q
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends qemu-system-x86 qemu-utils genisoimage
+          if [ -e /dev/kvm ]; then sudo chmod a+rw /dev/kvm; fi
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/claudeweb-ci
+          key: debian-12-genericcloud-amd64-20261018-2635
+      - name: Public one-line install in a fresh VM
+        env:
+          VERSION: ${{ inputs.version }}
+        run: python3 packaging/ci/run-vm.py --test public --version "$VERSION" --out vm-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-install-${{ inputs.version }}
+          path: vm-results
+          retention-days: 7

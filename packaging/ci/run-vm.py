@@ -1,6 +1,7 @@
 """CI only: run one packaging test in a fresh Debian 12 VM and throw the VM away.
 
 usage: python3 packaging/ci/run-vm.py --test install|update|browser|devices|sudo --releases DIR --out DIR
+       python3 packaging/ci/run-vm.py --test public --version X.Y.Z --out DIR   (a published release, from the internet)
 
 The GitHub Ubuntu runner boots the pinned Debian 12 cloud image (checked against
 Debian's published SHA-512) under QEMU, 2 vCPUs and 4 GiB like a small VPS, logs
@@ -12,6 +13,7 @@ import argparse
 import hashlib
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -30,6 +32,8 @@ TESTS = {
     'devices': ('test-devices.sh', 'releases/claudeweb-2.0.0-linux-x64.tar.xz', ['claudeweb-2.0.0-linux-x64.tar.xz']),
     'sudo': ('test-sudo.sh', 'releases/claudeweb-2.0.0-linux-x64.tar.xz', ['claudeweb-2.0.0-linux-x64.tar.xz']),
     'update': ('test-update.sh', 'releases', None),
+    # A published release: the VM fetches everything itself, nothing is copied but the test.
+    'public': ('test-public-install.sh', None, []),
 }
 
 
@@ -64,11 +68,17 @@ def base_image(cache):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test', choices=sorted(TESTS), required=True)
-    parser.add_argument('--releases', type=Path, required=True)
+    parser.add_argument('--releases', type=Path)
+    parser.add_argument('--version')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--cache', type=Path, default=Path.home() / '.cache/claudeweb-ci')
     options = parser.parse_args()
     script, argument, packages = TESTS[options.test]
+    public = options.test == 'public'
+    if public and not re.fullmatch(r'\d{1,4}\.\d{1,4}\.\d{1,4}', options.version or ''):
+        raise SystemExit('--version=X.Y.Z is required for the public test')
+    if not public and not options.releases:
+        raise SystemExit('--releases is required')
     out = options.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     image = base_image(options.cache)
@@ -105,11 +115,12 @@ def main():
         # What the test runs, laid out as the repository: /root/cw/install.sh, packaging/, releases/.
         bundle = work / 'bundle.tar'
         with tarfile.open(bundle, 'w') as tar:
-            tar.add(options.releases / 'install.sh', 'cw/install.sh')
             tar.add(ROOT / 'packaging', 'cw/packaging', filter=lambda item: None if '/ci' in item.name else item)
-            for item in sorted(options.releases.iterdir()):
-                if packages is None or item.name in packages or item.name in [p + '.sha256' for p in packages]:
-                    tar.add(item, 'cw/releases/' + item.name)
+            if not public:
+                tar.add(options.releases / 'install.sh', 'cw/install.sh')
+                for item in sorted(options.releases.iterdir()):
+                    if packages is None or item.name in packages or item.name in [p + '.sha256' for p in packages]:
+                        tar.add(item, 'cw/releases/' + item.name)
 
         acceleration = ['-accel', 'kvm', '-cpu', 'host'] if os.access('/dev/kvm', os.R_OK | os.W_OK) else ['-accel', 'tcg', '-cpu', 'max']
         serial = (out / 'serial.log').open('wb')
@@ -136,7 +147,8 @@ def main():
                 run(ssh + ['sudo tar -x --no-same-owner -C /root'], stdin=stream, timeout=900)
             print(f'== {script}', flush=True)
             with (out / 'test.log').open('wb') as log:
-                test = subprocess.Popen(ssh + [f'sudo bash -c "cd /root/cw && bash packaging/{script} /root/cw/{argument}"'],
+                target = options.version if public else f'/root/cw/{argument}'
+                test = subprocess.Popen(ssh + [f'sudo bash -c "cd /root/cw && bash packaging/{script} {target}"'],
                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 for line in test.stdout:
                     sys.stdout.buffer.write(line)

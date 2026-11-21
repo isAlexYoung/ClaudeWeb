@@ -51,6 +51,9 @@ On Debian 12 amd64 with `build-essential`, `python3`, `git`, `curl`,
    ```
 
    Commit and push `releases.json` and `releases.json.minisig` together.
+   Then start the **Check a published release** workflow with the version:
+   it installs the release in a fresh Debian 12 VM with the README's
+   one-line command, using only what is published.
 
 5. To make it stable later:
 
