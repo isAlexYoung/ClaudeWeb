@@ -506,6 +506,57 @@ test('export can include project folders, which import restores without replacin
   assert.equal(done.result?.skippedExistingFiles, 1);
 });
 
+test('a backup lists plugins installed from a repository, and the preview says which are missing here', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'backup-plugins-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const make = (home: string, plugins: Array<{ name: string; displayName?: string; repoUrl: string | null; enabled: boolean; bundled: boolean }>) => createBackupService({
+    homeDirectory: home,
+    claudeHome: path.join(home, '.claude'),
+    claudewebHome: path.join(home, '.claudeweb'),
+    uploadsDirectory: path.join(home, '.claudeweb', 'backup-imports'),
+    database: {
+      exportSnapshot: () => EMPTY_SNAPSHOT,
+      findKnownProviderSessionIds: () => new Set(),
+      mergeSnapshot: () => ({ projects: 0, sessions: 0, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0 }),
+      restoreSessionFlags: () => undefined,
+    },
+    reindexTranscript: async () => undefined,
+    announceSessions: async () => undefined,
+    freeBytes: async () => 1e12,
+    plugins: { list: () => plugins },
+    logger: { error: () => undefined },
+  });
+  const source = make(path.join(root, 'a'), [
+    { name: 'notes', displayName: 'Notes', repoUrl: 'https://github.com/example/notes', enabled: false, bundled: false },
+    { name: 'shared', repoUrl: 'https://github.com/example/shared', enabled: true, bundled: false },
+    { name: 'claude-usage', repoUrl: null, enabled: true, bundled: true },
+    { name: 'local-only', repoUrl: null, enabled: true, bundled: false },
+  ]);
+  const { downloadId } = await source.prepareExport(1, undefined);
+  const chunks: Buffer[] = [];
+  await source.writeExport(source.takeExportTicket(downloadId), new Writable({ write(chunk: Buffer, _encoding, callback) { chunks.push(chunk); callback(); } }));
+  const archive = Buffer.concat(chunks);
+  const manifest = JSON.parse((await listEntries(gunzipSync(archive))).get('manifest.json')!.toString());
+  assert.deepEqual(manifest.plugins, [
+    { name: 'notes', displayName: 'Notes', repoUrl: 'https://github.com/example/notes', enabled: false },
+    { name: 'shared', displayName: null, repoUrl: 'https://github.com/example/shared', enabled: true },
+  ]);
+
+  const target = make(path.join(root, 'b'), [{ name: 'shared', repoUrl: 'https://github.com/example/shared', enabled: true, bundled: false }]);
+  const { importId, chunkSize } = await target.createImport(1, { size: archive.length });
+  for (let index = 0; index * chunkSize < archive.length; index += 1) {
+    await target.writeImportChunk(1, importId, index, archive.subarray(index * chunkSize, (index + 1) * chunkSize));
+  }
+  target.startPreview(1, importId, undefined);
+  let status = target.getImport(1, importId);
+  for (let attempt = 0; attempt < 500 && status.state !== 'ready' && status.state !== 'failed'; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    status = target.getImport(1, importId);
+  }
+  assert.equal(status.state, 'ready', JSON.stringify(status.error));
+  assert.deepEqual(status.preview!.plugins.map((plugin) => [plugin.name, plugin.installed, plugin.enabled]), [['notes', false, false], ['shared', true, true]]);
+});
+
 function chunkSize8MiB(): number {
   return 8 * 1024 * 1024;
 }

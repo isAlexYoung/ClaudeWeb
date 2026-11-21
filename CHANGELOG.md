@@ -31,6 +31,12 @@ release is a test release.
   `files/` with their Git history and permissions (no links, no set-id
   bits); an import restores them under the home folder, never into its
   hidden folders and never over an existing file.
+- Backups list the plugins installed from a repository (name, source,
+  enabled), never their code or keys. After an import, Settings > Backup &
+  restore lists the ones this server lacks with an Install button that puts
+  each back from its source.
+- The update confirmation in Settings > About says how many conversations
+  (scheduled tasks included) the restart would stop.
 
 ## 2.0.1 - 2026-11-21 (test release)
 

@@ -80,6 +80,8 @@ type BackupServiceDependencies = {
   announceSessions(sessionIds: string[]): Promise<void>;
   /** Free bytes on the filesystem holding `directory` (or its nearest existing parent). */
   freeBytes(directory: string): Promise<number>;
+  /** Installed plugins; a backup records their names and sources, never their code or keys. */
+  plugins?: { list(): Array<{ name: string; displayName?: string; repoUrl: string | null; enabled: boolean; bundled: boolean }> };
   now?: () => Date;
   logger?: { error(message: string, error?: unknown): void };
 };
@@ -111,6 +113,8 @@ type BackupPreview = {
   sourceHome: string | null;
   /** Set when the backup came from another home folder: paths under `from` are restored under `to`. */
   relocation: { from: string; to: string } | null;
+  /** Plugins installed where the backup was made, to reinstall here from their sources. */
+  plugins: BackupPlugin[];
   encrypted: boolean;
   projects: BackupPreviewProject[];
   /** Bytes outside any project (chat images, task lists of unknown sessions). */
@@ -127,6 +131,8 @@ type BackupImportResult = {
 };
 
 type ScannedFile = { area: BackupArea; segments: string[]; size: number };
+
+type BackupPlugin = { name: string; displayName: string | null; repoUrl: string; enabled: boolean; installed: boolean };
 
 /** How paths under the exporting server's home folder map to this one. */
 type Relocation = { from: string; to: string; fromFolder: string; toFolder: string };
@@ -395,6 +401,26 @@ function relocatedTarget(
   return { ...target, segments: [relocateFolder(relocation, target.segments[0]), ...target.segments.slice(1)] };
 }
 
+/** Plugins listed in a manifest: a plain name and an https source; anything else is dropped. */
+function manifestPlugins(value: unknown): Array<Omit<BackupPlugin, 'installed'>> {
+  if (!Array.isArray(value)) return [];
+  const plugins: Array<Omit<BackupPlugin, 'installed'>> = [];
+  for (const item of value.slice(0, 200)) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    if (typeof row.name !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(row.name)) continue;
+    if (typeof row.repoUrl !== 'string' || row.repoUrl.length > 500 || !/^https:\/\/[^\s@]+$/.test(row.repoUrl)) continue;
+    if (plugins.some((plugin) => plugin.name === row.name)) continue;
+    plugins.push({
+      name: row.name,
+      displayName: typeof row.displayName === 'string' ? row.displayName.slice(0, 200) : null,
+      repoUrl: row.repoUrl,
+      enabled: row.enabled !== false,
+    });
+  }
+  return plugins;
+}
+
 /** Project folders listed in a manifest: relative, "/"-separated, not hidden, no "..". */
 function manifestProjectFiles(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -617,6 +643,10 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
       sourceHome: dependencies.homeDirectory,
       contents: BACKUP_AREAS.filter((area) => area.area !== 'workspace' || ticket.projectFiles.length > 0).map((area) => area.prefix),
       projectFiles: ticket.projectFiles,
+      // Plugins the user installed from a repository; bundled ones come with ClaudeWeb.
+      plugins: (dependencies.plugins?.list() ?? [])
+        .filter((plugin) => !plugin.bundled && typeof plugin.repoUrl === 'string' && plugin.repoUrl.startsWith('https://'))
+        .map((plugin) => ({ name: plugin.name, displayName: plugin.displayName ?? null, repoUrl: plugin.repoUrl, enabled: plugin.enabled })),
     };
     yield* memoryEntry(BACKUP_MANIFEST_ENTRY, Buffer.from(JSON.stringify(manifest, null, 2)));
     yield* memoryEntry(BACKUP_DATA_ENTRY, Buffer.from(JSON.stringify(dependencies.database.exportSnapshot(ticket.userId))));
@@ -1045,6 +1075,10 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
       createdAt: typeof checkedManifest.createdAt === 'string' ? checkedManifest.createdAt : null,
       sourceHome: typeof checkedManifest.sourceHome === 'string' ? checkedManifest.sourceHome : null,
       relocation: relocation ? { from: relocation.from, to: relocation.to } : null,
+      plugins: (() => {
+        const installed = new Set((dependencies.plugins?.list() ?? []).map((plugin) => plugin.name));
+        return manifestPlugins(checkedManifest.plugins).map((plugin) => ({ ...plugin, installed: installed.has(plugin.name) }));
+      })(),
       encrypted: job.format === 'encrypted',
       projects: [...projects.values()].sort((left, right) => left.name.localeCompare(right.name)),
       sharedNewBytes,

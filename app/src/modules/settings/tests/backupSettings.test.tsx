@@ -7,6 +7,8 @@ import type { BackupImportStatus } from '@/shared/types';
 const mocks = vi.hoisted(() => ({
   prepareExport: vi.fn(),
   projectFolders: vi.fn(),
+  pluginInstall: vi.fn(),
+  pluginToggle: vi.fn(),
   createImport: vi.fn(),
   uploadChunk: vi.fn(),
   status: vi.fn(),
@@ -21,6 +23,7 @@ vi.mock('@/shared/api', async (original) => ({
       ...mocks,
       downloadUrl: (downloadId: string) => `/api/backup-download/${downloadId}`,
     },
+    plugins: { install: mocks.pluginInstall, toggle: mocks.pluginToggle },
     // Changing the language saves it as a preference.
     user: { savePreferences: vi.fn(async () => new Response('{}')) },
   },
@@ -147,6 +150,35 @@ test('import uploads in pieces, asks for the password, previews and imports the 
   expect(await screen.findByText('Importing…')).toBeTruthy();
   await waitFor(() => expect(screen.getByText('Imported 2 conversations.')).toBeTruthy(), { timeout: 3000 });
   expect(screen.getByText('Skipped 1 conversation that was already here.')).toBeTruthy();
+});
+
+test('after an import, plugins from the backup that are missing here can be installed again', async () => {
+  mocks.createImport.mockResolvedValue(json({ importId: 'imp-1', chunkSize: 1024 }));
+  mocks.uploadChunk.mockResolvedValue(json({ received: 3 }));
+  mocks.preview.mockResolvedValue(json(importStatus({ state: 'reading' })));
+  mocks.status.mockResolvedValue(json(importStatus({
+    state: 'done',
+    result: { restoredSessions: 1, skippedExistingSessions: 0, restoredFiles: 1, skippedExistingFiles: 0 },
+    preview: {
+      createdAt: null, sourceHome: '/home/claudeweb', relocation: null, encrypted: false, sharedNewBytes: 0, freeBytes: 1e9, projects: [],
+      plugins: [
+        { name: 'notes', displayName: 'Notes', repoUrl: 'https://github.com/example/notes', enabled: false, installed: false },
+        { name: 'shared', displayName: 'Shared', repoUrl: 'https://github.com/example/shared', enabled: true, installed: true },
+      ],
+    },
+  })));
+  mocks.pluginInstall.mockResolvedValue(json({ success: true }));
+  mocks.pluginToggle.mockResolvedValue(json({ success: true }));
+  const { container } = render(<BackupSettingsTab />);
+  await act(async () => {
+    fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['abc'], 'claude-backup.tar.gz')] } });
+  });
+  await waitFor(() => expect(screen.getByText('Plugins from the backup')).toBeTruthy(), { timeout: 3000 });
+  expect(screen.queryByText('Shared')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+  expect(await screen.findByText('Installed')).toBeTruthy();
+  expect(mocks.pluginInstall).toHaveBeenCalledWith('https://github.com/example/notes');
+  expect(mocks.pluginToggle).toHaveBeenCalledWith('notes', false);
 });
 
 test('a refused archive explains why and lets the user choose again', async () => {

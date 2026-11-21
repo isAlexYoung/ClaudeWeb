@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createBackupDownloadRouter, createBackupRouter } from '@/modules/backup/backup.routes.js';
 import { createBackupService } from '@/modules/backup/backup.service.js';
 import { backupDb } from '@/modules/database/index.js';
+import { scanPlugins } from '@/modules/plugins/index.js';
 import { sessionSynchronizerService } from '@/modules/providers/index.js';
 import { broadcastSessionUpsertedBatch } from '@/modules/websocket/index.js';
 
@@ -25,6 +26,11 @@ const backupService = createBackupService({
     await sessionSynchronizerService.synchronizeProviderFile('claude', filePath);
   },
   announceSessions: (sessionIds) => broadcastSessionUpsertedBatch(sessionIds),
+  plugins: {
+    list: () => scanPlugins().map((plugin: { name: string; displayName?: string; repoUrl: string | null; enabled: boolean; bundled: boolean }) => ({
+      name: plugin.name, displayName: plugin.displayName, repoUrl: plugin.repoUrl, enabled: plugin.enabled, bundled: plugin.bundled,
+    })),
+  },
   freeBytes: async (directory) => {
     const stats = await statfs(directory);
     return Number(stats.bavail) * Number(stats.bsize);

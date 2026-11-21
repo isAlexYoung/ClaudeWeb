@@ -1488,6 +1488,8 @@ export type BackupPreview = {
   sourceHome: string | null;
   /** Set when the backup came from another home folder, such as WebDesktop's /home/wdguest. */
   relocation: { from: string; to: string } | null;
+  /** Plugins installed where the backup was made; reinstalled from their sources, never copied. */
+  plugins?: Array<{ name: string; displayName: string | null; repoUrl: string; enabled: boolean; installed: boolean }>;
   encrypted: boolean;
   projects: BackupPreviewProject[];
   sharedNewBytes: number;

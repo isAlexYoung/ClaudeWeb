@@ -261,6 +261,56 @@ function PreviewPanel({
   );
 }
 
+type BackupPlugins = NonNullable<BackupPreview['plugins']>;
+
+/** After an import: plugins the backup lists that are not installed here, each reinstalled from its source on request. */
+function PluginsToReinstall({ plugins }: { plugins: BackupPlugins }) {
+  const { t } = useTranslation('settings');
+  // Per plugin: installing, installed, or failed.
+  const [states, setStates] = useState<Record<string, 'installing' | 'installed' | 'failed'>>({});
+  const missing = plugins.filter((plugin) => !plugin.installed);
+  if (missing.length === 0) return null;
+
+  const install = async (plugin: BackupPlugins[number]) => {
+    setStates((current) => ({ ...current, [plugin.name]: 'installing' }));
+    try {
+      const response = await api.plugins.install(plugin.repoUrl);
+      if (!response.ok) throw new Error('install refused');
+      if (!plugin.enabled) await api.plugins.toggle(plugin.name, false);
+      setStates((current) => ({ ...current, [plugin.name]: 'installed' }));
+    } catch {
+      setStates((current) => ({ ...current, [plugin.name]: 'failed' }));
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-foreground">{t('backup.import.plugins')}</p>
+      <p className="text-xs text-muted-foreground">{t('backup.import.pluginsHint')}</p>
+      <ul className="divide-y divide-border rounded-xl border border-border">
+        {missing.map((plugin) => {
+          const state = states[plugin.name];
+          return (
+            <li key={plugin.name} className="flex items-center gap-3 px-4 py-2.5">
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm text-foreground">{plugin.displayName || plugin.name}</span>
+                <span className="block truncate font-mono text-xs text-muted-foreground" title={plugin.repoUrl}>{plugin.repoUrl}</span>
+              </span>
+              {state === 'installed' ? (
+                <span className="text-xs text-green-600 dark:text-green-400">{t('backup.import.pluginInstalled')}</span>
+              ) : (
+                <Button size="sm" variant="outline" disabled={state === 'installing'} onClick={() => void install(plugin)}>
+                  {state === 'installing' ? t('backup.import.pluginInstalling') : state === 'failed' ? t('backup.import.pluginRetry') : t('backup.import.pluginInstall')}
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function PasswordPanel({ status, onSubmit, onCancel }: {
   status: BackupImportStatus;
   onSubmit: (password: string) => void;
@@ -358,6 +408,7 @@ function ImportSection() {
           <p className="text-sm text-muted-foreground">{t('backup.import.skipped', { count: status.result.skippedExistingSessions })}</p>
         )}
         <p className="text-sm text-muted-foreground">{t('backup.import.doneHint')}</p>
+        {status.preview?.plugins && <PluginsToReinstall plugins={status.preview.plugins} />}
         <Button onClick={reset}>{t('backup.import.finish')}</Button>
       </div>
     );

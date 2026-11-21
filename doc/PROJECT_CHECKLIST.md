@@ -123,7 +123,7 @@
 
 - [x] 安装官方 Claude Code CLI，聊天（通过 Agent SDK 启动）与终端中的 `claude` 使用同一份程序和同一份登录信息。现有实现为 `/opt/claude-cli/.local/bin/claude`，由 `CLAUDE_CLI_PATH` 指定。（独立版：官方安装器装到 /home/claudeweb/.local/bin/claude，CLAUDE_CLI_PATH 指向它，终端 PATH 里也是它，登录信息同在 ~/.claude）
 - [ ] 登录流程：在 ClaudeWeb 终端运行 `claude` 登录，终端输出登录链接，用 ClaudeWeb 内置浏览器打开并完成登录，之后聊天和终端都可直接使用。
-- [ ] 确定 CLI 是否自动更新，以及 CLI 版本与 ClaudeWeb 的兼容检查。
+- [x] 确定 CLI 是否自动更新，以及 CLI 版本与 ClaudeWeb 的兼容检查。（2026-11-21 用户选定：保持官方默认的自动更新；「设置 → 智能体」和 `claudeweb status` 显示 CLI 版本，可手动更新；不兼容时由 ClaudeWeb 发新版修复）
 
 ## 资源和网络
 
@@ -246,7 +246,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 
 - [x] 独立安装不自动改动已有 WebDesktop 或 ClaudeWeb 服务。（导入只读备份文件，不连接也不改动旧服务器）
 - [x] 明确导入流程，迁移前备份并保留原始数据。（2026-11-21 用户选定：在旧 ClaudeWeb 的「设置 → 备份与恢复」导出，在独立版同一页面导入；旧服务器上的数据不动，导入从不覆盖已有文件）
-- [ ] 处理项目、聊天、Claude 配置、记忆、插件和应用数据库。（已做：聊天、项目记忆、检查点、任务清单、图片、应用数据库中的标题/归档/草稿/定时任务/偏好；导出时可勾选项目文件夹（用户选定）。未做：插件和 Claude 用户级设置不进备份，需重新安装；WebDesktop 内置的旧 ClaudeWeb 还没有“带上项目文件夹”的导出，要用它带项目需给 WebDesktop 发新版，或用 rsync 复制项目）
+- [ ] 处理项目、聊天、Claude 配置、记忆、插件和应用数据库。（已做：聊天、项目记忆、检查点、任务清单、图片、应用数据库中的标题/归档/草稿/定时任务/偏好；导出时可勾选项目文件夹（用户选定）。插件（2026-11-21 用户选定）：备份只记插件清单（名称、来源、是否启用），导入后列出缺少的插件，一键从原来源重新安装；未做：Claude 用户级设置不进备份；WebDesktop 内置的旧 ClaudeWeb 还没有“带上项目文件夹”的导出，要用它带项目需给 WebDesktop 发新版，或用 rsync 复制项目）
 - [x] 转换绝对路径、文件所有权及旧 `cloudcli` 标识。（备份记录的主目录与本机不同时（如 /home/wdguest → /home/claudeweb），对话文件夹名、对话记录里的 cwd、数据库中的项目路径都换到新主目录；文件由 claudeweb 写入；旧 `cloudcli-backup` 格式和 `cloudcli/` 目录照常导入）
 - [x] 单独验证浏览器配置和密钥环可迁移性，不承诺复制后自动保持登录。（决定不迁移浏览器配置；使用说明写明浏览器里的登录要重新登录）
 - [x] 导入失败保留原安装可用，提供可定位的错误。（预览前整份检查，不安全的条目直接拒绝；错误带代码和原因；已有文件不覆盖）

@@ -113,8 +113,12 @@ a backup file:
    Both servers need rsync (`apt-get install -y rsync`). Keep the same path under the home folder (`/home/wdguest/X` →
    `/home/claudeweb/X`) so the conversations find their project.
 
-Not moved: Claude's sign-in (run `claude` again on the new server), plugins,
-and sign-ins inside the browser.
+Plugins are not copied: after the import the page lists the plugins the
+backup has and this server lacks; Install puts each back from its source (its
+keys and settings need to be entered again).
+
+Not moved: Claude's sign-in (run `claude` again on the new server) and
+sign-ins inside the browser.
 
 ## 6. Update and roll back
 
@@ -126,6 +130,8 @@ and sign-ins inside the browser.
   replaced by the previous one automatically.
 - `claudeweb rollback` returns to the previous version at any time and keeps
   all data as it is.
+- The Claude CLI updates itself in the background, as Anthropic's installer
+  sets it up; Settings > Agents shows its version and can update it by hand.
 
 ## 7. Limits of permissions and resources
 

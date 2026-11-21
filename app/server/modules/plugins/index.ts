@@ -7,3 +7,5 @@ export { startEnabledPluginServers } from './plugin-process.service.js';
 export { stopAllPlugins } from './plugin-process.service.js';
 // getPluginPort: used by WebSocket setup in the server entrypoint to proxy plugin connections.
 export { getPluginPort } from './plugin-process.service.js';
+// scanPlugins: used by Backup to record which plugins are installed (names and sources only).
+export { scanPlugins } from './plugin-registry.service.js';
