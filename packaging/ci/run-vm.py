@@ -70,6 +70,7 @@ def main():
     parser.add_argument('--test', choices=sorted(TESTS), required=True)
     parser.add_argument('--releases', type=Path)
     parser.add_argument('--version')
+    parser.add_argument('--from', dest='from_version', help='public test: install this published release first, then update')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--cache', type=Path, default=Path.home() / '.cache/claudeweb-ci')
     options = parser.parse_args()
@@ -77,6 +78,8 @@ def main():
     public = options.test == 'public'
     if public and not re.fullmatch(r'\d{1,4}\.\d{1,4}\.\d{1,4}', options.version or ''):
         raise SystemExit('--version=X.Y.Z is required for the public test')
+    if options.from_version and not (public and re.fullmatch(r'\d{1,4}\.\d{1,4}\.\d{1,4}', options.from_version)):
+        raise SystemExit('--from=X.Y.Z is only for the public test')
     if not public and not options.releases:
         raise SystemExit('--releases is required')
     out = options.out.resolve()
@@ -147,7 +150,7 @@ def main():
                 run(ssh + ['sudo tar -x --no-same-owner -C /root'], stdin=stream, timeout=900)
             print(f'== {script}', flush=True)
             with (out / 'test.log').open('wb') as log:
-                target = options.version if public else f'/root/cw/{argument}'
+                target = ' '.join(filter(None, [options.version, options.from_version])) if public else f'/root/cw/{argument}'
                 test = subprocess.Popen(ssh + [f'sudo bash -c "cd /root/cw && bash packaging/{script} {target}"'],
                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 for line in test.stdout:

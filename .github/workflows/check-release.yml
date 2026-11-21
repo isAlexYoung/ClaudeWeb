@@ -11,6 +11,11 @@ on:
         description: 'Published version, for example 2.0.0'
         required: true
         type: string
+      from:
+        description: 'Optional: install this published version first, then update to the one above'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -30,10 +35,11 @@ jobs:
         with:
           path: ~/.cache/claudeweb-ci
           key: debian-12-genericcloud-amd64-20261018-2635
-      - name: Public one-line install in a fresh VM
+      - name: Public one-line install (and update) in a fresh VM
         env:
           VERSION: ${{ inputs.version }}
-        run: python3 packaging/ci/run-vm.py --test public --version "$VERSION" --out vm-results
+          FROM: ${{ inputs.from }}
+        run: python3 packaging/ci/run-vm.py --test public --version "$VERSION" ${FROM:+--from "$FROM"} --out vm-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:

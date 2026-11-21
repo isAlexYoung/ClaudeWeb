@@ -4,7 +4,7 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0,
 the first standalone release; everything published before the 2.0.0 stable
 release is a test release.
 
-## Unreleased
+## 2.0.1 - 2026-11-21 (test release)
 
 ### Fixed
 
@@ -12,6 +12,14 @@ release is a test release.
   the login page (or through CMCP), although the bundled TaskMaster works.
   The check ran before sign-in, was refused, and was not repeated; it now
   runs once the session is signed in.
+- The README's install command runs as root without `sudo` (Debian has no
+  `sudo` until ClaudeWeb installs it).
+
+### Added
+
+- The **Check a published release** workflow can install one published
+  release and update it to another (`from` input), the way a server is
+  updated with `claudeweb update --version=X.Y.Z`.
 
 ## 2.0.0 - 2026-11-21 (test release)
 
