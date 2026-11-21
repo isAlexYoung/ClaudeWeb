@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { AlertTriangle, CheckCircle2, Download, FolderX, Lock, Upload } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
@@ -50,6 +50,28 @@ function ExportSection() {
   const [startedFile, setStartedFile] = useState<string | null>(null);
   // Validation or request failure shown under the button.
   const [error, setError] = useState<string | null>(null);
+  // Project folders that can go into the backup, and the ones chosen.
+  const [folders, setFolders] = useState<Array<{ path: string; name: string }>>([]);
+  const [includeFiles, setIncludeFiles] = useState(false);
+  const [chosenFolders, setChosenFolders] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.backup.projectFolders()
+      .then(async (response) => (response.ok ? await response.json() as Array<{ path: string; name: string }> : []))
+      .then((list) => { if (!cancelled) setFolders(list); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  const toggleIncludeFiles = (value: boolean) => {
+    setIncludeFiles(value);
+    // Turning it on starts with every folder chosen; each can then be left out.
+    if (value && chosenFolders.length === 0) setChosenFolders(folders.map((folder) => folder.path));
+  };
+  const toggleFolder = (folderPath: string) => setChosenFolders((current) => (
+    current.includes(folderPath) ? current.filter((item) => item !== folderPath) : [...current, folderPath]
+  ));
 
   const handleExport = async () => {
     setError(null);
@@ -64,7 +86,7 @@ function ExportSection() {
     }
     setPreparing(true);
     try {
-      const response = await api.backup.prepareExport(encrypt ? password : undefined);
+      const response = await api.backup.prepareExport(encrypt ? password : undefined, includeFiles ? chosenFolders : undefined);
       if (!response.ok) throw new Error('export refused');
       const { downloadId, fileName } = await response.json() as { downloadId: string; fileName: string };
       // A plain link lets the browser stream the file to disk instead of holding it in memory.
@@ -110,6 +132,38 @@ function ExportSection() {
             />
           </div>
         )}
+        <SettingsRow label={t('backup.export.projectFiles')} description={t('backup.export.projectFilesDescription')}>
+          <SettingsToggle checked={includeFiles} onChange={toggleIncludeFiles} ariaLabel={t('backup.export.projectFiles')} />
+        </SettingsRow>
+        {includeFiles && (
+          <div className="space-y-2 px-4 py-4">
+            {folders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('backup.export.projectFilesNone')}</p>
+            ) : (
+              <>
+                <ul className="divide-y divide-border rounded-xl border border-border">
+                  {folders.map((folder) => (
+                    <li key={folder.path}>
+                      <label className="flex cursor-pointer items-start gap-3 px-4 py-2.5">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 flex-shrink-0 accent-primary"
+                          checked={chosenFolders.includes(folder.path)}
+                          onChange={() => toggleFolder(folder.path)}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium text-foreground">{folder.name}</span>
+                          <span className="block truncate font-mono text-xs text-muted-foreground" title={folder.path}>{folder.path}</span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted-foreground">{t('backup.export.projectFilesCount', { count: chosenFolders.length })}</p>
+              </>
+            )}
+          </div>
+        )}
         <div className="space-y-3 px-4 py-4">
           <Button onClick={handleExport} disabled={preparing} className="gap-2">
             <Download className="h-4 w-4" />
@@ -150,6 +204,9 @@ function PreviewPanel({
         {preview.createdAt && t('backup.import.createdAt', { date: new Date(preview.createdAt).toLocaleString(i18n.language) })}
         {preview.encrypted && <span className="ml-2 inline-flex items-center gap-1"><Lock className="h-3.5 w-3.5" />{t('backup.import.encrypted')}</span>}
       </div>
+      {preview.relocation && (
+        <p className="text-sm text-muted-foreground">{t('backup.import.relocated', preview.relocation)}</p>
+      )}
       {preview.projects.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('backup.import.empty')}</p>
       ) : (
@@ -173,7 +230,12 @@ function PreviewPanel({
                       {t('backup.import.sessions', { count: newSessions })}
                       {project.existingSessionCount > 0 && ` · ${t('backup.import.existing', { count: project.existingSessionCount })}`}
                     </span>
-                    {!project.pathExists && (
+                    {project.fileCount > 0 && (
+                      <span className="block text-xs text-muted-foreground">
+                        {t('backup.import.files', { count: project.fileCount, size: formatBytes(project.fileBytes) })}
+                      </span>
+                    )}
+                    {!project.pathExists && !project.fileCount && (
                       <span className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                         <FolderX className="mt-px h-3.5 w-3.5 flex-shrink-0" />
                         {project.path ? t('backup.import.pathMissing') : t('backup.import.pathUnknown')}

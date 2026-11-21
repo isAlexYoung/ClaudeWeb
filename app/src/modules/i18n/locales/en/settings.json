@@ -924,7 +924,12 @@
       "passwordTooShort_other": "The password needs at least {{count}} characters.",
       "passwordMismatch": "The two passwords do not match.",
       "includes": "Included: Claude transcripts, project memory, code checkpoints, task lists, images attached to chats, and chat titles, archive, drafts, scheduled messages and preferences.",
-      "excludes": "Not included: the Claude sign-in, ClaudeWeb accounts and keys, project source code and plugins."
+      "excludes": "Not included: the Claude sign-in, ClaudeWeb accounts and keys, plugins, and project folders unless you choose them below.",
+      "projectFiles": "Include project folders",
+      "projectFilesDescription": "Adds the chosen folders as they are now, with their Git history. Large folders make a large backup; existing files are never replaced on import.",
+      "projectFilesNone": "No project folders in the home folder.",
+      "projectFilesCount_one": "{{count}} folder chosen",
+      "projectFilesCount_other": "{{count}} folders chosen"
     },
     "import": {
       "title": "Import",
@@ -945,6 +950,9 @@
       "sessions_other": "{{count}} conversations to import",
       "existing_one": "{{count}} already here, skipped",
       "existing_other": "{{count}} already here, skipped",
+      "relocated": "Made on a server whose home folder is {{from}}. Paths under it are restored under {{to}}, so the conversations continue there.",
+      "files_one": "{{count}} project file to restore ({{size}})",
+      "files_other": "{{count}} project files to restore ({{size}})",
       "pathMissing": "This folder does not exist on this server. The conversations can be read after the import, but to continue them, create the folder (or get the code back) first.",
       "pathUnknown": "The original folder of these files is not recorded in the backup.",
       "space": "Adds about {{required}}; {{free}} free on this server.",

@@ -658,7 +658,12 @@ export const api = {
   // Settings > Backup & restore. Imports go up in pieces so no request exceeds
   // the 100 MB Cloudflare cap; the export is a one-time browser download.
   backup: {
-    prepareExport: (password?: string) => post('/api/backup/exports', password ? { password } : {}),
+    prepareExport: (password?: string, projectFiles?: string[]) => post('/api/backup/exports', {
+      ...(password ? { password } : {}),
+      ...(projectFiles && projectFiles.length > 0 ? { projectFiles } : {}),
+    }),
+    // Project folders that can be added to a backup (inside the home folder).
+    projectFolders: () => get('/api/backup/project-folders'),
     // A link the browser follows itself, so it carries the sub-path that fetch adds automatically.
     downloadUrl: (downloadId: string) =>
       `/${import.meta.env.BASE_URL.replace(/^\/+|\/+$/g, '')}/api/backup-download/${encodeURIComponent(downloadId)}`.replace(/^\/\//, '/'),

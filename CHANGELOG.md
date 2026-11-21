@@ -20,6 +20,17 @@ release is a test release.
   `claudeweb domain --status`, `--remove` and `--remove --local`;
   `claudeweb status` shows the domain. Tested against a local stand-in for the
   Cloudflare API (`packaging/test-domain.sh`), not yet against Cloudflare.
+- Moving from WebDesktop: a backup made in another home folder (WebDesktop's
+  ClaudeWeb ran in `/home/wdguest`) is restored under this one. Transcript
+  folders, every `cwd` in the transcripts and the project paths of the
+  restored rows move to `/home/claudeweb`, so the conversations continue in
+  the new place; paths outside the old home stay as they are. The import
+  preview says so.
+- Backups can include project folders: Settings > Backup & restore lists the
+  projects inside the home folder to choose from. They are stored under
+  `files/` with their Git history and permissions (no links, no set-id
+  bits); an import restores them under the home folder, never into its
+  hidden folders and never over an existing file.
 
 ## 2.0.1 - 2026-11-21 (test release)
 

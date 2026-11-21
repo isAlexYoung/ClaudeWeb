@@ -28,7 +28,8 @@ function respond(operation: (req: express.Request) => unknown | Promise<unknown>
 export function createBackupRouter(service: BackupService): express.Router {
   const router = express.Router();
 
-  router.post('/exports', respond((req) => service.prepareExport(userId(req), req.body?.password)));
+  router.get('/project-folders', respond((req) => service.listProjectFolders(userId(req))));
+  router.post('/exports', respond((req) => service.prepareExport(userId(req), req.body?.password, req.body?.projectFiles)));
   router.post('/imports', respond((req) => service.createImport(userId(req), { size: req.body?.size })));
   router.put(
     '/imports/:importId/chunks/:index',

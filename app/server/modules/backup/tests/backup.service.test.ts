@@ -68,8 +68,8 @@ async function createHarness(options: { snapshot?: BackupDatabaseSnapshot; known
   return { root, home, service, merges, restoredFlags, reindexed, announced };
 }
 
-async function exportBackup(harness: Harness, password?: string): Promise<Buffer> {
-  const { downloadId, fileName } = harness.service.prepareExport(1, password);
+async function exportBackup(harness: Harness, password?: string, projectFiles?: string[]): Promise<Buffer> {
+  const { downloadId, fileName } = await harness.service.prepareExport(1, password, projectFiles);
   assert.match(fileName, password ? /^claude-backup-2026-11-14\.tar\.gz\.enc$/ : /^claude-backup-2026-11-14\.tar\.gz$/);
   const ticket = harness.service.takeExportTicket(downloadId);
   const chunks: Buffer[] = [];
@@ -187,10 +187,10 @@ test('export contains transcripts, memory, checkpoints, task lists, images and d
 test('export download ids are single use', async (t) => {
   const harness = await createHarness();
   t.after(() => rm(harness.root, { recursive: true, force: true }));
-  const { downloadId } = harness.service.prepareExport(1, undefined);
+  const { downloadId } = await harness.service.prepareExport(1, undefined);
   harness.service.takeExportTicket(downloadId);
   assert.throws(() => harness.service.takeExportTicket(downloadId), { code: 'BACKUP_EXPORT_NOT_FOUND' });
-  assert.throws(() => harness.service.prepareExport(1, 'short'), { code: 'BACKUP_PASSWORD_INVALID' });
+  await assert.rejects(harness.service.prepareExport(1, 'short'), { code: 'BACKUP_PASSWORD_INVALID' });
 });
 
 test('export skips symlinks instead of following them', async (t) => {
@@ -331,6 +331,7 @@ for (const [name, archive, code] of [
   ['a symbolic link', handMadeArchive(linkEntry('claude/projects/-p/link', 'SymbolicLink', '/etc/passwd')), 'BACKUP_UNSAFE_ENTRY'],
   ['a hard link', handMadeArchive(linkEntry('claude/projects/-p/link', 'Link', '/etc/passwd')), 'BACKUP_UNSAFE_ENTRY'],
   ['Claude credentials', handMadeArchive(tarFile('claude/.credentials.json', '{}')), 'BACKUP_UNSAFE_ENTRY'],
+  ['a file for a hidden folder of the home folder', handMadeArchive(tarFile('files/.ssh/authorized_keys', 'key')), 'BACKUP_UNSAFE_ENTRY'],
   ['a file at an area root', handMadeArchive(tarFile('claude/projects', 'x')), 'BACKUP_UNSAFE_ENTRY'],
   ['no manifest', gzipSync(Buffer.concat([...tarFile('claude/projects/-p/a.jsonl', '{}'), TAR_END_OF_ARCHIVE])), 'BACKUP_FORMAT_UNKNOWN'],
   ['a zip file', Buffer.from('PK\u0003\u0004 not a backup'), 'BACKUP_FORMAT_UNKNOWN'],
@@ -392,6 +393,117 @@ test('uploads arrive in order, with the declared size, and need free disk space'
 
   await harness.service.cancelImport(1, importId);
   assert.deepEqual(await readdir(path.join(harness.home, '.claudeweb', 'backup-imports')), []);
+});
+
+test('a backup from another home folder (WebDesktop) is restored under this home: folders, cwd and rows', async (t) => {
+  const harness = await createHarness();
+  t.after(() => rm(harness.root, { recursive: true, force: true }));
+  const home = path.resolve(harness.home);
+  const placed = path.join(home, 'proj');
+  const manifest = JSON.stringify({
+    format: 'cloudcli-backup', version: 1, createdAt: '2026-11-01T00:00:00.000Z', sourceHome: '/home/wdguest', projectFiles: ['proj'],
+  });
+  const snapshot = {
+    ...EMPTY_SNAPSHOT,
+    projects: [{ projectId: 'p1', projectPath: '/home/wdguest/proj', customProjectName: 'Old project', isStarred: false, isArchived: false }],
+    sessions: [{ ...SNAPSHOT.sessions[0], projectPath: '/home/wdguest/proj' }],
+  };
+  const subagent = `${JSON.stringify({ sessionId: 'aaaa-1111', cwd: '/home/wdguest/proj/sub' })}\n${JSON.stringify({ cwd: '/opt/elsewhere' })}\n`;
+  const archive = gzipSync(Buffer.concat([
+    ...tarFile('manifest.json', manifest),
+    ...tarFile('cloudcli/data.json', JSON.stringify(snapshot)),
+    ...tarFile('claude/projects/-home-wdguest-proj/aaaa-1111.jsonl', transcript('aaaa-1111', '/home/wdguest/proj')),
+    ...tarFile('claude/projects/-home-wdguest-proj/aaaa-1111/subagents/agent-x.jsonl', subagent),
+    ...tarFile('files/proj/readme.md', 'project file'),
+    ...tarFile('files/other/stray.txt', 'not an exported project'),
+    TAR_END_OF_ARCHIVE,
+  ]));
+
+  const importId = await upload(harness, archive);
+  harness.service.startPreview(1, importId, undefined);
+  const ready = await waitForState(harness, importId, ['ready', 'failed']);
+  assert.equal(ready.state, 'ready', JSON.stringify(ready.error));
+  assert.deepEqual(ready.preview!.relocation, { from: '/home/wdguest', to: home });
+  assert.deepEqual(ready.preview!.projects.map((project) => ({ id: project.id, name: project.name, path: project.path, files: project.fileCount })), [
+    { id: '-home-wdguest-proj', name: 'Old project', path: placed, files: 1 },
+  ]);
+
+  await harness.service.startApply(1, importId, ['-home-wdguest-proj']);
+  const done = await waitForState(harness, importId, ['done', 'failed']);
+  assert.equal(done.state, 'done', JSON.stringify(done.error));
+  const folder = path.join(home, '.claude', 'projects', placed.replace(/[^a-zA-Z0-9]/g, '-'));
+  const restored = path.join(folder, 'aaaa-1111.jsonl');
+  assert.equal(await readFile(restored, 'utf8'), transcript('aaaa-1111', placed));
+  const lines = (await readFile(path.join(folder, 'aaaa-1111', 'subagents', 'agent-x.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  assert.equal(lines[0].cwd, path.join(placed, 'sub'));
+  assert.equal(lines[1].cwd, '/opt/elsewhere', 'paths outside the old home stay as they are');
+  assert.equal(await readFile(path.join(placed, 'readme.md'), 'utf8'), 'project file');
+  await assert.rejects(stat(path.join(home, 'other')), { code: 'ENOENT' });
+  assert.deepEqual([...harness.merges[0].selection.projectPaths], [placed]);
+  assert.equal(harness.merges[0].snapshot.projects[0].projectPath, placed);
+  assert.equal(harness.merges[0].snapshot.sessions[0].projectPath, placed);
+  assert.deepEqual([...harness.merges[0].selection.restoredSessions], [['aaaa-1111', restored]]);
+});
+
+test('export can include project folders, which import restores without replacing files', async (t) => {
+  const source = await createHarness();
+  const target = await createHarness();
+  t.after(async () => {
+    await rm(source.root, { recursive: true, force: true });
+    await rm(target.root, { recursive: true, force: true });
+  });
+  const project = path.join(source.home, 'proj');
+  const hidden = path.join(source.home, '.config');
+  const outside = path.join(source.root, 'outside');
+  source.service = createBackupService({
+    homeDirectory: source.home,
+    claudeHome: path.join(source.home, '.claude'),
+    claudewebHome: path.join(source.home, '.claudeweb'),
+    uploadsDirectory: path.join(source.home, '.claudeweb', 'backup-imports'),
+    database: {
+      exportSnapshot: () => ({
+        ...EMPTY_SNAPSHOT,
+        projects: [project, hidden, outside].map((projectPath, index) => ({
+          projectId: `p${index}`, projectPath, customProjectName: null, isStarred: false, isArchived: false,
+        })),
+      }),
+      findKnownProviderSessionIds: () => new Set(),
+      mergeSnapshot: () => ({ projects: 0, sessions: 0, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0 }),
+      restoreSessionFlags: () => undefined,
+    },
+    reindexTranscript: async () => undefined,
+    announceSessions: async () => undefined,
+    freeBytes: async () => 1e12,
+    now: () => new Date('2026-11-14T08:00:00.000Z'),
+    logger: { error: () => undefined },
+  });
+  await writeTree(source.home, { 'proj/a.txt': 'new a', 'proj/bin/run.sh': '#!/bin/sh\n', 'proj/.git/HEAD': 'ref: main', '.config/x': 'x' });
+  await writeTree(source.root, { 'outside/o.txt': 'o' });
+  if (process.platform !== 'win32') await (await import('node:fs/promises')).chmod(path.join(project, 'bin', 'run.sh'), 0o755);
+
+  assert.deepEqual(await source.service.listProjectFolders(1), [{ path: project, name: 'proj' }]);
+  await assert.rejects(source.service.prepareExport(1, undefined, [project, outside]), { code: 'BACKUP_SELECTION_INVALID' });
+  await assert.rejects(source.service.prepareExport(1, undefined, [hidden]), { code: 'BACKUP_SELECTION_INVALID' });
+  const archive = await exportBackup(source, undefined, [project]);
+  const entries = await listEntries(gunzipSync(archive));
+  assert.deepEqual([...entries.keys()].filter((name) => name.startsWith('files/')).sort(), ['files/proj/.git/HEAD', 'files/proj/a.txt', 'files/proj/bin/run.sh']);
+  assert.deepEqual(JSON.parse(entries.get('manifest.json')!.toString()).projectFiles, ['proj']);
+
+  await writeTree(target.home, { 'proj/a.txt': 'KEEP' });
+  const importId = await upload(target, archive);
+  target.service.startPreview(1, importId, undefined);
+  const ready = await waitForState(target, importId, ['ready', 'failed']);
+  assert.equal(ready.state, 'ready', JSON.stringify(ready.error));
+  const listed = ready.preview!.projects.find((candidate) => candidate.id === 'files:proj');
+  assert.equal(listed?.fileCount, 2, 'the file that exists here is not counted');
+  await target.service.startApply(1, importId, ['files:proj']);
+  const done = await waitForState(target, importId, ['done', 'failed']);
+  assert.equal(done.state, 'done', JSON.stringify(done.error));
+  assert.equal(await readFile(path.join(target.home, 'proj', 'a.txt'), 'utf8'), 'KEEP');
+  assert.equal(await readFile(path.join(target.home, 'proj', 'bin', 'run.sh'), 'utf8'), '#!/bin/sh\n');
+  assert.equal(await readFile(path.join(target.home, 'proj', '.git', 'HEAD'), 'utf8'), 'ref: main');
+  if (process.platform !== 'win32') assert.equal((await stat(path.join(target.home, 'proj', 'bin', 'run.sh'))).mode & 0o777, 0o755);
+  assert.equal(done.result?.skippedExistingFiles, 1);
 });
 
 function chunkSize8MiB(): number {

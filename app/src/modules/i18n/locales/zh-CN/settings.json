@@ -922,7 +922,12 @@
       "passwordTooShort_other": "密码至少需要 {{count}} 位。",
       "passwordMismatch": "两次输入的密码不一样。",
       "includes": "包含：Claude 对话记录、项目记忆、代码检查点、任务清单、聊天里的图片，以及对话标题、归档、草稿、定时消息和偏好设置。",
-      "excludes": "不包含：Claude 登录信息、ClaudeWeb 账户和密钥、项目源代码、插件。"
+      "excludes": "不包含：Claude 登录信息、ClaudeWeb 账户和密钥、插件；项目文件夹只有在下面勾选后才包含。",
+      "projectFiles": "包含项目文件夹",
+      "projectFilesDescription": "按现在的样子加入所选文件夹，包括 Git 历史。文件夹大，备份文件也会大；导入时不会覆盖已有文件。",
+      "projectFilesNone": "主目录里没有项目文件夹。",
+      "projectFilesCount_one": "已选 {{count}} 个文件夹",
+      "projectFilesCount_other": "已选 {{count}} 个文件夹"
     },
     "import": {
       "title": "导入",
@@ -941,6 +946,9 @@
       "empty": "这个备份里没有对话。",
       "sessions_other": "{{count}} 个对话待导入",
       "existing_other": "{{count}} 个已存在，将跳过",
+      "relocated": "这个备份来自主目录为 {{from}} 的服务器，其中的路径会恢复到 {{to}} 下，对话可以在新位置继续。",
+      "files_one": "{{count}} 个项目文件待恢复（{{size}}）",
+      "files_other": "{{count}} 个项目文件待恢复（{{size}}）",
       "pathMissing": "这台服务器上没有这个文件夹。导入后可以查看对话，但要继续聊，需要先建好这个文件夹（或把代码拉回来）。",
       "pathUnknown": "备份里没有记录这些文件原来所在的文件夹。",
       "space": "将新增约 {{required}}，服务器可用 {{free}}。",

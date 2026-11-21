@@ -1479,12 +1479,17 @@ export type BackupPreviewProject = {
   sessionCount: number;
   existingSessionCount: number;
   newBytes: number;
+  /** Project files in the backup that do not exist here yet (0 when the backup has none). */
+  fileCount: number;
+  fileBytes: number;
 };
 
 /** What a backup contains and what an import would add, shown before anything is written. */
 export type BackupPreview = {
   createdAt: string | null;
   sourceHome: string | null;
+  /** Set when the backup came from another home folder, such as WebDesktop's /home/wdguest. */
+  relocation: { from: string; to: string } | null;
   encrypted: boolean;
   projects: BackupPreviewProject[];
   sharedNewBytes: number;

@@ -6,6 +6,7 @@ import type { BackupImportStatus } from '@/shared/types';
 
 const mocks = vi.hoisted(() => ({
   prepareExport: vi.fn(),
+  projectFolders: vi.fn(),
   createImport: vi.fn(),
   uploadChunk: vi.fn(),
   status: vi.fn(),
@@ -39,6 +40,10 @@ beforeEach(async () => {
   await i18n.changeLanguage('en');
   vi.clearAllMocks();
   mocks.cancel.mockResolvedValue(json({ cancelled: true }));
+  mocks.projectFolders.mockResolvedValue(json([
+    { path: '/home/claudeweb/app', name: 'app' },
+    { path: '/home/claudeweb/site', name: 'site' },
+  ]));
 });
 
 afterEach(() => {
@@ -63,10 +68,25 @@ test('export checks the password locally, then starts a one-time download', asyn
   fireEvent.change(screen.getByLabelText('Repeat the password'), { target: { value: 'long password' } });
   fireEvent.click(screen.getByRole('button', { name: 'Export all conversations' }));
   expect(await screen.findByText(/Downloading claude-backup-2026-11-14\.tar\.gz\.enc/)).toBeTruthy();
-  expect(mocks.prepareExport).toHaveBeenCalledWith('long password');
+  expect(mocks.prepareExport).toHaveBeenCalledWith('long password', undefined);
   expect(clicked).toEqual(['/api/backup-download/dl-1 claude-backup-2026-11-14.tar.gz.enc']);
   // The password fields are cleared once the download has started.
   expect((screen.getByLabelText('Password (at least 8 characters)') as HTMLInputElement).value).toBe('');
+});
+
+test('export can include chosen project folders', async () => {
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+  mocks.prepareExport.mockResolvedValue(json({ downloadId: 'dl-2', fileName: 'claude-backup-2026-11-14.tar.gz' }));
+  render(<BackupSettingsTab />);
+  await waitFor(() => expect(mocks.projectFolders).toHaveBeenCalled());
+
+  fireEvent.click(screen.getByRole('switch', { name: 'Include project folders' }));
+  expect(await screen.findByText('/home/claudeweb/site')).toBeTruthy();
+  expect(screen.getByText('2 folders chosen')).toBeTruthy();
+  fireEvent.click(screen.getAllByRole('checkbox')[1]);
+  expect(screen.getByText('1 folder chosen')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Export all conversations' }));
+  await waitFor(() => expect(mocks.prepareExport).toHaveBeenCalledWith(undefined, ['/home/claudeweb/app']));
 });
 
 test('import uploads in pieces, asks for the password, previews and imports the chosen projects', async () => {
@@ -81,13 +101,14 @@ test('import uploads in pieces, asks for the password, previews and imports the 
       encrypted: true,
       preview: {
         createdAt: '2026-11-01T00:00:00.000Z',
-        sourceHome: '/home/claudeweb',
+        sourceHome: '/home/wdguest',
+        relocation: { from: '/home/wdguest', to: '/home/claudeweb' },
         encrypted: true,
         sharedNewBytes: 1024,
         freeBytes: 10 * 1024 * 1024 * 1024,
         projects: [
-          { id: '-home-claudeweb-app', name: 'app', path: '/home/claudeweb/app', pathExists: true, sessionCount: 3, existingSessionCount: 1, newBytes: 2048 },
-          { id: '-srv-site', name: 'site', path: '/srv/site', pathExists: false, sessionCount: 1, existingSessionCount: 0, newBytes: 512 },
+          { id: '-home-wdguest-app', name: 'app', path: '/home/claudeweb/app', pathExists: false, sessionCount: 3, existingSessionCount: 1, newBytes: 6144, fileCount: 4, fileBytes: 4096 },
+          { id: '-srv-site', name: 'site', path: '/srv/site', pathExists: false, sessionCount: 1, existingSessionCount: 0, newBytes: 512, fileCount: 0, fileBytes: 0 },
         ],
       },
     })));
@@ -115,11 +136,14 @@ test('import uploads in pieces, asks for the password, previews and imports the 
   expect(await screen.findByText('/home/claudeweb/app')).toBeTruthy();
   expect(mocks.preview).toHaveBeenLastCalledWith('imp-1', 'secret pass');
   expect(screen.getByText('2 conversations to import · 1 already here, skipped')).toBeTruthy();
-  expect(screen.getByText(/This folder does not exist on this server/)).toBeTruthy();
+  expect(screen.getByText(/home folder is \/home\/wdguest\. Paths under it are restored under \/home\/claudeweb/)).toBeTruthy();
+  expect(screen.getByText('4 project files to restore (4.0 KB)')).toBeTruthy();
+  // Only the project whose folder is neither here nor in the backup is warned about.
+  expect(screen.getAllByText(/This folder does not exist on this server/)).toHaveLength(1);
 
   fireEvent.click(screen.getAllByRole('checkbox')[1]);
   fireEvent.click(screen.getByRole('button', { name: 'Import 1 project' }));
-  expect(mocks.apply).toHaveBeenCalledWith('imp-1', ['-home-claudeweb-app']);
+  expect(mocks.apply).toHaveBeenCalledWith('imp-1', ['-home-wdguest-app']);
   expect(await screen.findByText('Importing…')).toBeTruthy();
   await waitFor(() => expect(screen.getByText('Imported 2 conversations.')).toBeTruthy(), { timeout: 3000 });
   expect(screen.getByText('Skipped 1 conversation that was already here.')).toBeTruthy();

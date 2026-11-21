@@ -23,6 +23,11 @@ import { AppError } from '@/shared/utils.js';
 //   claude/file-history/<sid>/...    code checkpoints used by rewind
 //   claude/todos/<file>              task lists
 //   claudeweb/assets/...              images attached to chats
+//   files/<path under home>/...      project folders chosen at export (optional)
+//
+// Paths are recorded as they were on the exporting server; an import onto a
+// server with another home folder moves everything under the old home to the
+// new one (manifest `sourceHome`).
 
 /** Name of the first entry; its `format` field identifies a ClaudeWeb backup. */
 export const BACKUP_MANIFEST_ENTRY = 'manifest.json';
@@ -42,6 +47,7 @@ export const BACKUP_AREAS = [
   { area: 'fileHistory', prefix: 'claude/file-history/' },
   { area: 'todos', prefix: 'claude/todos/' },
   { area: 'assets', prefix: 'claudeweb/assets/' },
+  { area: 'workspace', prefix: 'files/' },
 ] as const;
 
 /** One of the restorable directories. */
@@ -111,7 +117,11 @@ export function classifyBackupEntryPath(entryPath: string): BackupEntryTarget {
       return { kind: 'file', area, segments: [] };
     }
     if (current.startsWith(prefix)) {
-      return { kind: 'file', area, segments: current.slice(prefix.length).split('/') };
+      const segments = current.slice(prefix.length).split('/');
+      // Project files go under the home folder, but never into its hidden
+      // folders (shell start-up files, SSH keys, Claude's own settings).
+      if (area === 'workspace' && segments[0].startsWith('.')) throw unsafeEntry(entryPath, 'hidden folder in the home folder');
+      return { kind: 'file', area, segments };
     }
   }
 
@@ -132,11 +142,11 @@ export function classifyBackupEntryPath(entryPath: string): BackupEntryTarget {
  * the session row restored with it, or the indexer would treat it as new
  * activity and un-archive the conversation.
  */
-export function encodeTarFileHeader(entryPath: string, size: number, modifiedAt: Date): Buffer {
+export function encodeTarFileHeader(entryPath: string, size: number, modifiedAt: Date, mode = 0o600): Buffer {
   const mtime = new Date(Math.floor(modifiedAt.getTime() / 1000) * 1000);
   const header = new Header({
     path: entryPath,
-    mode: 0o600,
+    mode,
     uid: 0,
     gid: 0,
     size,
