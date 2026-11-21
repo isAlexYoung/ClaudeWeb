@@ -13,3 +13,6 @@ Thumbs.db
 doc/LOCAL_NOTES.md
 doc/WSL_DEBIAN12.md
 release-out/
+# CI output (packaging/ci)
+test-releases/
+vm-results/

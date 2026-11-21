@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App checks and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Type check
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Client tests
+        run: npx vitest run
+      - name: Server tests
+        run: npm test
+
+  package:
+    name: Build test packages on Debian 12
+    runs-on: ubuntu-24.04
+    # Native modules in the package are built against Debian 12's glibc.
+    container: debian:12
+    timeout-minutes: 45
+    steps:
+      - name: Build tools
+        run: |
+          apt-get update -q
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
+            git ca-certificates curl xz-utils python3 build-essential jq minisign
+      - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Packages and lists signed with a key made for this run
+        run: bash packaging/ci/prep-test-releases.sh test-releases
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-releases
+          path: test-releases
+          retention-days: 3
+          compression-level: 0
+
+  vm:
+    name: Fresh Debian 12 VM - ${{ matrix.test }}
+    needs: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        test: [install, update, browser, devices]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: test-releases
+          path: test-releases
+      - name: VM tools
+        run: |
+          sudo apt-get update -q
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends qemu-system-x86 qemu-utils genisoimage
+          if [ -e /dev/kvm ]; then sudo chmod a+rw /dev/kvm; else echo "no KVM: the VM runs without acceleration"; fi
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/claudeweb-ci
+          key: debian-12-genericcloud-amd64-20261018-2635
+      - name: Run the test in the VM
+        run: python3 packaging/ci/run-vm.py --test ${{ matrix.test }} --releases test-releases --out vm-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vm-${{ matrix.test }}
+          path: vm-results
+          retention-days: 7
