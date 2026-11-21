@@ -7,9 +7,12 @@ ClaudeWeb 是 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview
 对话、项目、终端、文件面板、定时任务、任务看板和内置浏览器，全部运行在这台服务器上，
 使用官方 Claude CLI。
 
-> **状态：开发中。** 第一个独立版本 ClaudeWeb 2.0.0 还没有发布。
-> 安装程序、登录、`claudeweb` 管理命令、带签名的更新和内置浏览器已经可用；域名访问还在开发。
-> 目前还没有发布任何版本，可以先自己构建安装包（见[开发](#开发)）。
+> **状态：测试版。** 第一个独立版本 ClaudeWeb 2.0.0 已作为测试版发布，用于在真实服务器上验收；
+> 还没有正式版。域名访问还在开发。在一台可以重装的 Debian 12 服务器上试用时，需要指定版本：
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | sudo bash -s -- --version=2.0.0
+> ```
 
 ## 与 Anthropic 无关
 

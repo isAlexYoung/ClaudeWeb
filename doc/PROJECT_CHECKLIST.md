@@ -280,7 +280,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 - 应用内 CLI（`app/server/modules/cli`）与 root 管理命令 `claudeweb` 的关系已定：root 命令是 `packaging/claudeweb`（bash），`claudeweb password` 以 root 身份调用应用内 CLI 的 `password` 子命令；其余应用内子命令只供开发使用。
 - 聊天工作目录固定为 `/home/claudeweb`（`CHAT_WORKSPACE_PATH`），安装器须创建该用户及其家目录。
 - 服务默认只监听 `127.0.0.1`（`HOST` 可覆盖）。
-- 应用版本号仍是上游的 1.37.7，发布时改为 2.0.0。
+- 应用版本号 2026-11-21 改为 2.0.0（第一个测试版）。
 
 ### 安装更新
 

@@ -7,11 +7,14 @@ You install it on your own Linux server and use Claude Code from a browser:
 chats, projects, a terminal, a file panel, scheduled tasks, a task board and a
 built-in browser, all running on that server with the official Claude CLI.
 
-> **Status: in development.** ClaudeWeb 2.0.0, the first standalone release,
-> is not out yet. The installer, the login, the `claudeweb` command and signed
-> updates and the built-in browser work; domains are still being built. No
-> release is published yet, so for now build a package yourself (see
-> [Development](#development)).
+> **Status: test release.** ClaudeWeb 2.0.0, the first standalone release, is
+> out as a test release for checking on real servers; there is no stable
+> release yet. Domains are still being built. To try it on a disposable
+> Debian 12 server, name the version:
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | sudo bash -s -- --version=2.0.0
+> ```
 
 ## Not affiliated with Anthropic
 

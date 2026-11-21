@@ -4,7 +4,7 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0,
 the first standalone release; everything published before the 2.0.0 stable
 release is a test release.
 
-## Unreleased
+## 2.0.0 - 2026-11-21 (test release)
 
 ### Added
 
