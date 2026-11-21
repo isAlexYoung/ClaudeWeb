@@ -26,7 +26,7 @@ CLAUDEWEB_RELEASES_URL=file://$LISTS bash "$REPO/install.sh" > /tmp/cw-u-install
 check "installer exits 0" "[[ $? -eq 0 ]]"
 check "the latest stable (2.0.0) was installed, not the newer test release" "[[ \$(version) == 2.0.0 ]]"
 password="$(claudeweb password)"
-token="$(curl -s -H 'content-type: application/json' -d "{\"password\":\"$password\"}" http://127.0.0.1:3001/api/auth/login | jq -r .token)"
+token="$(curl -s -H 'content-type: application/json' -d "{\"password\":\"$password\",\"mode\":\"takeover\"}" http://127.0.0.1:3001/api/auth/login | jq -r .token)"
 check "signed in" "[[ -n \$token && \$token != null ]]"
 
 echo "== update --check sees no newer stable release"

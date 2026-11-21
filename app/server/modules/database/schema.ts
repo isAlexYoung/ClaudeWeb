@@ -324,7 +324,9 @@ CREATE TABLE IF NOT EXISTS superseded_provider_sessions (
  * Signed-in devices, one row per successful login. The token a browser holds
  * names its row; deleting the row signs that device out. `password_generation`
  * is the login password's generation at sign-in: once root sets a new
- * password, every older row stops working. Times are milliseconds since epoch.
+ * password, every older row stops working. `last_seen_at` moves with any
+ * request, `last_active_at` only with real use (input, a working chat) and
+ * decides when a browser login goes idle. Times are milliseconds since epoch.
  */
 const LOGIN_SESSIONS_TABLE_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS login_sessions (
@@ -335,7 +337,8 @@ CREATE TABLE IF NOT EXISTS login_sessions (
     ip TEXT,
     user_agent TEXT,
     created_at INTEGER NOT NULL,
-    last_seen_at INTEGER NOT NULL
+    last_seen_at INTEGER NOT NULL,
+    last_active_at INTEGER NOT NULL DEFAULT 0
 );
 `;
 

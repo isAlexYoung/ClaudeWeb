@@ -816,7 +816,7 @@
   "about": {
     "devices": {
       "title": "Signed-in devices ({{count}}/{{max}})",
-      "description": "Up to {{max}} devices can be signed in to this WebDesktop at once. The main device is the first one signed in, or the last one that chose Take over; only it can run system updates. When it signs out, the earliest remaining device becomes main.",
+      "description": "Up to {{max}} devices can be signed in at once. The main device is the one signed in longest (or the last one that took over); only it can update ClaudeWeb. When it signs out, the next oldest takes its place.",
       "main": "Main device",
       "current": "This device",
       "unknown": "Device",
@@ -876,7 +876,8 @@
         "CLAUDEWEB_DOWNLOAD_FAILED": "The download failed. Check the server's connection to GitHub and try again.",
         "CLAUDEWEB_CATALOGUE_UNAVAILABLE": "The list of versions could not be loaded. Try again later.",
         "CLAUDEWEB_UPDATER_UNAVAILABLE": "The ClaudeWeb updater did not answer. Try again later.",
-        "other": "The update failed ({{code}})."
+        "other": "The update failed ({{code}}).",
+        "NOT_MAIN_DEVICE": "Only the main device can update ClaudeWeb. See Signed-in devices below."
       }
     }
   },

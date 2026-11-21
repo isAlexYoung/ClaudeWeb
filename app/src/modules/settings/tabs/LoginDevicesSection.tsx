@@ -8,8 +8,8 @@ import { endLoginDevice, loginDetails, useLoginDevices, type LoginDevice } from 
 import { Button } from '@/shared/ui';
 
 /**
- * Rendered by AboutTab in the WebDesktop build: everyone signed in to this
- * WebDesktop (up to three devices), with a sign-out for the others.
+ * Rendered by AboutTab: every device signed in to this ClaudeWeb (up to
+ * three), with a sign-out for the others.
  */
 export default function LoginDevicesSection() {
   const { t } = useTranslation('settings');

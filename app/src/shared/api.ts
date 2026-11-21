@@ -214,14 +214,20 @@ export const api = {
   // Auth endpoints (no token required)
   auth: {
     status: () => fetch('/api/auth/status'),
-    login: (password: string) => fetch('/api/auth/login', {
+    // `choice` answers the server when other devices are signed in: join them or take over.
+    login: (password: string, choice?: { mode: 'join' | 'takeover'; replace?: string }) => fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ password, ...(choice ?? {}) }),
     }),
     refresh: () => post('/api/auth/refresh'),
     // Ends this device's session on the server; other devices stay signed in.
     logout: () => post('/api/auth/logout'),
+    // Signed-in devices: the list, and signing another one out.
+    devices: () => get('/api/auth/devices'),
+    endDevice: (ref: string) => post('/api/auth/devices', { op: 'end', ref }),
+    // Real use of the page (input, a working chat): keeps a browser login from going idle.
+    activity: () => post('/api/auth/activity'),
     user: () => get('/api/auth/user'),
   },
 

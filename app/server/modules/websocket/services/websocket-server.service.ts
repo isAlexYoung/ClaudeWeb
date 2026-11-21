@@ -16,7 +16,12 @@ type WebSocketServerDependencies = {
   getPluginPort: Parameters<typeof handlePluginWsProxy>[2];
   /** The browser panel's picture connection, relayed to the server's browser. */
   browser?: { relay: (ws: WebSocket, url: URL) => void };
+  /** Whether a login session still counts as signed in; its connections close when not. */
+  sessionAlive?: (sessionId: string) => boolean;
 };
+
+// How often open connections check that their device is still signed in.
+const SESSION_CHECK_MS = 15_000;
 
 /**
  * Used by this module's websocket gateway to keep active transports alive and
@@ -97,6 +102,20 @@ export function createWebSocketServer(
     attachWebSocketHeartbeat(ws);
 
     const incomingRequest = request as AuthenticatedWebSocketRequest;
+    // A device signed out elsewhere (or by a new password) loses its open
+    // connections within a few seconds instead of at its next reconnect.
+    const sessionId = incomingRequest.user?.sessionId;
+    const sessionAlive = dependencies.sessionAlive;
+    if (typeof sessionId === 'string' && sessionAlive) {
+      const timer = setInterval(() => {
+        if (!sessionAlive(sessionId)) {
+          clearInterval(timer);
+          ws.close(4401, 'Signed out');
+        }
+      }, SESSION_CHECK_MS);
+      timer.unref?.();
+      ws.on('close', () => clearInterval(timer));
+    }
     const url = incomingRequest.url ?? '/';
     const pathname = new URL(url, 'http://localhost').pathname;
 

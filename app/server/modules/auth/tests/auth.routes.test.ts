@@ -47,7 +47,7 @@ test('login counts attempts against the Cloudflare visitor IP on a local connect
     await post(`${baseUrl}/api/auth/login`, { password: 'pw' }, { 'cf-connecting-ip': 'not-an-ip' });
   });
 
-  assert.deepEqual(seen[0], { password: 'pw', ip: '203.0.113.9', userAgent: 'Agent/1' });
+  assert.deepEqual(seen[0], { password: 'pw', ip: '203.0.113.9', userAgent: 'Agent/1', mode: undefined, replace: undefined });
   assert.equal(seen[1].ip, '127.0.0.1', 'a header that is not an IP address is ignored');
 });
 

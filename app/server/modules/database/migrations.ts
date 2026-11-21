@@ -533,6 +533,11 @@ export const runMigrations = (db: Database) => {
     rebuildSessionsTableWithProjectSchema(db);
     migrateLegacySessionNames(db);
     addProviderSessionIdMapping(db);
+    // Test installs before multi-device login created login_sessions without it.
+    if (tableExists(db, 'login_sessions')) {
+      addColumnToTableIfNotExists(db, 'login_sessions', getTableInfo(db, 'login_sessions').map((column) => column.name),
+        'last_active_at', 'INTEGER NOT NULL DEFAULT 0');
+    }
     addSessionModelColumn(db);
     addSessionEffortColumn(db);
     addForkedFromSessionIdColumn(db);

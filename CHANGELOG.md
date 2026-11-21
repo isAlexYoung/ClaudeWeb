@@ -40,6 +40,16 @@ release is a test release.
   install-browser` installs or repairs it; updates install a newly pinned
   Chromium.
 
+- Up to three devices can be signed in. A new login while another device is
+  signed in asks whether to join or take over (sign the others out); when
+  three are signed in it asks which one to sign out. Settings > About lists
+  the signed-in devices and can sign one out; the others see a notice when
+  a new device joins. Web logins end after an hour without use. The oldest
+  login is the main device and is the only one that can start an update.
+  Connections of a signed-out device close within 15 seconds.
+  Scripts calling `POST /api/auth/login` should send `"mode": "join"` or
+  `"takeover"`.
+
 ### Changed
 
 - ClaudeWeb is now a standalone project, independent of WebDesktop. The

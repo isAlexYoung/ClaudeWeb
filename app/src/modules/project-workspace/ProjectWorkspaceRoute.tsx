@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { useLoginActivity } from '@/modules/auth';
 import { PaletteOpsProvider } from '@/modules/command-palette';
 import { ProjectsStateProvider } from '@/modules/project-workspace/context/ProjectsStateContext';
 import {
@@ -36,6 +37,7 @@ function ProjectWorkspaceRouteContent() {
   const { isSessionProcessing } = useSessionProtectionActions();
 
   useVisualViewportKeyboardOffset();
+  useLoginActivity();
 
   return (
     <ProjectsStateProvider

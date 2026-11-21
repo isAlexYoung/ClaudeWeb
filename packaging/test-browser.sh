@@ -13,7 +13,7 @@ check "the installer installed the browser" "grep -q 'Installing the browser' /t
 check "Playwright's Chromium is in the service account's cache" "ls /home/claudeweb/.cache/ms-playwright/chromium-*/chrome-linux*/chrome >/dev/null 2>&1"
 check "Chinese fonts are installed" "fc-list :lang=zh | grep -qi noto"
 password="$(claudeweb password)"
-token="$(curl -s -H 'content-type: application/json' -d "{\"password\":\"$password\"}" http://127.0.0.1:3001/api/auth/login | jq -r .token)"
+token="$(curl -s -H 'content-type: application/json' -d "{\"password\":\"$password\",\"mode\":\"takeover\"}" http://127.0.0.1:3001/api/auth/login | jq -r .token)"
 
 /opt/claudeweb/current/node/bin/node "$REPO/packaging/test-browser.mjs" "$token" > /tmp/cw-b-node.out 2>&1 &
 node_pid=$!

@@ -14,19 +14,20 @@ type LoginSessionRow = {
   user_agent: string | null;
   created_at: number;
   last_seen_at: number;
+  last_active_at: number;
 };
 
-type NewLoginSession = Omit<LoginSessionRow, 'last_seen_at'>;
+type NewLoginSession = Omit<LoginSessionRow, 'last_seen_at' | 'last_active_at'>;
 
 export const loginSessionsDb = {
-  /** Stores a new signed-in device. */
+  /** Stores a new signed-in device; signing in counts as being seen and active. */
   create(session: NewLoginSession): void {
     getConnection().prepare(
-      `INSERT INTO login_sessions (id, user_id, password_generation, via, ip, user_agent, created_at, last_seen_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO login_sessions (id, user_id, password_generation, via, ip, user_agent, created_at, last_seen_at, last_active_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       session.id, session.user_id, session.password_generation, session.via,
-      session.ip, session.user_agent, session.created_at, session.created_at,
+      session.ip, session.user_agent, session.created_at, session.created_at, session.created_at,
     );
   },
 
@@ -37,9 +38,19 @@ export const loginSessionsDb = {
       .get(sessionId) as LoginSessionRow | undefined;
   },
 
-  /** Records that the device was seen at `at`. */
+  /** Every stored session, for the device list and the device limit. */
+  list(): LoginSessionRow[] {
+    return getConnection().prepare('SELECT * FROM login_sessions').all() as LoginSessionRow[];
+  },
+
+  /** Records that the device made a request at `at`. */
   touch(sessionId: string, at: number): void {
     getConnection().prepare('UPDATE login_sessions SET last_seen_at = ? WHERE id = ?').run(at, sessionId);
+  },
+
+  /** Records real use of the page at `at` (input, or a chat that is working). */
+  markActive(sessionId: string, at: number): void {
+    getConnection().prepare('UPDATE login_sessions SET last_active_at = ?, last_seen_at = ? WHERE id = ?').run(at, at, sessionId);
   },
 
   /** Signs one device out. */

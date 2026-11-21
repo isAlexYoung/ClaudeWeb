@@ -58,5 +58,15 @@ export function authenticateWebSocket(token: string | null) {
   return { id: result.user.id, userId: result.user.id, username: result.user.username, sessionId: result.sessionId };
 }
 
+/** Used by the WebSocket gateway to close the connections of a device that was signed out. */
+export function loginSessionAlive(sessionId: string): boolean {
+  return authService.sessionAlive(sessionId);
+}
+
+/** Used by the update routes: only the main (oldest) signed-in device may start an update. */
+export function isMainLoginDevice(sessionId: string): boolean {
+  return authService.isMainDevice(sessionId);
+}
+
 /** Auth router assembled for the server entrypoint. */
 export const authRoutes = createAuthRouter(authService, authenticateToken);

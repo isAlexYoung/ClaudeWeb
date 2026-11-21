@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
-/** One WebDesktop login as the entry gateway reports it; `ref` stands for the login, never its session id. */
+import { api } from '@/shared/api';
+
+/** One signed-in device as the server reports it; `ref` stands for the login, never its session id. */
 export type LoginDevice = {
   ref: string;
   device: string;
@@ -13,32 +15,24 @@ export type LoginDevice = {
 
 export type LoginDeviceList = { logins: LoginDevice[]; max: number };
 
-// Served by WebDesktop's entry gateway in front of ClaudeWeb, next to the login pages.
-const DEVICES_URL = `${import.meta.env.BASE_URL}__webdesktop/devices`;
-
-export async function fetchLoginDevices(fetcher: typeof fetch = fetch): Promise<LoginDeviceList | null> {
-  const response = await fetcher(DEVICES_URL, { credentials: 'same-origin', cache: 'no-store' });
+/** Used by the device list and the new-device notice. Null when the server does not answer. */
+export async function fetchLoginDevices(): Promise<LoginDeviceList | null> {
+  const response = await api.auth.devices();
   if (!response.ok) return null;
   const data = (await response.json().catch(() => null)) as Partial<LoginDeviceList> | null;
   if (!data || !Array.isArray(data.logins)) return null;
   return { logins: data.logins, max: typeof data.max === 'number' ? data.max : 3 };
 }
 
-/** Signs another device out. Resolves false when it was already gone or the gateway refused. */
-export async function endLoginDevice(ref: string, fetcher: typeof fetch = fetch) {
-  const response = await fetcher(DEVICES_URL, {
-    method: 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ op: 'end', ref }),
-  });
+/** Signs another device out. Resolves false when it was already gone or the server refused. */
+export async function endLoginDevice(ref: string) {
+  const response = await api.auth.endDevice(ref);
   return response.ok;
 }
 
 /**
- * The WebDesktop logins, refreshed every `intervalMs`. `list` stays null when
- * ClaudeWeb is not behind WebDesktop's gateway (or it does not answer).
+ * The signed-in devices, refreshed every `intervalMs`. `list` stays null
+ * while the server does not answer.
  */
 export function useLoginDevices(intervalMs: number) {
   const [list, setList] = useState<LoginDeviceList | null>(null);

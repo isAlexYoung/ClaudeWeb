@@ -2,6 +2,7 @@ import { ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import ClaudeWebUpdateSection from '@/modules/settings/tabs/ClaudeWebUpdateSection';
+import LoginDevicesSection from '@/modules/settings/tabs/LoginDevicesSection';
 
 const UPSTREAM_REPO_URL = 'https://github.com/siteboon/claudecodeui';
 const SOURCE_URL = 'https://github.com/isAlexYoung/ClaudeWeb';
@@ -16,6 +17,7 @@ function GitHubIcon({ className }: { className?: string }) {
 
 /**
  * Rendered by Settings for the "about" tab: the installed version and its update,
+ * the signed-in devices,
  * what this interface is built on,
  * where that project lives, the license, and where ClaudeWeb's own source is.
  * The AGPL asks a modified network service to say it is modified and to offer
@@ -27,6 +29,7 @@ export default function AboutTab() {
   return (
     <div className="space-y-6">
       <ClaudeWebUpdateSection />
+      <LoginDevicesSection />
       <div className="space-y-3">
         <h3 className="text-base font-semibold text-foreground">{t('about.title')}</h3>
         <p className="text-sm text-muted-foreground">{t('about.basedOn')}</p>

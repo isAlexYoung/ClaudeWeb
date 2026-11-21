@@ -6,8 +6,8 @@ import { endLoginDevice, loginDetails, useLoginDevices, type LoginDevice } from 
 import { Button } from '@/shared/ui';
 
 /**
- * Mounted by App in the WebDesktop build: tells this device when another one
- * signs in to the same WebDesktop, with a way to sign it out.
+ * Mounted by App while signed in: tells this device when another one signs in
+ * to this ClaudeWeb, with a way to sign it out.
  */
 export default function LoginDeviceNotice() {
   const { t } = useTranslation('settings');

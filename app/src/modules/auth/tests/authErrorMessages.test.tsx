@@ -77,6 +77,31 @@ describe('the login page', () => {
     }, { timeout: 2500 });
   });
 
+  it('asks to join or take over when another device is signed in, and sends the answer', async () => {
+    const other = { ref: 'a'.repeat(16), device: 'Windows PC · Chrome', via: 'claudeweb', ip: '203.0.113.9', at: Date.now(), main: true };
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/auth/status') return new Response(JSON.stringify({ passwordConfigured: true }), { status: 200 });
+      const body = JSON.parse(String(init?.body ?? '{}')) as { mode?: string };
+      return body.mode
+        ? new Response(JSON.stringify(envelope('X', 'stop here')), { status: 500 })
+        : new Response(JSON.stringify(envelope('AUTH_CHOICE_REQUIRED', 'Another device', { logins: [other], max: 3 })), { status: 409 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await submitLogin('right-password');
+
+    expect(await screen.findByText('Another device is signed in')).toBeTruthy();
+    expect(screen.getByText(/Windows PC · Chrome · 203\.0\.113\.9 · main device/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Take over' }));
+    expect(screen.getByText(/Sign out every other device/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+    await waitFor(() => {
+      const sent = fetchMock.mock.calls.filter(([url]) => url === '/api/auth/login').map(([, init]) => JSON.parse(String(init?.body)));
+      expect(sent).toEqual([{ password: 'right-password' }, { password: 'right-password', mode: 'join' }]);
+    });
+  });
+
   it('says how to set a password when the server has none', async () => {
     stubAuthApi({ '/api/auth/status': { status: 200, body: { passwordConfigured: false, isAuthenticated: false } } });
 

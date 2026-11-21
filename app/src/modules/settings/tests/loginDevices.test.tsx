@@ -46,11 +46,11 @@ test('lists the signed-in devices and signs another one out only after confirmin
   fireEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0]);
   await waitFor(() => expect(screen.queryByText('Windows PC')).toBeNull());
   const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
-  expect(post?.[0]).toMatch(/__webdesktop\/devices$/);
+  expect(post?.[0]).toMatch(/\/api\/auth\/devices$/);
   expect(JSON.parse(String(post?.[1]?.body))).toEqual({ op: 'end', ref: desktop.ref });
 });
 
-test('renders nothing outside WebDesktop, where the devices endpoint does not answer', async () => {
+test('renders nothing while the server does not answer the device list', async () => {
   fetchMock.mockImplementationOnce(async () => new Response('', { status: 404 }));
   const { container } = render(<LoginDevicesSection />);
   await waitFor(() => expect(fetchMock).toHaveBeenCalled());

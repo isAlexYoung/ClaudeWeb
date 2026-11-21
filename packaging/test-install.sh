@@ -8,8 +8,9 @@ PACKAGE="$1"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 failures=0
 check() { if eval "$2"; then echo "PASS $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi; }
+# Scripted logins take over: a second device would otherwise be asked to choose.
 login() { curl -s -o /dev/null -w '%{http_code}' -H 'content-type: application/json' \
-  -d "{\"password\":\"$1\"}" http://127.0.0.1:3001/api/auth/login; }
+  -d "{\"password\":\"$1\",\"mode\":\"takeover\"}" http://127.0.0.1:3001/api/auth/login; }
 
 echo "== install"
 bash "$REPO/install.sh" --package="$PACKAGE" > /tmp/cw-install.out 2>&1

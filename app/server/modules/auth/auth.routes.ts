@@ -52,11 +52,13 @@ export function createAuthRouter(
 
   router.post('/login', async (req, res, next) => {
     try {
-      const body = (req.body ?? {}) as { password?: unknown };
+      const body = (req.body ?? {}) as { password?: unknown; mode?: unknown; replace?: unknown };
       res.json(await service.login({
         password: body.password,
         ip: resolveClientIp(req),
         userAgent: req.get('user-agent')?.slice(0, 512) ?? null,
+        mode: body.mode,
+        replace: body.replace,
       }));
     } catch (error) {
       if (error instanceof AppError && error.code === 'AUTH_LOCKED') {
@@ -78,6 +80,33 @@ export function createAuthRouter(
 
   router.post('/logout', authenticateToken, (req, res) => {
     res.json(service.logout((req as AuthenticatedRequest).authSessionId as string));
+  });
+
+  // Signed-in devices: the list, and signing another one out.
+  router.get('/devices', authenticateToken, (req, res) => {
+    res.json(service.listDevices((req as AuthenticatedRequest).authSessionId as string));
+  });
+
+  router.post('/devices', authenticateToken, (req, res, next) => {
+    try {
+      const body = (req.body ?? {}) as { op?: unknown; ref?: unknown };
+      if (body.op !== 'end') {
+        res.status(400).json({ error: 'Unknown operation', code: 'INVALID_REQUEST' });
+        return;
+      }
+      res.json(service.endDevice((req as AuthenticatedRequest).authSessionId as string, body.ref));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Real use of the page; ordinary requests do not keep a browser login alive.
+  router.post('/activity', authenticateToken, (req, res, next) => {
+    try {
+      res.json(service.recordActivity((req as AuthenticatedRequest).authSessionId as string));
+    } catch (error) {
+      next(error);
+    }
   });
 
   return router;

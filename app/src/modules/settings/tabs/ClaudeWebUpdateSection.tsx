@@ -11,7 +11,7 @@ import { Button } from '@/shared/ui';
 // Codes the root updater reports that have their own explanation; anything else shows the code.
 const KNOWN_ERRORS = new Set([
   'CLAUDEWEB_DISK_REQUIRED', 'CLAUDEWEB_UPDATE_TOO_SOON', 'CLAUDEWEB_UPDATE_RUNNING', 'CLAUDEWEB_START_FAILED_ROLLED_BACK',
-  'CLAUDEWEB_DOWNLOAD_FAILED', 'CLAUDEWEB_CATALOGUE_UNAVAILABLE', 'CLAUDEWEB_UPDATER_UNAVAILABLE',
+  'CLAUDEWEB_DOWNLOAD_FAILED', 'CLAUDEWEB_CATALOGUE_UNAVAILABLE', 'CLAUDEWEB_UPDATER_UNAVAILABLE', 'NOT_MAIN_DEVICE',
 ]);
 
 function megabytes(bytes: number) {

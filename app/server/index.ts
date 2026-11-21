@@ -24,6 +24,8 @@ import {
     authenticateToken,
     authenticateWebSocket,
     authRoutes,
+    isMainLoginDevice,
+    loginSessionAlive,
     validateApiKey,
 } from './modules/auth/index.js';
 import { ensureTaskmasterOnPath, taskmasterRoutes } from './modules/taskmaster/index.js';
@@ -120,6 +122,7 @@ createWebSocketServer(server, {
     },
     getPluginPort,
     browser: browserService,
+    sessionAlive: loginSessionAlive,
 });
 
 app.use(cors({ exposedHeaders: ['X-Refreshed-Token', 'X-Auth-Error'] }));
@@ -182,9 +185,18 @@ app.use('/api/settings', authenticateToken, settingsRoutes);
 app.use('/api/backup', authenticateToken, backupRoutes);
 app.use('/api/backup-download', backupDownloadRoutes);
 
-// Settings > About: update ClaudeWeb through the root updater (protected)
+// Settings > About: update ClaudeWeb through the root updater (protected). Only the
+// main (oldest) signed-in device may start an update; every device may look.
+app.post('/api/claudeweb-update/update', authenticateToken, (req: Request, res: Response, next: NextFunction) => {
+    const sessionId = (req as Request & { authSessionId?: string }).authSessionId;
+    if (sessionId && isMainLoginDevice(sessionId)) return next();
+    return res.status(403).json({
+        success: false,
+        error: { code: 'NOT_MAIN_DEVICE', message: 'Only the main device can update ClaudeWeb.' },
+    });
+});
 app.use('/api/claudeweb-update', authenticateToken, claudeWebUpdateRoutes);
-// The browser panel: the server's Chromium, relayed over a local socket.
+// The browser panel: the server's Chromium on this server.
 app.use('/api/browser', authenticateToken, browserRoutes);
 
 app.use('/api/notifications', authenticateToken, notificationRoutes);

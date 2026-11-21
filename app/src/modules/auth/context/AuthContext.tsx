@@ -25,8 +25,19 @@ const AUTH_ERROR_MESSAGES = {
   sessionExpired: 'errors.sessionExpired',
 } as const;
 
-/** A failed login carries `retryAfterSeconds` when this IP is locked out for a while. */
-type AuthActionResult = { success: true } | { success: false; error: string; retryAfterSeconds?: number };
+/** A device already signed in, as the login choice shows it. */
+export type SignedInDevice = { ref: string; device: string; via: string; ip: string; at: number; main: boolean };
+
+/** How this login treats the devices already signed in: keep them (`join`, optionally signing one out) or sign them all out. */
+export type LoginChoice = { mode: 'join' | 'takeover'; replace?: string };
+
+/**
+ * A failed login carries `retryAfterSeconds` when this IP is locked out for a
+ * while, or `choice` when other devices are signed in and the user must choose.
+ */
+type AuthActionResult =
+  | { success: true }
+  | { success: false; error: string; retryAfterSeconds?: number; choice?: { logins: SignedInDevice[]; max: number } };
 
 type AuthSessionPayload = {
   token?: string;
@@ -38,7 +49,7 @@ type AuthStatusPayload = {
 };
 
 type AuthErrorPayload = {
-  error?: { code?: unknown; details?: { retryAfterSeconds?: unknown; attemptsBeforeLock?: unknown } };
+  error?: { code?: unknown; details?: { retryAfterSeconds?: unknown; attemptsBeforeLock?: unknown; logins?: unknown; max?: unknown } };
 };
 
 type AuthUserPayload = {
@@ -57,7 +68,7 @@ type AuthContextValue = {
   passwordConfigured: boolean;
   hasCompletedOnboarding: boolean;
   error: string | null;
-  login: (password: string) => Promise<AuthActionResult>;
+  login: (password: string, choice?: LoginChoice) => Promise<AuthActionResult>;
   logout: () => void;
   refreshOnboardingStatus: () => Promise<void>;
 };
@@ -292,10 +303,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [checkOnboardingStatus]);
 
   const login = useCallback<AuthContextValue['login']>(
-    async (password) => {
+    async (password, choice) => {
       try {
         setError(null);
-        const response = await api.auth.login(password);
+        const response = await api.auth.login(password, choice);
         const payload = await parseJsonSafely<AuthSessionPayload & AuthErrorPayload>(response);
 
         if (!response.ok || !payload?.token || !payload.user) {
@@ -307,6 +318,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const details = payload?.error?.details;
           if (code === 'AUTH_LOCKED' && typeof details?.retryAfterSeconds === 'number') {
             return { success: false, error: t(AUTH_ERROR_MESSAGES.locked), retryAfterSeconds: details.retryAfterSeconds };
+          }
+          if ((code === 'AUTH_CHOICE_REQUIRED' || code === 'AUTH_DEVICE_LIMIT') && Array.isArray(details?.logins)) {
+            return {
+              success: false,
+              error: '',
+              choice: { logins: details.logins as SignedInDevice[], max: typeof details.max === 'number' ? details.max : 3 },
+            };
           }
           if (code === 'AUTH_PASSWORD_NOT_SET') {
             setPasswordConfigured(false);
