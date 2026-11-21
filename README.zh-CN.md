@@ -11,8 +11,10 @@ ClaudeWeb 是 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview
 > 还没有正式版。域名访问还在开发。在一台可以重装的 Debian 12 服务器上试用时，需要指定版本：
 >
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | sudo bash -s -- --version=2.0.0
+> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.0
 > ```
+>
+> 以 root 运行。如果用的是有 sudo 权限的普通用户，把 `bash` 换成 `sudo bash`。
 
 ## 与 Anthropic 无关
 
@@ -32,8 +34,10 @@ ClaudeWeb 是 Siteboon AI B.V. 及贡献者开发的
 2.0.0 发布后，在一台新服务器上以 root 运行一条命令即可安装：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
 ```
+
+以 root 运行（有 sudo 权限的普通用户把 `bash` 换成 `sudo bash`）。
 
 加上 `--version=2.0.0` 可以安装指定版本；默认安装最新的正式版。安装结束时会显示登录密码；之后 root 可以用
 `claudeweb password` 再次查看，用 `claudeweb password --set` 换一个新密码（所有设备都会退出登录）。

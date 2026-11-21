@@ -13,8 +13,11 @@ built-in browser, all running on that server with the official Claude CLI.
 > Debian 12 server, name the version:
 >
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | sudo bash -s -- --version=2.0.0
+> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.0
 > ```
+>
+> Run it as root. Signed in as another user with sudo, write `sudo bash`
+> instead of `bash`.
 
 ## Not affiliated with Anthropic
 
@@ -39,8 +42,10 @@ When 2.0.0 is released, installation will be one command run as root on a
 fresh server:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
 ```
+
+Run it as root (`sudo bash` instead of `bash` for a user with sudo).
 
 `--version=2.0.0` will pick a specific version; the default is the latest
 stable release. The installer prints the login password at the end; root can
