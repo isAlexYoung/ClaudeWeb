@@ -38,6 +38,12 @@ check "claudeweb status works" "claudeweb status >/tmp/cw-status.out 2>&1 && gre
 check "claudeweb doctor has no password" "claudeweb doctor >/tmp/cw-doctor.out 2>&1; ! grep -qF -- \"\$password\" /tmp/cw-doctor.out"
 check "claudeweb help lists uninstall" "claudeweb help | grep -q -- '--delete-projects'"
 check "unknown command shows help and fails" "! claudeweb nonsense >/tmp/cw-unknown.out 2>&1 && grep -q 'Commands:' /tmp/cw-unknown.out"
+# Out of memory, what ClaudeWeb started goes first: its children are raised within five seconds.
+sleep 6
+main_pid="$(systemctl show -p MainPID --value claudeweb)"
+child_scores="$(for pid in $(pgrep -P "$main_pid"); do cat "/proc/$pid/oom_score_adj"; done | sort -u | tr '\n' ' ')"
+check "the service scores a little lower than other programs" "[[ \$(cat /proc/$main_pid/oom_score_adj) == -100 ]]"
+check "what it started scores higher ($child_scores)" "[[ -n '$child_scores' && '$child_scores' == '500 ' ]]"
 
 echo "== repair (run the installer again)"
 mkdir -p /home/claudeweb/projects/demo && echo keep > /home/claudeweb/projects/demo/file.txt

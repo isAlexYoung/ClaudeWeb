@@ -35,6 +35,7 @@ import { backupDownloadRoutes, backupRoutes } from './modules/backup/index.js';
 import { claudeWebUpdateRoutes } from './modules/claudeweb-update/index.js';
 import { browserRoutes, browserService } from './modules/browser/index.js';
 import { startSudoConfirmation, sudoRoutes } from './modules/sudo/index.js';
+import { startChildOomPriority } from './modules/oom-priority/index.js';
 import { createAgentModule } from './modules/agent/index.js';
 import projectModuleRoutes from './modules/projects/projects.routes.js';
 import notificationRoutes from './modules/notifications/notifications.routes.js';
@@ -353,6 +354,9 @@ async function startServer() {
 
         // Configure Web Push (VAPID keys)
         configureWebPush();
+
+        // Out of memory, Linux ends what ClaudeWeb started before ClaudeWeb itself.
+        startChildOomPriority();
 
         // Before any chat starts, so Claude's commands get the sudo shim. The pages
         // only hear that the list changed and read it again through the API.

@@ -73,6 +73,10 @@ release is a test release.
   or Refuse. Unattended runs refuse. Only calls that name these files are
   caught (file tools, searches, command lines); one list in
   server/modules/sensitive-access.
+- Out of memory, Linux ends what ClaudeWeb started (Claude, terminals, the
+  browser) before ClaudeWeb itself: the service runs with
+  OOMScoreAdjust=-100 and raises everything below it to 500 every few
+  seconds; sshd is not outranked.
 
 ### Changed
 

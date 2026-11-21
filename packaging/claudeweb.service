@@ -23,9 +23,11 @@ KillMode=control-group
 TimeoutStopSec=15
 # No memory, CPU or task quotas: ClaudeWeb uses what the server has, including
 # memory added later. A process killed for lack of memory must not stop the
-# service (OOMPolicy). No OOMScoreAdjust yet: children would inherit it and be
-# protected over sshd; the app has to raise its children's score first.
+# service (OOMPolicy). Out of memory, Linux ends ClaudeWeb's children first:
+# the service scores a little lower than other programs, and the app raises
+# everything it starts to 500 (modules/oom-priority); sshd is not outranked.
 OOMPolicy=continue
+OOMScoreAdjust=-100
 TasksMax=infinity
 LimitNOFILE=65536
 UMask=0007
