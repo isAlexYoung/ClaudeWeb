@@ -1,0 +1,18 @@
+{
+ "schema": 1,
+ "releases": [
+  {
+   "version": "2.0.0",
+   "channel": "test",
+   "published_at": "2026-11-21T10:12:40Z",
+   "notes": "First standalone ClaudeWeb, test release for checking on real servers.",
+   "package": {
+    "name": "claudeweb-2.0.0-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.0.0/claudeweb-2.0.0-linux-x64.tar.xz",
+    "bytes": 66577920,
+    "sha256": "c8e8c1a0bd455b69704c1f36af5b7487d46234c44f54dd9c76093e46992f7a1c"
+   }
+  }
+ ],
+ "generated_at": "2026-11-21T10:12:40Z"
+}
