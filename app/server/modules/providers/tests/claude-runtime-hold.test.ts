@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
+import test, { after } from 'node:test';
 
 import { ClaudeSessionsProvider } from '@/modules/providers/list/claude/claude-sessions.provider.js';
 import { CLAUDE_PREDEFINED_MODELS } from '@/modules/providers/list/claude/claude-models.provider.js';
@@ -24,6 +24,12 @@ import type { NormalizedMessage, ProviderRuntimeContext } from '@/shared/types.j
 
 // A retired process is closed after this grace; short, so the tests see it.
 process.env.CLAUDE_RETIRE_GRACE_MS = '60';
+
+// The runtime's timers are unref'd so they never keep a process alive; in the
+// server the HTTP listener does. Here nothing else would, and on Linux the test
+// process ended in the middle of a stop that was waiting on one of them.
+const keepAlive = setInterval(() => {}, 1000);
+after(() => clearInterval(keepAlive));
 
 const SESSION_ID = 'app-hold-session';
 const NATIVE_ID = 'native-hold-session';

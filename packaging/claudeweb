@@ -83,7 +83,7 @@ cmd_status() {
   echo "Password:  $([[ -f $ETC_DIR/login.json ]] && echo set || echo 'not set (claudeweb password --set)')"
   local claude="$SERVICE_HOME/.local/bin/claude"
   if [[ -x $claude ]]; then
-    echo "Claude CLI: $(runuser -u "$SERVICE_USER" -- "$claude" --version 2>/dev/null | head -n1 || echo 'installed, version unknown')"
+    echo "Claude CLI: $(as_service "$claude" --version 2>/dev/null | head -n1 || echo 'installed, version unknown')"
   else
     echo "Claude CLI: not installed"
   fi
@@ -128,7 +128,7 @@ cmd_doctor() {
   cat "$ENV_FILE" 2>/dev/null || echo "missing"
   echo "== Claude CLI"
   if [[ -x $SERVICE_HOME/.local/bin/claude ]]; then
-    runuser -u "$SERVICE_USER" -- "$SERVICE_HOME/.local/bin/claude" --version 2>&1 | head -n1 || true
+    as_service "$SERVICE_HOME/.local/bin/claude" --version 2>&1 | head -n1 || true
   else
     echo "not installed"
   fi
@@ -492,6 +492,10 @@ cmd_serve_update() {
 # Installs the built-in browser for a release: the system libraries Chromium
 # needs (Playwright knows the list for this distribution), then Playwright's
 # Chromium into the service account's cache. Used by install.sh and update.
+# A command run as the service user starts in its home: root's working
+# directory (often /root) is closed to it, and npm then cannot even start sh.
+as_service() { (cd "$SERVICE_HOME" && runuser -u "$SERVICE_USER" -- "$@"); }
+
 cmd_install_browser() {
   need_root install-browser
   local release="${1:-$CURRENT}" version node_dir
@@ -502,7 +506,7 @@ cmd_install_browser() {
   echo "Installing the browser (Playwright $version)"
   env -i PATH="$node_dir:/usr/sbin:/usr/bin:/sbin:/bin" HOME=/root LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive \
     "$node_dir/npx" --yes "playwright@$version" install-deps chromium
-  runuser -u "$SERVICE_USER" -- env -i PATH="$node_dir:/usr/bin:/bin" HOME="$SERVICE_HOME" LANG=C.UTF-8 \
+  as_service env -i PATH="$node_dir:/usr/bin:/bin" HOME="$SERVICE_HOME" LANG=C.UTF-8 \
     "$node_dir/npx" --yes "playwright@$version" install chromium
 }
 
