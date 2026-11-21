@@ -16,6 +16,8 @@ ClaudeWeb 是 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview
 >
 > 以 root 运行。如果用的是有 sudo 权限的普通用户，把 `bash` 换成 `sudo bash`。
 > 已装了较早测试版的服务器用 `claudeweb update --version=2.0.1` 更新（设置 > 关于 只提供正式版）。
+>
+> [使用说明](doc/USER_GUIDE.zh-CN.md)介绍安装、SSH 隧道与域名访问、CMCP 连接、从 WebDesktop 迁移和常见问题。
 
 ## 与 Anthropic 无关
 

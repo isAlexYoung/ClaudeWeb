@@ -236,7 +236,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 - [x] README 声明与 Anthropic 无任何隶属关系，附免责声明和版权声明。
 - [x] 关于页面的源码链接指向公开仓库，替代原 `cloudcli.patch`。
 - [x] README 写明不收集任何使用数据。
-- [ ] 编写用户文档：安装、SSH 隧道与域名访问、CMCP 连接，以及常见问题（忘记密码、更新失败、CMCP 连不上、内存不足）。
+- [x] 编写用户文档：安装、SSH 隧道与域名访问、CMCP 连接，以及常见问题（忘记密码、更新失败、CMCP 连不上、内存不足）。（2026-11-21：`doc/USER_GUIDE.zh-CN.md` 和 `doc/USER_GUIDE.md`，另含从 WebDesktop 迁移、更新回退、sudo、域名排查、卸载）
 - [x] 编写 `CONTRIBUTING.md`：本地开发与测试方法、代码规范、提交说明要求；PR 须通过 CI 并由维护者审查后合并。
 - [x] 准备 Issue 模板（问题报告附 `claudeweb doctor` 输出、功能建议）和 PR 模板。
 - [x] 贡献的许可证规则：贡献内容按本仓库许可证（AGPL）发布，提交时签署 DCO（`git commit -s`），确认贡献者有权提交这些代码。

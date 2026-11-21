@@ -19,6 +19,9 @@ built-in browser, all running on that server with the official Claude CLI.
 > instead of `bash`. A server on an earlier test release updates with
 > `claudeweb update --version=2.0.1` (Settings > About offers stable
 > releases only).
+>
+> The [user guide](doc/USER_GUIDE.md) covers installing, the SSH tunnel and
+> domains, CMCP, moving from WebDesktop and common problems.
 
 ## Not affiliated with Anthropic
 
