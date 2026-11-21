@@ -106,6 +106,9 @@ step "Installing system packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -y -q --no-install-recommends ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq minisign
+# The built-in browser's private display, window manager, clipboard, fonts and Chinese input.
+apt-get install -y -q --no-install-recommends tigervnc-standalone-server openbox xauth x11-utils xdotool xclip \
+  xfonts-base fonts-dejavu-core fonts-noto-cjk dbus dbus-x11 fcitx5 fcitx5-chinese-addons fcitx5-frontend-gtk3 fcitx5-frontend-qt5
 
 # ------------------------------------------------------------------ package
 step "Getting the release package"
@@ -204,6 +207,10 @@ if [[ ! -x $SERVICE_HOME/.local/bin/claude ]]; then
     || fail "the Claude Code CLI could not be installed; check the connection to claude.ai and run the installer again"
 fi
 [[ -x $SERVICE_HOME/.local/bin/claude ]] || fail "the Claude Code CLI was not found after installing it"
+
+step "Installing the browser"
+"$CURRENT/bin/claudeweb" install-browser \
+  || say "The built-in browser could not be installed; everything else works. Retry later with: claudeweb install-browser"
 
 step "Checking swap"
 "$CURRENT/bin/claudeweb" swap --auto || say "Swap was not added; set it later with: claudeweb swap --size=2G"

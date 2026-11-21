@@ -8,6 +8,8 @@ its own license.
 | [CloudCLI UI](https://github.com/siteboon/claudecodeui) (Claude Code UI) | `app/`, the base of ClaudeWeb | AGPL-3.0-or-later with Section 7 additional terms; see [LICENSE](LICENSE) and [NOTICE](NOTICE) |
 | [noVNC](https://github.com/novnc/noVNC) | `app/public/novnc/`, with local changes described in `app/public/novnc/LOCAL_PATCHES.md` | MPL-2.0 and others; see `app/public/novnc/LICENSE.txt` |
 | [Task Master](https://github.com/eyaltoledano/claude-task-master) (`task-master-ai` 0.43.1) | installed into `app/tools/taskmaster/` from npm | MIT with Commons Clause |
+| [Chromium](https://www.chromium.org/) via [Playwright](https://playwright.dev/) (version pinned in `packaging/playwright-version`) | downloaded by `claudeweb install-browser` into `/home/claudeweb/.cache/ms-playwright` | BSD-3-Clause and others; Playwright is Apache-2.0 |
+| TigerVNC, Openbox, Fcitx 5, Noto CJK fonts, xclip, xdotool | Debian packages installed by `install.sh` | their Debian package licenses (GPL, LGPL, OFL and others) |
 | npm packages | listed in `app/package-lock.json` and `app/tools/taskmaster/package-lock.json` | their own licenses, recorded in each package |
 
 ClaudeWeb works with the official

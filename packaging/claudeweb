@@ -48,6 +48,7 @@ Commands:
   password                   Show the login password
   password --set             Set a new, generated login password; every device signs out
   password --set --stdin     Set a login password you type instead
+  install-browser            Install or repair the built-in browser (Chromium)
   swap                       Show swap
   swap --size=<N>G           Create or resize ClaudeWeb's swap file to N GiB (1-16)
   swap --auto                Add swap sized from this machine if there is none
@@ -378,6 +379,12 @@ cmd_update() {
     mv "$work/claudeweb-$target" "$RELEASES/$target.partial"
     mv "$RELEASES/$target.partial" "$RELEASES/$target"
   fi
+  # A new release may pin a newer Chromium; without it only the browser panel is missing.
+  if [[ -f $RELEASES/$target/share/playwright-version ]] \
+    && ! cmp -s "$RELEASES/$target/share/playwright-version" "$CURRENT/share/playwright-version" 2>/dev/null; then
+    "$RELEASES/$target/bin/claudeweb" install-browser "$RELEASES/$target" \
+      || echo "warning: the browser for $target could not be installed; run: claudeweb install-browser" >&2
+  fi
 
   install -d -m 0700 "$UPDATE_DIR"
   printf '{"from": "%s", "to": "%s", "phase": "switching", "started_at": "%s"}\n' "$current" "$target" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$UPDATE_STATE"
@@ -481,6 +488,24 @@ cmd_serve_update() {
   esac
 }
 
+# ------------------------------------------------------------------ browser
+# Installs the built-in browser for a release: the system libraries Chromium
+# needs (Playwright knows the list for this distribution), then Playwright's
+# Chromium into the service account's cache. Used by install.sh and update.
+cmd_install_browser() {
+  need_root install-browser
+  local release="${1:-$CURRENT}" version node_dir
+  [[ -f $release/share/playwright-version ]] || die "this release does not name a Playwright version"
+  version="$(tr -d '[:space:]' < "$release/share/playwright-version")"
+  [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "unexpected Playwright version: $version"
+  node_dir="$release/node/bin"
+  echo "Installing the browser (Playwright $version)"
+  env -i PATH="$node_dir:/usr/sbin:/usr/bin:/sbin:/bin" HOME=/root LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive \
+    "$node_dir/npx" --yes "playwright@$version" install-deps chromium
+  runuser -u "$SERVICE_USER" -- env -i PATH="$node_dir:/usr/bin:/bin" HOME="$SERVICE_HOME" LANG=C.UTF-8 \
+    "$node_dir/npx" --yes "playwright@$version" install chromium
+}
+
 # ------------------------------------------------------------------ uninstall
 cmd_uninstall() {
   need_root uninstall
@@ -541,6 +566,7 @@ case "$command" in
   update) cmd_update "$@" ;;
   rollback) cmd_rollback "$@" ;;
   serve-update) cmd_serve_update "$@" ;;
+  install-browser) cmd_install_browser "$@" ;;
   uninstall) cmd_uninstall "$@" ;;
   *) echo "Unknown command: $command" >&2; echo >&2; show_help >&2; exit 1 ;;
 esac

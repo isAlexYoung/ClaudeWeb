@@ -8,7 +8,7 @@ ClaudeWeb 是 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview
 使用官方 Claude CLI。
 
 > **状态：开发中。** 第一个独立版本 ClaudeWeb 2.0.0 还没有发布。
-> 安装程序、登录、`claudeweb` 管理命令和带签名的更新已经可用；域名访问和内置浏览器还在开发。
+> 安装程序、登录、`claudeweb` 管理命令、带签名的更新和内置浏览器已经可用；域名访问还在开发。
 > 目前还没有发布任何版本，可以先自己构建安装包（见[开发](#开发)）。
 
 ## 与 Anthropic 无关
@@ -46,6 +46,10 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 `uninstall`（默认保留 `/home/claudeweb/projects`，加 `--delete-projects` 才删除项目）、`update`、`rollback`。
 
 更新来自用 ClaudeWeb 密钥签名的版本清单，安装包与清单一致才会被使用。`claudeweb update`（或网页的「设置 → 关于」）安装最新正式版，先备份数据库；新版本启动失败会自动换回原版本。`claudeweb rollback` 随时可以退回上一个版本。详见 [doc/RELEASING.md](doc/RELEASING.md)。
+
+## 内置浏览器
+
+浏览器面板显示的是运行在服务器上的 Chromium（Playwright 提供的版本，由安装程序安装），带中文字体和拼音输入法（按 Shift 切换中英文）。它以 `claudeweb` 用户运行在只有 ClaudeWeb 能访问的私有显示上，保留 Chromium 自身的沙箱；连接断开后保留 10 分钟。在另一台设备打开面板会接管同一个浏览器。`claudeweb install-browser` 可以修复浏览器。
 
 ## 安全设计
 

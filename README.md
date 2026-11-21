@@ -9,7 +9,7 @@ built-in browser, all running on that server with the official Claude CLI.
 
 > **Status: in development.** ClaudeWeb 2.0.0, the first standalone release,
 > is not out yet. The installer, the login, the `claudeweb` command and signed
-> updates work; domains and the built-in browser are still being built. No
+> updates and the built-in browser work; domains are still being built. No
 > release is published yet, so for now build a package yourself (see
 > [Development](#development)).
 
@@ -63,6 +63,16 @@ installs the latest stable release, backs up the database, and returns to
 the previous version by itself if the new one does not start.
 `claudeweb rollback` returns to the previous version at any time. See
 [doc/RELEASING.md](doc/RELEASING.md).
+
+## Built-in browser
+
+The browser panel shows a Chromium that runs on the server (Playwright's
+build, installed by the installer), with Chinese fonts and Pinyin input
+(press Shift to switch). It runs as the `claudeweb` user on a private
+display that only ClaudeWeb can reach, keeps Chromium's own sandbox, and
+stays open for ten minutes when the connection drops. Opening the panel on
+another device takes the same browser over. `claudeweb install-browser`
+repairs it.
 
 ## Security model
 

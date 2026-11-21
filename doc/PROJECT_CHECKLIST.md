@@ -76,11 +76,11 @@
 - [ ] 统一项目、下载、配置的文件所有权和默认权限，减少跨用户协调。
 - [ ] 安装程序和系统配置由安装器管理，应用不直接替换系统级程序文件。
 - [ ] root 更新组件只执行已定义操作，不提供通用 root Shell 接口。
-- [ ] 浏览器保留自身沙箱，不通过关闭内部沙箱强行统一身份。
+- [x] 浏览器保留自身沙箱，不通过关闭内部沙箱强行统一身份。（Chromium 不加 --no-sandbox）
 - [ ] 说明多个会话共享运行用户和项目权限，不宣称每个聊天有独立沙箱。
-- [ ] 将浏览器所需的最小图形运行和画面转发组件独立出来，由 ClaudeWeb 管理。
-- [ ] 内置浏览器安装中文字体（如 Noto CJK），正常显示中文网页；保留浏览器内的中文输入（现有为 fcitx5）。
-- [ ] 浏览器可在无物理显示器的 VPS 工作，不依赖 WebDesktop 网关或桌面界面。
+- [x] 将浏览器所需的最小图形运行和画面转发组件独立出来，由 ClaudeWeb 管理。（Xvnc + Openbox + Fcitx5，由应用内的浏览器模块启动和停止）
+- [x] 内置浏览器安装中文字体（如 Noto CJK），正常显示中文网页；保留浏览器内的中文输入（现有为 fcitx5）。
+- [x] 浏览器可在无物理显示器的 VPS 工作，不依赖 WebDesktop 网关或桌面界面。
 - [ ] 不要求存在旧的 `wdterm`、`wdguest`、`wdsvc`、`wdgui`、WebDesktop 数据库或安装状态。
 - [ ] 不依赖原私有仓库、Deploy Key、WebDesktop 版本或 fa-build 运行环境。
 - [ ] 为未来图形应用扩展留出接口，本阶段不实现或安装 Claude Desktop，不显示不可用占位按钮。
@@ -162,7 +162,7 @@
 - [x] 固定默认本机端口，写进文档和 SSH 隧道说明；端口被占用时安装给出明确错误，不自动更换端口。
 - [ ] Chromium 和 Node.js 随 ClaudeWeb 新版本一起更新；出现严重安全漏洞时单独发布修复版，只为最新正式版提供修复。
 - [ ] 现有 ClaudeWeb 前后端自动测试搬入新仓库并接入 CI，提交和 PR 都要运行。
-- [ ] 发布包附第三方许可证声明：除 CloudCLI 的 AGPL 外，还包括 Playwright Chromium、noVNC、字体及其他打包组件。
+- [x] 发布包附第三方许可证声明：除 CloudCLI 的 AGPL 外，还包括 Playwright Chromium、noVNC、字体及其他打包组件。（`THIRD_PARTY_NOTICES.md` 随发布包一起）
 - [ ] 后续计划：支持 arm64 架构，首期只做 amd64。
 - [ ] 首期完成 Debian 12 amd64 支持；后续增加 Ubuntu 等 Linux 发行版，按发行版和版本分别验收后声明支持。
 - [ ] 将软件包、服务、图形依赖和系统配置差异集中到平台适配层，避免业务功能与 Debian 12 路径或包名绑定。
@@ -269,7 +269,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 - [x] 创建公开仓库，整理可公开源码与许可证。（2026-11-20：`isAlexYoung/ClaudeWeb`）
 - [x] 遵守上游 AGPL 附加条款：文档和关于页保留“CloudCLI UI (https://github.com/siteboon/claudecodeui)”署名；明确标注为修改版，不以原版名义发布；宣传中不使用“CloudCLI”“Siteboon”名称。
 - [ ] 完成命名、认证、用户、文件和终端独立化。
-- [ ] 完成浏览器独立运行，去掉 WebDesktop 前置依赖。
+- [x] 完成浏览器独立运行，去掉 WebDesktop 前置依赖。（2026-11-20：WSL2 Debian 12 浏览器测试通过）
 - [ ] 在没有 WebDesktop、fa-build 的干净环境完整运行。
 
 #### 执行进度（2026-11-20）

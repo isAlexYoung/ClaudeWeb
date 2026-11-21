@@ -33,6 +33,13 @@ release is a test release.
   return to the previous version when the new one does not start.
   `claudeweb rollback` returns to the previous version from any state.
 
+- The browser panel runs Playwright's Chromium on the server, on a private
+  display (Xvnc) with Openbox, Chinese fonts and Fcitx 5 Pinyin input. Text
+  and PNG clipboard on request; another device takes the browser over; it
+  is kept ten minutes after a dropped connection. `claudeweb
+  install-browser` installs or repairs it; updates install a newly pinned
+  Chromium.
+
 ### Changed
 
 - ClaudeWeb is now a standalone project, independent of WebDesktop. The
