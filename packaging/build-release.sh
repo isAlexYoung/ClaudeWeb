@@ -25,6 +25,8 @@ for argument in "$@"; do
 done
 [[ "$VERSION" =~ ^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$ ]] || { echo "--version=X.Y.Z is required" >&2; exit 2; }
 [[ "$CHANNEL" == test || "$CHANNEL" == stable ]] || { echo "--channel must be test or stable" >&2; exit 2; }
+# The build changes directory; a relative --out must still mean where it was given.
+OUT="$(realpath -m "$OUT")"
 [[ "$(uname -m)" == x86_64 ]] || { echo "Build on amd64 (x86_64)." >&2; exit 2; }
 
 WORK="$(mktemp -d)"
