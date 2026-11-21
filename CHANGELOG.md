@@ -4,6 +4,23 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0,
 the first standalone release; everything published before the 2.0.0 stable
 release is a test release.
 
+## Unreleased
+
+### Added
+
+- Domains: `claudeweb domain` (also offered at the end of the installation)
+  gives ClaudeWeb an HTTPS address under a Cloudflare-managed domain through a
+  Cloudflare Tunnel, without opening a port. It asks for the domain (twice), a
+  random or chosen name one level under it, the Account ID, the Zone ID and a
+  hidden API token that is never stored; creates the tunnel, its route to
+  ClaudeWeb and a proxied DNS record; installs cloudflared from Cloudflare's
+  signed package source (key pinned); and reports the address only when the
+  tunnel is connected, the page answers and an API without a login is
+  refused. An interrupted setup continues or is cleaned up on the next run.
+  `claudeweb domain --status`, `--remove` and `--remove --local`;
+  `claudeweb status` shows the domain. Tested against a local stand-in for the
+  Cloudflare API (`packaging/test-domain.sh`), not yet against Cloudflare.
+
 ## 2.0.1 - 2026-11-21 (test release)
 
 ### Fixed

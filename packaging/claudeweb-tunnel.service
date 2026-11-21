@@ -1,0 +1,29 @@
+[Unit]
+Description=Cloudflare Tunnel to ClaudeWeb (set up by: claudeweb domain)
+After=network-online.target claudeweb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The tunnel's run token reaches cloudflared as a credential file, never in its
+# command line or environment. Only root can read the stored copy.
+DynamicUser=yes
+LoadCredential=token:/etc/claudeweb/tunnel-token
+ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel --metrics 127.0.0.1:20241 run --token-file %d/token
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictSUIDSGID=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET
+UMask=0077
+MemoryMax=128M
+MemorySwapMax=64M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

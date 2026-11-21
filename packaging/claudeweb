@@ -33,6 +33,18 @@ readonly DEFAULT_RELEASES_URL=https://raw.githubusercontent.com/isAlexYoung/Clau
 readonly RELEASE_PUBKEY=RWTd/gMB0+uVjUjFTKV/03UUGdQIoF+X+FIvGW8kdn9eDoqh3M2JMG39
 readonly KEEP_RELEASES=3
 readonly KEEP_BACKUPS=3
+readonly DOMAIN_STATE="$ETC_DIR/domain.json"
+readonly TUNNEL_TOKEN_FILE="$ETC_DIR/tunnel-token"
+readonly TUNNEL_SERVICE=claudeweb-tunnel.service
+readonly TUNNEL_UNIT=/etc/systemd/system/claudeweb-tunnel.service
+# cloudflared comes from Cloudflare's signed APT source; its key is pinned here.
+readonly CF_KEY_URL=https://pkg.cloudflare.com/cloudflare-main.gpg
+readonly CF_KEY_SHA256=1bd95f4082b320d541bee351560fc2765aa9f9cd8efa4c9e32135e63f252721d
+readonly CF_KEYRING=/usr/share/keyrings/claudeweb-cloudflare.gpg
+readonly CF_SOURCE=/etc/apt/sources.list.d/claudeweb-cloudflared.list
+# Overridable only so tests can use a local stand-in for the Cloudflare API.
+readonly CF_API="${CLAUDEWEB_CF_API:-https://api.cloudflare.com/client/v4}"
+CF_TOKEN=""
 
 die() { echo "claudeweb: $*" >&2; exit 1; }
 need_root() { [[ $EUID -eq 0 ]] || die "run this as root (for example: sudo claudeweb $1)"; }
@@ -64,12 +76,18 @@ Commands:
   update --version=X.Y.Z     Update to that release (also test releases)
   rollback                   Return to the previous version; works in any unfinished
                              update state and keeps all user data as it is
+  domain                     Set up a domain: HTTPS through a Cloudflare Tunnel, no open
+                             port (asks for the domain, IDs and an API token)
+  domain --status            Show the domain and whether its tunnel runs
+  domain --remove            Delete the tunnel and its DNS record in Cloudflare
+  domain --remove --local    Only stop and forget the tunnel on this server
   uninstall                  Remove ClaudeWeb; keeps /home/claudeweb/projects
   uninstall --delete-projects
                              Remove ClaudeWeb and the project folders too
 
 Open ClaudeWeb through an SSH tunnel from your computer:
   ssh -L 3001:127.0.0.1:3001 root@<this server>     then visit http://localhost:3001
+or through the domain set up with: claudeweb domain
 EOF
 }
 
@@ -86,6 +104,7 @@ cmd_status() {
   else
     echo "Address:   http://127.0.0.1:$PORT (not answering)"
   fi
+  if [[ -f $DOMAIN_STATE ]]; then domain_status; else echo "Domain:    none (set one up with: claudeweb domain)"; fi
   echo "Password:  $([[ -f $ETC_DIR/login.json ]] && echo set || echo 'not set (claudeweb password --set)')"
   local claude="$SERVICE_HOME/.local/bin/claude"
   if [[ -x $claude ]]; then
@@ -557,6 +576,318 @@ cmd_install_browser() {
     "$node_dir/npx" --yes "playwright@$version" install chromium
 }
 
+# ------------------------------------------------------------------ domain
+# A domain reaches ClaudeWeb through a Cloudflare Tunnel run by cloudflared on
+# this server: no inbound port is opened. The account API token is typed by root,
+# used only inside this process for the Cloudflare calls, and never stored; what
+# stays on the server is the tunnel's own run token (root only, 0600).
+domain_tty() { [[ -r /dev/tty ]] && { : </dev/tty; } 2>/dev/null; }
+ask() {  # ask <prompt>: one line from the terminal
+  local answer=""
+  IFS= read -r -p "$1" answer </dev/tty || return 1
+  printf '%s' "$answer"
+}
+ask_secret() {
+  local answer=""
+  IFS= read -rs -p "$1" answer </dev/tty || return 1
+  echo >&2
+  printf '%s' "$answer"
+}
+ask_yes() {  # ask_yes <prompt> <default y|n>
+  local answer
+  answer="$(ask "$1")" || return 1
+  answer="${answer:-$2}"
+  [[ $answer == y || $answer == Y ]]
+}
+
+domain_get() { jq -r --arg k "$1" '.[$k] // empty' "$DOMAIN_STATE" 2>/dev/null; }
+domain_set() {  # domain_set key value [key value ...]
+  local file="$DOMAIN_STATE.new" current='{}'
+  [[ -f $DOMAIN_STATE ]] && current="$(cat "$DOMAIN_STATE")"
+  while (( $# >= 2 )); do
+    current="$(jq --arg k "$1" --arg v "$2" '.[$k] = $v' <<<"$current")"
+    shift 2
+  done
+  (umask 077; printf '%s\n' "$current" > "$file")
+  mv -f "$file" "$DOMAIN_STATE"
+}
+
+cf_api() {  # cf_api <method> <path> [json body]: prints the result, or explains the refusal
+  local response
+  response="$(curl -sS -m 60 -X "$1" "$CF_API$2" \
+    --config <(printf 'header = "Authorization: Bearer %s"\n' "$CF_TOKEN") \
+    -H 'Content-Type: application/json' ${3:+--data-binary "$3"})" \
+    || { echo "Cloudflare could not be reached ($1 ${2%%\?*})" >&2; return 1; }
+  if [[ "$(jq -r '.success // false' <<<"$response" 2>/dev/null)" != true ]]; then
+    echo "Cloudflare refused $1 ${2%%\?*}: $(jq -r '[.errors[]? | "\(.code) \(.message)"] | join("; ")' <<<"$response" 2>/dev/null || echo 'unreadable answer')" >&2
+    return 1
+  fi
+  jq -c '.result' <<<"$response"
+}
+
+read_cf_token() {
+  local token
+  token="$(ask_secret "Cloudflare API token (input hidden; needs Cloudflare Tunnel: Edit and DNS: Edit): ")" || return 1
+  [[ $token =~ ^[A-Za-z0-9_-]{20,200}$ ]] || { echo "That does not look like a Cloudflare API token." >&2; return 1; }
+  CF_TOKEN="$token"
+}
+
+domain_status() {
+  if [[ ! -f $DOMAIN_STATE ]]; then
+    echo "No domain is set up. Set one up with: claudeweb domain"
+    return 0
+  fi
+  local host phase
+  host="$(domain_get hostname)"; phase="$(domain_get phase)"
+  if [[ $phase == ready ]]; then
+    echo "Domain:    https://$host (tunnel $(systemctl is-active "$TUNNEL_SERVICE" 2>/dev/null || true))"
+  else
+    echo "Domain:    https://$host (setup not finished; continue with: claudeweb domain)"
+  fi
+}
+
+# Deletes what this server created on Cloudflare: its DNS record (only while it
+# still carries ClaudeWeb's comment) and its tunnel (found by name if its ID was
+# never recorded). Needs CF_TOKEN.
+domain_delete_remote() {
+  local account zone host name tunnel record comment
+  account="$(domain_get account_id)"; zone="$(domain_get zone_id)"
+  host="$(domain_get hostname)"; name="$(domain_get tunnel_name)"
+  comment="claudeweb-managed:$name"
+  record="$(cf_api GET "/zones/$zone/dns_records?name=$host&per_page=100")" || return 1
+  local id other
+  while IFS=$'\t' read -r id other; do
+    [[ -n $id ]] || continue
+    if [[ $other != "$comment" ]]; then
+      echo "The DNS record for $host was changed outside ClaudeWeb (its comment is not \"$comment\"); it was left alone." >&2
+      continue
+    fi
+    cf_api DELETE "/zones/$zone/dns_records/$id" >/dev/null || return 1
+    echo "Deleted the DNS record for $host."
+  done < <(jq -r '.[] | [.id, (.comment // "")] | @tsv' <<<"$record")
+  tunnel="$(domain_get tunnel_id)"
+  if [[ -z $tunnel ]]; then
+    tunnel="$(cf_api GET "/accounts/$account/cfd_tunnel?name=$name&is_deleted=false" | jq -r --arg n "$name" '[.[] | select(.name == $n)][0].id // empty')" || return 1
+  fi
+  if [[ -n $tunnel ]]; then
+    cf_api DELETE "/accounts/$account/cfd_tunnel/$tunnel/connections" >/dev/null 2>&1 || true
+    cf_api DELETE "/accounts/$account/cfd_tunnel/$tunnel" >/dev/null || return 1
+    echo "Deleted the Cloudflare tunnel $name."
+  fi
+}
+
+domain_forget_local() {
+  systemctl disable --now "$TUNNEL_SERVICE" >/dev/null 2>&1 || true
+  rm -f "$TUNNEL_UNIT" "$TUNNEL_TOKEN_FILE" "$DOMAIN_STATE"
+  systemctl daemon-reload
+}
+
+install_cloudflared() {
+  local version
+  version="$( (/usr/bin/cloudflared --version 2>/dev/null || true) | sed -n 's/.*version \([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p' | head -n1)"
+  # --token-file needs cloudflared 2025.4.0 or newer.
+  if [[ -n $version ]] && printf '%s\n%s\n' 2025.4.0 "$version" | sort -V -C; then
+    return 0
+  fi
+  echo "Installing cloudflared from Cloudflare's signed package source..."
+  local key
+  key="$(mktemp)"
+  curl -fsSL -m 60 -o "$key" "$CF_KEY_URL" || { rm -f "$key"; echo "cannot download $CF_KEY_URL" >&2; return 1; }
+  # A changed key stops the setup: the published key must be checked by a person first.
+  [[ "$(sha256sum "$key" | cut -d' ' -f1)" == "$CF_KEY_SHA256" ]] \
+    || { rm -f "$key"; echo "Cloudflare's package signing key is not the expected one; nothing was installed." >&2; return 1; }
+  install -m 0644 "$key" "$CF_KEYRING"
+  rm -f "$key"
+  echo "deb [arch=amd64 signed-by=$CF_KEYRING] https://pkg.cloudflare.com/cloudflared any main" > "$CF_SOURCE"
+  apt-get -o DPkg::Lock::Timeout=180 update -q >/dev/null \
+    && DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends cloudflared >/dev/null \
+    || { echo "cloudflared could not be installed" >&2; return 1; }
+}
+
+# Creates or picks up each part in order, recording it as it goes, so an
+# interrupted setup continues where it stopped. Needs CF_TOKEN.
+domain_provision() {
+  local account zone host name tunnel dns token comment
+  account="$(domain_get account_id)"; zone="$(domain_get zone_id)"
+  host="$(domain_get hostname)"; name="$(domain_get tunnel_name)"
+  comment="claudeweb-managed:$name"
+
+  tunnel="$(domain_get tunnel_id)"
+  if [[ -z $tunnel ]]; then
+    tunnel="$(cf_api GET "/accounts/$account/cfd_tunnel?name=$name&is_deleted=false" | jq -r --arg n "$name" '[.[] | select(.name == $n)][0].id // empty')" || return 1
+    if [[ -z $tunnel ]]; then
+      tunnel="$(cf_api POST "/accounts/$account/cfd_tunnel" "$(jq -nc --arg n "$name" '{name: $n, config_src: "cloudflare"}')" | jq -r '.id // empty')" || return 1
+    fi
+    [[ $tunnel =~ ^[0-9a-f-]{36}$ ]] || { echo "Cloudflare did not return a tunnel ID" >&2; return 1; }
+    domain_set tunnel_id "$tunnel" phase tunnel
+    echo "Tunnel $name is ready."
+  fi
+
+  # Only this one name is routed, to ClaudeWeb on this server; anything else gets 404.
+  cf_api PUT "/accounts/$account/cfd_tunnel/$tunnel/configurations" "$(jq -nc --arg h "$host" --arg s "http://127.0.0.1:$PORT" \
+    '{config: {ingress: [{hostname: $h, service: $s}, {service: "http_status:404"}]}}')" >/dev/null || return 1
+
+  dns="$(domain_get dns_id)"
+  if [[ -z $dns ]]; then
+    local existing
+    existing="$(cf_api GET "/zones/$zone/dns_records?name=$host&per_page=100")" || return 1
+    dns="$(jq -r --arg c "$comment" '[.[] | select(.comment == $c)][0].id // empty' <<<"$existing")"
+    if [[ -z $dns ]]; then
+      [[ "$(jq 'length' <<<"$existing")" == 0 ]] \
+        || { echo "A DNS record for $host already exists and was not made by this server; it is left alone. Choose another name." >&2; return 1; }
+      dns="$(cf_api POST "/zones/$zone/dns_records" "$(jq -nc --arg h "$host" --arg t "$tunnel.cfargotunnel.com" --arg c "$comment" \
+        '{type: "CNAME", name: $h, content: $t, proxied: true, ttl: 1, comment: $c}')" | jq -r '.id // empty')" || return 1
+    fi
+    [[ -n $dns ]] || { echo "Cloudflare did not return the DNS record" >&2; return 1; }
+    domain_set dns_id "$dns" phase dns
+    echo "DNS record for $host is ready."
+  fi
+
+  token="$(cf_api GET "/accounts/$account/cfd_tunnel/$tunnel/token" | jq -r '. // empty')" || return 1
+  [[ -n $token ]] || { echo "Cloudflare did not return the tunnel's run token" >&2; return 1; }
+  (umask 077; printf '%s' "$token" > "$TUNNEL_TOKEN_FILE.new")
+  mv -f "$TUNNEL_TOKEN_FILE.new" "$TUNNEL_TOKEN_FILE"
+  token=""
+  CF_TOKEN=""   # nothing below talks to the Cloudflare API
+  domain_set phase token
+
+  install_cloudflared || return 1
+  install -m 0644 "$CURRENT/share/claudeweb-tunnel.service" "$TUNNEL_UNIT"
+  systemctl daemon-reload
+  systemctl enable "$TUNNEL_SERVICE" >/dev/null 2>&1
+  systemctl restart "$TUNNEL_SERVICE"
+  domain_set phase running
+  domain_check
+}
+
+# Ready only when cloudflared is connected, the name answers over HTTPS and an
+# API that needs a login refuses a visitor without one.
+domain_check() {
+  local host probe status
+  host="$(domain_get hostname)"
+  probe="${CLAUDEWEB_DOMAIN_PROBE:-https://$host}"   # tests reach ClaudeWeb directly
+  echo "Waiting for the tunnel to connect..."
+  for _ in $(seq 1 60); do
+    curl -fsS -m 3 http://127.0.0.1:20241/ready >/dev/null 2>&1 && break
+    sleep 1
+  done
+  curl -fsS -m 3 http://127.0.0.1:20241/ready >/dev/null 2>&1 \
+    || { echo "cloudflared did not connect to Cloudflare; see: journalctl -u $TUNNEL_SERVICE. Outbound port 7844 must be open." >&2; return 1; }
+  echo "Waiting for https://$host to answer (new DNS names can take a few minutes)..."
+  for _ in $(seq 1 36); do
+    curl -fsS -m 10 -H "Host: $host" "$probe/api/auth/status" >/dev/null 2>&1 && break
+    sleep 5
+  done
+  curl -fsS -m 10 -H "Host: $host" "$probe/api/auth/status" >/dev/null 2>&1 \
+    || { echo "The tunnel is connected, but https://$host does not answer yet. Check again later with: claudeweb domain" >&2; return 1; }
+  status="$(curl -s -o /dev/null -w '%{http_code}' -m 10 -H "Host: $host" "$probe/api/auth/devices")"
+  [[ $status == 401 ]] || { echo "https://$host answered a request without a login with $status instead of 401; the domain is not marked ready." >&2; return 1; }
+  domain_set phase ready
+  echo "Domain ready: https://$host"
+}
+
+domain_new() {
+  local domain again host label account zone zone_info
+  domain="$(ask "Domain managed in Cloudflare (for example example.com): ")" || return 1
+  domain="${domain,,}"
+  again="$(ask "Type the domain again: ")" || return 1
+  [[ $domain == "${again,,}" ]] || { echo "The two entries differ." >&2; return 1; }
+  [[ $domain =~ ^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$ ]] || { echo "\"$domain\" is not a domain name." >&2; return 1; }
+  if ask_yes "Use a random name under $domain? [Y/n] " y; then
+    label="$(head -c 10 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    host="$label.$domain"
+  else
+    host="$(ask "Full name, one level under $domain (for example claude.$domain): ")" || return 1
+    host="${host,,}"
+    label="${host%%.*}"
+    # Cloudflare's free certificate covers one level under the domain.
+    [[ $host == "$label.$domain" && $label =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]] \
+      || { echo "The name must be exactly one level under $domain, like claude.$domain." >&2; return 1; }
+  fi
+  account="$(ask "Cloudflare Account ID: ")" || return 1
+  [[ $account =~ ^[0-9a-f]{32}$ ]] || { echo "An Account ID is 32 characters of 0-9 and a-f." >&2; return 1; }
+  zone="$(ask "Zone ID of $domain: ")" || return 1
+  [[ $zone =~ ^[0-9a-f]{32}$ ]] || { echo "A Zone ID is 32 characters of 0-9 and a-f." >&2; return 1; }
+  read_cf_token || return 1
+  zone_info="$(cf_api GET "/zones/$zone")" || return 1
+  [[ "$(jq -r '.name' <<<"$zone_info")" == "$domain" ]] || { echo "Zone $zone is $(jq -r '.name' <<<"$zone_info"), not $domain." >&2; return 1; }
+  [[ "$(jq -r '.status' <<<"$zone_info")" == active ]] || { echo "$domain is not active in Cloudflare yet." >&2; return 1; }
+  # Checked before anything is created, so a taken name leaves nothing behind.
+  local taken
+  taken="$(cf_api GET "/zones/$zone/dns_records?name=$host&per_page=100")" || return 1
+  [[ "$(jq 'length' <<<"$taken")" == 0 ]] || { echo "A DNS record for $host already exists; it is left alone. Choose another name." >&2; return 1; }
+  local machine
+  machine="$(head -c 8 /etc/machine-id 2>/dev/null || echo server)"
+  domain_set schema 1 hostname "$host" domain "$domain" account_id "$account" zone_id "$zone" \
+    tunnel_name "claudeweb-$machine-$(head -c 3 /dev/urandom | od -An -tx1 | tr -d ' \n')" phase start
+}
+
+domain_setup() {  # domain_setup [ask]: with ask, first asks whether to set one up (Enter = no)
+  domain_tty || die "setting up a domain needs a terminal; run: claudeweb domain"
+  trap 'echo; echo "Domain setup stopped. ClaudeWeb works without it; set it up later with: claudeweb domain"; exit 130' INT
+  if [[ -f $DOMAIN_STATE && "$(domain_get phase)" == ready ]]; then
+    echo "A domain is already set up: https://$(domain_get hostname)"
+    echo "To use another one, first run: claudeweb domain --remove"
+    return 0
+  fi
+  if [[ ${1:-} == ask && ! -f $DOMAIN_STATE ]]; then
+    echo "A domain lets phones, tablets and other computers open ClaudeWeb over HTTPS"
+    echo "through a Cloudflare Tunnel (no port is opened on this server). It needs a domain"
+    echo "managed in Cloudflare. You can also do this later with: claudeweb domain"
+    ask_yes "Set up a domain now? [y/N] " n || { echo "No domain set up."; return 0; }
+  fi
+  if [[ -f $DOMAIN_STATE ]]; then
+    local phase host
+    phase="$(domain_get phase)"; host="$(domain_get hostname)"
+    if [[ $phase == running ]]; then
+      domain_check
+      return
+    fi
+    if ask_yes "An unfinished domain setup for $host was found. Continue it? [Y/n] " y; then
+      read_cf_token || return 1
+      domain_provision
+      return
+    fi
+    echo "Removing what the unfinished setup created on Cloudflare..."
+    read_cf_token || return 1
+    domain_delete_remote || return 1
+    domain_forget_local
+  fi
+  domain_new || return 1
+  domain_provision
+}
+
+domain_remove() {
+  [[ -f $DOMAIN_STATE ]] || { echo "No domain is set up."; return 0; }
+  local host name
+  host="$(domain_get hostname)"; name="$(domain_get tunnel_name)"
+  if [[ ${1:-} == --local ]]; then
+    domain_forget_local
+    echo "The tunnel on this server was stopped and forgotten. In Cloudflare, delete the tunnel"
+    echo "$name and the DNS record $host yourself."
+    return 0
+  fi
+  domain_tty || die "removing the domain needs a terminal (or use: claudeweb domain --remove --local)"
+  echo "This deletes the DNS record $host and the tunnel $name in Cloudflare,"
+  echo "and stops the tunnel on this server. ClaudeWeb keeps running on 127.0.0.1:$PORT."
+  read_cf_token || return 1
+  systemctl stop "$TUNNEL_SERVICE" >/dev/null 2>&1 || true
+  domain_delete_remote || { echo "Nothing more was changed; fix the problem and run claudeweb domain --remove again." >&2; return 1; }
+  domain_forget_local
+  echo "The domain was removed."
+}
+
+cmd_domain() {
+  need_root domain
+  case "${1:-}" in
+    "") domain_setup ;;
+    --ask) domain_setup ask ;;
+    --status) domain_status ;;
+    --remove) domain_remove "${2:-}" ;;
+    *) die "usage: claudeweb domain [--status | --remove [--local]]" ;;
+  esac
+}
+
 # ------------------------------------------------------------------ uninstall
 cmd_uninstall() {
   need_root uninstall
@@ -571,6 +902,10 @@ cmd_uninstall() {
   echo "  program, settings and login password: $OPT_DIR, $ETC_DIR"
   echo "  data, chats and Claude's login:       $DATA_DIR, $SERVICE_HOME (except projects)"
   echo "  the service, the claudeweb user, ClaudeWeb's swap file"
+  if [[ -f $DOMAIN_STATE ]]; then
+    echo "  the tunnel to $(domain_get hostname) on this server. Its tunnel and DNS record in"
+    echo "  Cloudflare stay; to delete them too, first run: claudeweb domain --remove"
+  fi
   if (( delete_projects )); then
     echo "  YOUR PROJECTS WILL BE DELETED:        $PROJECTS_DIR"
   else
@@ -580,6 +915,7 @@ cmd_uninstall() {
   read -r -p "Uninstall ClaudeWeb? [y/n] " answer
   [[ $answer == y || $answer == Y ]] || { echo "Stopped; nothing was changed."; return 0; }
 
+  [[ -f $DOMAIN_STATE ]] && domain_forget_local
   systemctl disable --now "$SERVICE" claudeweb-update.socket 2>/dev/null || true
   rm -f "$UNIT_FILE" /etc/systemd/system/claudeweb-update.socket /etc/systemd/system/claudeweb-update@.service
   systemctl daemon-reload
@@ -620,6 +956,7 @@ case "$command" in
   rollback) cmd_rollback "$@" ;;
   serve-update) cmd_serve_update "$@" ;;
   install-browser) cmd_install_browser "$@" ;;
+  domain) cmd_domain "$@" ;;
   uninstall) cmd_uninstall "$@" ;;
   *) echo "Unknown command: $command" >&2; echo >&2; show_help >&2; exit 1 ;;
 esac

@@ -8,8 +8,8 @@ chats, projects, a terminal, a file panel, scheduled tasks, a task board and a
 built-in browser, all running on that server with the official Claude CLI.
 
 > **Status: test release.** ClaudeWeb 2.0.1 is out as a test release for
-> checking on real servers; there is no stable release yet. Domains are still
-> being built. To try it on a disposable Debian 12 server, name the version:
+> checking on real servers; there is no stable release yet. To try it on a
+> disposable Debian 12 server, name the version:
 >
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.1
@@ -63,8 +63,31 @@ Planned requirements:
   need a domain.
 
 Management commands (run as root): `claudeweb help`, `status`, `logs`,
-`doctor`, `password`, `swap`, `uninstall` (keeps `/home/claudeweb/projects`
-unless you add `--delete-projects`), `update` and `rollback`.
+`doctor`, `password`, `swap`, `domain`, `uninstall` (keeps
+`/home/claudeweb/projects` unless you add `--delete-projects`), `update` and
+`rollback`.
+
+## Domain
+
+At the end of the installation (or later with `claudeweb domain`) you can give
+ClaudeWeb an HTTPS address under a domain managed in Cloudflare, for phones,
+tablets and other computers. It goes through a Cloudflare Tunnel: cloudflared
+on the server connects out to Cloudflare, and no port is opened on the server.
+You need:
+
+- the domain's **Account ID** and **Zone ID** (on the domain's overview page in
+  Cloudflare);
+- an **API token** with *Account > Cloudflare Tunnel > Edit* and
+  *Zone > DNS > Edit* for that domain.
+
+ClaudeWeb picks a random name under the domain, or uses one you give (exactly
+one level under it, such as `claude.example.com`, so Cloudflare's free
+certificate covers it). The API token is typed hidden, used only during the
+setup and never stored; the server keeps only the tunnel's own token. An
+interrupted setup continues when you run `claudeweb domain` again, or is
+cleaned up if you choose not to. `claudeweb domain --remove` deletes the tunnel
+and its DNS record again. The login password and the per-address lockout
+protect the page exactly as over an SSH tunnel.
 
 Updates come from a release list signed with ClaudeWeb's key; a package is
 only used when it matches that list. `claudeweb update` (or Settings > About)

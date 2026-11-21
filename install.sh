@@ -270,6 +270,22 @@ if [[ -z $installed_version ]]; then
   chmod 0644 "$INSTALL_RECORD"
 fi
 
+step "Domain (optional)"
+DOMAIN_STATE="$ETC_DIR/domain.json"
+if [[ -f $DOMAIN_STATE && "$(jq -r '.phase // empty' "$DOMAIN_STATE")" == ready ]]; then
+  install -m 0644 "$CURRENT/share/claudeweb-tunnel.service" /etc/systemd/system/claudeweb-tunnel.service
+  systemctl daemon-reload
+  say "Domain already set up: https://$(jq -r .hostname "$DOMAIN_STATE")"
+elif [[ -r /dev/tty ]] && { : </dev/tty; } 2>/dev/null; then
+  # Ctrl+C here only skips this step: the handler keeps the installer going.
+  trap 'true' INT
+  "$CURRENT/bin/claudeweb" domain --ask \
+    || say "No domain was set up; ClaudeWeb works without one. Set it up later with: claudeweb domain"
+  trap - INT
+else
+  say "No terminal to ask in; set up a domain later with: claudeweb domain"
+fi
+
 # Old release folders are kept for rollback; only the newest few stay.
 { ls -1dt "$RELEASES"/*/ 2>/dev/null | tail -n +4 | grep -v "/$package_version/\$" | xargs -r rm -rf; } || true
 
@@ -292,9 +308,18 @@ if [[ -n $new_sudo_password ]]; then
   say "  (type it in ClaudeWeb when Claude asks to use sudo; show it again with: claudeweb sudo-password)"
 fi
 say ""
-say "ClaudeWeb only listens on this server (127.0.0.1:$PORT). From your computer, open an SSH tunnel:"
+if [[ -f $DOMAIN_STATE && "$(jq -r '.phase // empty' "$DOMAIN_STATE")" == ready ]]; then
+  say "Open https://$(jq -r .hostname "$DOMAIN_STATE") on any device and sign in with the password above."
+  say "ClaudeWeb itself only listens on this server (127.0.0.1:$PORT); an SSH tunnel works as well:"
+else
+  say "ClaudeWeb only listens on this server (127.0.0.1:$PORT). From your computer, open an SSH tunnel:"
+fi
 say "  ssh -L $PORT:127.0.0.1:$PORT root@${server_ip:-<this server>}"
 say "then visit http://localhost:$PORT and sign in with the password above."
-say "CMCP can also connect to it over SSH. Phones and tablets need a domain (coming later)."
+if [[ -f $DOMAIN_STATE && "$(jq -r '.phase // empty' "$DOMAIN_STATE")" == ready ]]; then
+  say "CMCP can connect through the domain or over SSH."
+else
+  say "CMCP can also connect to it over SSH. Phones and tablets need a domain: claudeweb domain"
+fi
 say "Next: sign in to Claude in ClaudeWeb's terminal by running: claude"
 say "Manage ClaudeWeb with: claudeweb help"

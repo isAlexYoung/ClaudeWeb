@@ -82,7 +82,7 @@ echo "== Management files"
 mkdir -p "$STAGE/bin" "$STAGE/share"
 cp "$WORK/packaging/claudeweb" "$STAGE/bin/claudeweb"
 chmod 0755 "$STAGE/bin/claudeweb"
-cp "$WORK/packaging/claudeweb.service" "$WORK/packaging/claudeweb-update.socket" "$WORK/packaging/claudeweb-update@.service" \
+cp "$WORK/packaging/claudeweb.service" "$WORK/packaging/claudeweb-update.socket" "$WORK/packaging/claudeweb-update@.service" "$WORK/packaging/claudeweb-tunnel.service" \
   "$WORK/packaging/playwright-version" "$STAGE/share/"
 git -C "$REPO_ROOT" archive --format=tar HEAD LICENSE NOTICE THIRD_PARTY_NOTICES.md | tar -x -C "$STAGE"
 source_commit="$(git -C "$REPO_ROOT" rev-parse HEAD)"

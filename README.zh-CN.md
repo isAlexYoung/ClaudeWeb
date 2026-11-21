@@ -8,7 +8,7 @@ ClaudeWeb 是 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview
 使用官方 Claude CLI。
 
 > **状态：测试版。** ClaudeWeb 2.0.1 已作为测试版发布，用于在真实服务器上验收；
-> 还没有正式版。域名访问还在开发。在一台可以重装的 Debian 12 服务器上试用时，需要指定版本：
+> 还没有正式版。在一台可以重装的 Debian 12 服务器上试用时，需要指定版本：
 >
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.1
@@ -50,8 +50,23 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 - 只在 `127.0.0.1` 上监听 3001 端口。没有域名时通过 SSH 隧道访问；有域名时通过
   Cloudflare Tunnel 访问。手机和平板需要域名。
 
-管理命令（以 root 运行）：`claudeweb help`、`status`、`logs`、`doctor`、`password`、`swap`、
+管理命令（以 root 运行）：`claudeweb help`、`status`、`logs`、`doctor`、`password`、`swap`、`domain`、
 `uninstall`（默认保留 `/home/claudeweb/projects`，加 `--delete-projects` 才删除项目）、`update`、`rollback`。
+
+## 域名
+
+安装结束时（或之后运行 `claudeweb domain`）可以给 ClaudeWeb 配一个 Cloudflare 托管域名下的 HTTPS 地址，
+供手机、平板和其他电脑使用。它经 Cloudflare Tunnel 接入：服务器上的 cloudflared 主动连到 Cloudflare，
+服务器不开放任何端口。需要准备：
+
+- 该域名的 **Account ID** 和 **Zone ID**（在 Cloudflare 该域名的概览页）；
+- 一个 **API Token**，权限为该域名的「帐户 > Cloudflare Tunnel > 编辑」和「区域 > DNS > 编辑」。
+
+ClaudeWeb 可以在域名下随机生成一个名字，也可以用你指定的名字（必须正好在域名下一级，例如
+`claude.example.com`，这样 Cloudflare 的免费证书才覆盖）。API Token 隐藏输入，只在配置过程中使用，
+不保存；服务器上只保留这条隧道自己的令牌。配置中断后再运行 `claudeweb domain` 可以接着做，
+也可以选择不继续并清理已创建的内容。`claudeweb domain --remove` 会删除这条隧道和它的 DNS 记录。
+网页仍由登录密码和按来源地址的锁定保护，与经 SSH 隧道访问时相同。
 
 更新来自用 ClaudeWeb 密钥签名的版本清单，安装包与清单一致才会被使用。`claudeweb update`（或网页的「设置 → 关于」）安装最新正式版，先备份数据库；新版本启动失败会自动换回原版本。`claudeweb rollback` 随时可以退回上一个版本。详见 [doc/RELEASING.md](doc/RELEASING.md)。
 

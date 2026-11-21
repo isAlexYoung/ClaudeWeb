@@ -87,7 +87,7 @@
 
 ## CMCP 连接
 
-- [ ] CMCP 可以直接连接独立版 ClaudeWeb：自动登录握手（使用 CMCP 保存的密码，页面不再要求输入）、工具授权凭据和 MCP 转发通道，Claude 能使用电脑上的文件和工具。（2026-11-21 用户选了“改 CMCP”：自动登录用一次性登录码已实现（本仓库 `/api/auth/cmcp`、CMCP 4.24.0）；本机工具走设备的 SSH 后台通道，不再做网页 MCP 转发和工具凭据。真实 VPS 和真实 CMCP 客户端尚未验证）
+- [ ] CMCP 可以直接连接独立版 ClaudeWeb：自动登录握手（使用 CMCP 保存的密码，页面不再要求输入）、工具授权凭据和 MCP 转发通道，Claude 能使用电脑上的文件和工具。（2026-11-21 用户选了“改 CMCP”：自动登录用一次性登录码已实现（本仓库 `/api/auth/cmcp`、CMCP 4.24.0）；本机工具走设备的 SSH 后台通道，不再做网页 MCP 转发和工具凭据。2026-11-21 用户在真实 VPS 上用 CMCP 4.24.1 验收自动打开和登录通过）
 - [ ] 支持 CMCP 现有的“通过 SSH 自建 ClaudeWeb”连接方式。（CMCP 4.24.0 的“初始化／修复 ClaudeWeb 连接”能识别 claudeweb 服务和用户；待真实 VPS 验证）
 - [x] 明确旧版 CMCP 连接独立版时的兼容范围和提示。（4.24.0 之前的 CMCP 把独立版当作自行安装的 CloudCLI：网页可打开，需手动输入密码）
 - [x] CMCP 中的“CloudCLI”名称后续改为“ClaudeWeb”，属于 CMCP 项目，本项目暂不改动。（CMCP 4.24.0 已改，专指上游原版时仍写“自行安装的 CloudCLI”）
@@ -156,9 +156,9 @@
 - [x] 完成用户、目录、依赖、服务和管理员初始化，输出访问方式。（2026-11-20：WSL2 Debian 12 全新安装测试 32 项通过）
 - [ ] 保留 fa-build 中适用的安装状态、错误定位、失败保留现场和恢复机制。
 - [x] 重复执行安装入口时识别既有安装，不覆盖用户数据或重复初始化。（再次运行即修复，不换密码）
-- [ ] 整合域名与 HTTPS 能力，包括 Cloudflare 托管域名，允许跳过域名配置。
-- [ ] 跳过域名时服务只监听本机地址；安装结束时输出 SSH 隧道的连接方法和本地访问地址，并说明可用 CMCP 连接，手机和平板需要配置域名。
-- [ ] 域名经 Cloudflare Tunnel 接入，不对公网开放 80/443 端口；可沿用 WebDesktop 现有的 Cloudflare 配置流程。
+- [x] 整合域名与 HTTPS 能力，包括 Cloudflare 托管域名，允许跳过域名配置。（2026-11-21：`claudeweb domain`，安装结束时询问，回车或 Ctrl+C 跳过；`packaging/test-domain.sh` 用本地模拟的 Cloudflare 接口 24 项通过，真实 Cloudflare 尚未验证）
+- [x] 跳过域名时服务只监听本机地址；安装结束时输出 SSH 隧道的连接方法和本地访问地址，并说明可用 CMCP 连接，手机和平板需要配置域名。
+- [x] 域名经 Cloudflare Tunnel 接入，不对公网开放 80/443 端口；可沿用 WebDesktop 现有的 Cloudflare 配置流程。（沿用：域名输入两次、随机或指定一级子域名、Account ID、Zone ID、隐藏输入的 API Token；未完成的配置可继续或清理；cloudflared 来自 Cloudflare 签名源并固定密钥）
 - [x] 固定默认本机端口，写进文档和 SSH 隧道说明；端口被占用时安装给出明确错误，不自动更换端口。
 - [ ] Chromium 和 Node.js 随 ClaudeWeb 新版本一起更新；出现严重安全漏洞时单独发布修复版，只为最新正式版提供修复。
 - [x] 现有 ClaudeWeb 前后端自动测试搬入新仓库并接入 CI，提交和 PR 都要运行。（2026-11-21：.github/workflows/ci.yml，推送到 main 和每个 PR 都运行：Linux 上的类型检查、lint、构建和前后端测试，Debian 12 构建安装包，再在全新 Debian 12 虚拟机里跑安装、更新、浏览器、多设备和 sudo 测试）
