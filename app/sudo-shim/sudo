@@ -1,0 +1,9 @@
+#!/bin/sh
+# `sudo` first on the PATH of Claude's commands in ClaudeWeb. They have no
+# terminal for sudo to ask on, so ClaudeWeb shows the command to the user and
+# runs it with the password the user types (server/modules/sudo). Without
+# ClaudeWeb's socket this is the real sudo.
+if [ -z "${CLAUDEWEB_SUDO_SOCKET:-}" ] || [ ! -S "$CLAUDEWEB_SUDO_SOCKET" ]; then
+  exec /usr/bin/sudo "$@"
+fi
+exec "${CLAUDEWEB_NODE:-node}" "$(dirname "$0")/claudeweb-sudo.mjs" "$@"

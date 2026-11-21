@@ -703,5 +703,16 @@
     "restarted": "服务已重启，上一条回复已停止。可以继续提问。",
     "unsupported": "当前旁聊支持 Claude 模型。",
     "actionFailed": "操作失败，请重试。"
+  },
+  "sudo": {
+    "title": "Claude 请求以管理员身份运行命令",
+    "where": "目录 {{cwd}} · 剩余 {{seconds}} 秒",
+    "passwordPlaceholder": "sudo 密码",
+    "passwordRequired": "请输入 sudo 密码后再允许。",
+    "allow": "允许",
+    "deny": "拒绝",
+    "gone": "这个请求已不在等待。",
+    "failed": "回答没有送达 ClaudeWeb，请重试。",
+    "note": "密码只交给 sudo 执行这一条命令，不会给 Claude 看到，也不会保存。在 VPS 上以 root 运行 `claudeweb sudo-password` 可查看。"
   }
 }

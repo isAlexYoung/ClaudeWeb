@@ -338,6 +338,13 @@ export const api = {
     end: (sid: string) => post('/api/browser/end', { sid }, { keepalive: true }),
   },
 
+  // Claude's sudo requests waiting for the user. The password goes to sudo once and is not kept.
+  sudo: {
+    requests: () => get('/api/sudo/requests'),
+    answer: (id: string, answer: { approve: boolean; password?: string }) =>
+      post(`/api/sudo/requests/${encodeURIComponent(id)}`, answer),
+  },
+
   // Scheduled tasks: prompts that start a new conversation on a schedule.
   scheduledTasks: {
     list: () => get('/api/scheduled-tasks'),

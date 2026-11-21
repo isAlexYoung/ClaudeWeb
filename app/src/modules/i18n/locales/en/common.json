@@ -703,5 +703,16 @@
     "restarted": "The server restarted and stopped the previous reply. You can ask another question.",
     "unsupported": "Side chats currently support Claude models.",
     "actionFailed": "Action failed. Please retry."
+  },
+  "sudo": {
+    "title": "Claude wants to run a command as administrator",
+    "where": "In {{cwd}} · waits {{seconds}} s",
+    "passwordPlaceholder": "sudo password",
+    "passwordRequired": "Enter the sudo password to allow it.",
+    "allow": "Allow",
+    "deny": "Refuse",
+    "gone": "This request is no longer waiting.",
+    "failed": "The answer did not reach ClaudeWeb. Try again.",
+    "note": "The password goes to sudo for this command only. It is not shown to Claude or stored. As root, `claudeweb sudo-password` shows it."
   }
 }

@@ -105,7 +105,7 @@ fi
 step "Installing system packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -y -q --no-install-recommends ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq minisign
+apt-get install -y -q --no-install-recommends ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq minisign sudo
 # The built-in browser's private display, window manager, clipboard, fonts and Chinese input.
 apt-get install -y -q --no-install-recommends tigervnc-standalone-server openbox xauth x11-utils xdotool xclip \
   xfonts-base fonts-dejavu-core fonts-noto-cjk dbus dbus-x11 fcitx5 fcitx5-chinese-addons fcitx5-frontend-gtk3 fcitx5-frontend-qt5
@@ -240,6 +240,14 @@ if [[ ! -f $ETC_DIR/login.json ]]; then
   new_password="$(sed -n 's/^New login password: //p' <<<"$output")"
 fi
 
+# Claude may use sudo, each time allowed in ClaudeWeb with this password; never without one.
+step "Setting the sudo password"
+new_sudo_password=""
+if [[ ! -f $ETC_DIR/sudo-password ]]; then
+  output="$("$CURRENT/bin/claudeweb" sudo-password --set)"
+  new_sudo_password="$(sed -n 's/^New sudo password for [a-z]*: //p' <<<"$output")"
+fi
+
 step "Starting the service"
 install -m 0644 "$CURRENT/share/claudeweb.service" "$UNIT_FILE"
 # Settings > About asks root for updates through this socket.
@@ -277,6 +285,11 @@ if [[ -n $new_password ]]; then
   say "  (show it again with: claudeweb password)"
 else
   say "  Login password:  unchanged (show it with: claudeweb password)"
+fi
+if [[ -n $new_sudo_password ]]; then
+  printf '  sudo password:   %s\n' "$new_sudo_password" >&3
+  echo "  sudo password:   (shown on screen only, not saved in this log)" >> "$INSTALL_LOG"
+  say "  (type it in ClaudeWeb when Claude asks to use sudo; show it again with: claudeweb sudo-password)"
 fi
 say ""
 say "ClaudeWeb only listens on this server (127.0.0.1:$PORT). From your computer, open an SSH tunnel:"

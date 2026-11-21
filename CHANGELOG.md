@@ -56,6 +56,15 @@ release is a test release.
   `POST /api/auth/cmcp/redeem` with the same join / take over question.
   CMCP logins are listed as CMCP and do not end after an idle hour. Older
   CMCP releases open the page with the normal password form.
+- sudo for Claude, allowed each time in ClaudeWeb: a `sudo` in a chat's
+  command shows the exact command and folder on every signed-in page;
+  typing the sudo password and choosing Allow runs it once through
+  `sudo -S -k`, Refuse or five minutes without an answer fails it. The
+  password goes only to sudo: not to Claude, the logs or the browser's
+  storage. The installer puts the claudeweb user in the sudo group with a
+  generated password (never password-free sudo), shows it once, and turns
+  off SSH password login for that user; `claudeweb sudo-password` shows or
+  changes it. In the terminal, sudo asks for the password as usual.
 
 ### Changed
 

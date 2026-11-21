@@ -29,6 +29,10 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
       - run: npm ci --no-audit --no-fund
+        env:
+          # A dependency's install step downloads ripgrep from GitHub, which
+          # refuses unauthenticated downloads from shared runners at times.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Type check
         run: npm run typecheck
       - name: Lint
@@ -56,6 +60,8 @@ jobs:
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Packages and lists signed with a key made for this run
         run: bash packaging/ci/prep-test-releases.sh test-releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: test-releases
@@ -71,7 +77,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test: [install, update, browser, devices]
+        test: [install, update, browser, devices, sudo]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

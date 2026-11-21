@@ -19,6 +19,9 @@ readonly IPV6_SYSCTL=/etc/sysctl.d/90-claudeweb-disable-ipv6.conf
 readonly PORT=3001
 readonly RELEASES="$OPT_DIR/releases"
 readonly INSTALL_RECORD="$ETC_DIR/install.json"
+readonly SUDO_PASSWORD_FILE="$ETC_DIR/sudo-password"
+# The sudo password must not also open SSH for claudeweb.
+readonly SSHD_DROPIN=/etc/ssh/sshd_config.d/90-claudeweb.conf
 readonly UPDATE_CONF="$ETC_DIR/update.conf"
 readonly UPDATE_DIR=/var/lib/claudeweb-update
 readonly UPDATE_STATE="$UPDATE_DIR/state.json"
@@ -48,6 +51,9 @@ Commands:
   password                   Show the login password
   password --set             Set a new, generated login password; every device signs out
   password --set --stdin     Set a login password you type instead
+  sudo-password              Show the claudeweb user's sudo password, which you type
+                             in ClaudeWeb to allow a sudo command Claude asks for
+  sudo-password --set        Set a new, generated sudo password (--stdin: type your own)
   install-browser            Install or repair the built-in browser (Chromium)
   swap                       Show swap
   swap --size=<N>G           Create or resize ClaudeWeb's swap file to N GiB (1-16)
@@ -150,6 +156,46 @@ cmd_password() {
   # take the directory's group so the service can read login.json.
   env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 HOME=/root "${env_args[@]}" \
     "$(node_bin)" "$CURRENT/app/dist-server/server/modules/cli/cli.js" password "$@"
+}
+
+# ------------------------------------------------------------------ sudo password
+# The claudeweb user is in the sudo group with a password, never without one.
+# Claude's sudo asks the user in ClaudeWeb, who types this password there; it
+# then goes to sudo for that one command. Root keeps the only copy.
+cmd_sudo_password() {
+  need_root sudo-password
+  id -u "$SERVICE_USER" >/dev/null 2>&1 || die "ClaudeWeb is not installed"
+  case "${1:-}" in
+    "")
+      [[ -f $SUDO_PASSWORD_FILE ]] || die "no sudo password is set; set one with: claudeweb sudo-password --set"
+      cat "$SUDO_PASSWORD_FILE"
+      ;;
+    --set)
+      local password generated=yes
+      if [[ ${2:-} == --stdin ]]; then
+        generated=no
+        if [[ -t 0 ]]; then read -r -s -p "New sudo password for $SERVICE_USER: " password; echo >&2; else IFS= read -r password; fi
+        (( ${#password} >= 8 )) || die "use at least 8 characters"
+      else
+        password="$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
+        password="${password:0:20}"
+      fi
+      [[ $password != *:* ]] || die "the password cannot contain ':'"
+      printf '%s:%s\n' "$SERVICE_USER" "$password" | chpasswd
+      install -m 0600 -o root -g root /dev/null "$SUDO_PASSWORD_FILE"
+      printf '%s\n' "$password" > "$SUDO_PASSWORD_FILE"
+      # A new group is seen by processes started after this; install.sh restarts the service.
+      usermod -aG sudo "$SERVICE_USER"
+      if [[ -d $(dirname "$SSHD_DROPIN") && ! -f $SSHD_DROPIN ]]; then
+        printf '# ClaudeWeb: the claudeweb user has a password only for sudo; no SSH login with it.\nMatch User %s\n    PasswordAuthentication no\n    KbdInteractiveAuthentication no\n' \
+          "$SERVICE_USER" > "$SSHD_DROPIN"
+        chmod 0644 "$SSHD_DROPIN"
+        systemctl reload ssh >/dev/null 2>&1 || true
+      fi
+      if [[ $generated == yes ]]; then echo "New sudo password for $SERVICE_USER: $password"; else echo "sudo password changed"; fi
+      ;;
+    *) die "usage: claudeweb sudo-password [--set [--stdin]]" ;;
+  esac
 }
 
 # ------------------------------------------------------------------ swap
@@ -538,6 +584,7 @@ cmd_uninstall() {
   systemctl daemon-reload
   swap_remove
   rm -f "$IPV6_SYSCTL"   # IPv6 stays off until the next reboot; it is not turned back on here.
+  if [[ -f $SSHD_DROPIN ]]; then rm -f "$SSHD_DROPIN"; systemctl reload ssh >/dev/null 2>&1 || true; fi
   pkill -u "$SERVICE_USER" 2>/dev/null || true
   sleep 1
   pkill -KILL -u "$SERVICE_USER" 2>/dev/null || true
@@ -566,6 +613,7 @@ case "$command" in
   logs) cmd_logs "$@" ;;
   doctor) cmd_doctor "$@" ;;
   password) cmd_password "$@" ;;
+  sudo-password) cmd_sudo_password "$@" ;;
   swap) cmd_swap "$@" ;;
   update) cmd_update "$@" ;;
   rollback) cmd_rollback "$@" ;;

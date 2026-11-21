@@ -1,6 +1,6 @@
 """CI only: run one packaging test in a fresh Debian 12 VM and throw the VM away.
 
-usage: python3 packaging/ci/run-vm.py --test install|update|browser|devices --releases DIR --out DIR
+usage: python3 packaging/ci/run-vm.py --test install|update|browser|devices|sudo --releases DIR --out DIR
 
 The GitHub Ubuntu runner boots the pinned Debian 12 cloud image (checked against
 Debian's published SHA-512) under QEMU, 2 vCPUs and 4 GiB like a small VPS, logs
@@ -28,6 +28,7 @@ TESTS = {
     'install': ('test-install.sh', 'releases/claudeweb-2.0.0-linux-x64.tar.xz', ['claudeweb-2.0.0-linux-x64.tar.xz']),
     'browser': ('test-browser.sh', 'releases/claudeweb-2.0.0-linux-x64.tar.xz', ['claudeweb-2.0.0-linux-x64.tar.xz']),
     'devices': ('test-devices.sh', 'releases/claudeweb-2.0.0-linux-x64.tar.xz', ['claudeweb-2.0.0-linux-x64.tar.xz']),
+    'sudo': ('test-sudo.sh', 'releases/claudeweb-2.0.0-linux-x64.tar.xz', ['claudeweb-2.0.0-linux-x64.tar.xz']),
     'update': ('test-update.sh', 'releases', None),
 }
 

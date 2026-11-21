@@ -108,10 +108,10 @@
 
 ## sudo 授权
 
-- [ ] Claude 或终端命令需要 sudo 时，在 ClaudeWeb 会话中弹出确认，显示要执行的命令；用户可输入 sudo 密码同意，也可拒绝。
+- [ ] Claude 或终端命令需要 sudo 时，在 ClaudeWeb 会话中弹出确认，显示要执行的命令；用户可输入 sudo 密码同意，也可拒绝。（2026-11-21 实现：聊天命令的 PATH 里先是 ClaudeWeb 的 sudo（app/sudo-shim），请求显示在每个已登录的页面右下角，含完整命令和目录；终端里仍是 sudo 自己问密码。虚拟机测试 packaging/test-sudo.sh。真实 Claude 会话里的 Bash 是否拿到这个 PATH 待真实 VPS 确认）
 - [ ] 密码只交给 sudo，不进入 Claude 上下文、对话记录、日志或浏览器存储，也不保存。
 - [ ] 拒绝、超时或密码错误时命令失败并告知 Claude，不自动重试。
-- [ ] 不配置无密码 sudo；安装时设置 `claudeweb` 用户的 sudo 密码，并提供修改命令。
+- [ ] 不配置无密码 sudo；安装时设置 `claudeweb` 用户的 sudo 密码，并提供修改命令。（`claudeweb sudo-password` [--set [--stdin]]；安装结束时显示一次，不写入日志；同时关闭这个用户的 SSH 密码登录）
 
 ## 敏感信息提示
 

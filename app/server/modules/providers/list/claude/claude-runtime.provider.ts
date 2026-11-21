@@ -38,6 +38,7 @@ import {
   CLAUDE_ULTRACODE_EFFORT
 } from '@/modules/providers/list/claude/claude-models.provider.js';
 import { resolveClaudeCodeExecutablePath } from '@/shared/claude-cli-path.js';
+import { sudoShimEnvironment } from '@/modules/sudo/index.js';
 import {
   createNotificationEvent,
   notifyBackgroundWorkCompleted,
@@ -370,6 +371,9 @@ function matchesToolPermission(entry: string, toolName: string, input: unknown) 
  * CLAUDE_CODE_ARTIFACT is set, so a session continued from this UI would lose them.
  * Default it on; a host value (e.g. CLAUDE_CODE_ARTIFACT=0) still wins.
  *
+ * Where ClaudeWeb confirms sudo, the commands Claude runs find its `sudo` shim
+ * first, so a sudo there asks the user in ClaudeWeb (modules/sudo).
+ *
  * @param {NodeJS.ProcessEnv} [hostEnv] - Environment to forward, `process.env` by default
  * @returns {NodeJS.ProcessEnv} Environment for the spawned CLI
  */
@@ -378,6 +382,7 @@ export function buildClaudeSdkEnv(hostEnv: NodeJS.ProcessEnv = process.env): Nod
     CLAUDE_CODE_ARTIFACT: '1',
     CLAUDE_CODE_ENTRYPOINT: 'claudecodeui',
     ...hostEnv,
+    ...sudoShimEnvironment(hostEnv.PATH),
     CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS: String(BG_WAIT_CEILING_MS),
   };
 }

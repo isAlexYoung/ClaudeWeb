@@ -15,7 +15,7 @@ import {
     initializeSessionsWatcher,
     providerRuntimeService,
 } from '@/modules/providers/index.js';
-import { chatRunRegistry, createWebSocketServer } from '@/modules/websocket/index.js';
+import { WS_OPEN_STATE, chatRunRegistry, connectedClients, createWebSocketServer } from '@/modules/websocket/index.js';
 
 import { getConnectableHost } from '../shared/networkHosts.js';
 
@@ -34,6 +34,7 @@ import { settingsRoutes } from './modules/settings/index.js';
 import { backupDownloadRoutes, backupRoutes } from './modules/backup/index.js';
 import { claudeWebUpdateRoutes } from './modules/claudeweb-update/index.js';
 import { browserRoutes, browserService } from './modules/browser/index.js';
+import { startSudoConfirmation, sudoRoutes } from './modules/sudo/index.js';
 import { createAgentModule } from './modules/agent/index.js';
 import projectModuleRoutes from './modules/projects/projects.routes.js';
 import notificationRoutes from './modules/notifications/notifications.routes.js';
@@ -198,6 +199,8 @@ app.post('/api/claudeweb-update/update', authenticateToken, (req: Request, res: 
 app.use('/api/claudeweb-update', authenticateToken, claudeWebUpdateRoutes);
 // The browser panel: the server's Chromium on this server.
 app.use('/api/browser', authenticateToken, browserRoutes);
+// Claude's sudo requests waiting for the user, and the answers.
+app.use('/api/sudo', authenticateToken, sudoRoutes);
 
 app.use('/api/notifications', authenticateToken, notificationRoutes);
 
@@ -350,6 +353,18 @@ async function startServer() {
 
         // Configure Web Push (VAPID keys)
         configureWebPush();
+
+        // Before any chat starts, so Claude's commands get the sudo shim. The pages
+        // only hear that the list changed and read it again through the API.
+        await startSudoConfirmation({
+            announce: () => {
+                const frame = JSON.stringify({ kind: 'sudo_requests_changed', timestamp: new Date().toISOString() });
+                connectedClients.forEach((client) => {
+                    if (client.readyState !== WS_OPEN_STATE) return;
+                    try { client.send(frame); } catch { /* a reconnect refreshes it */ }
+                });
+            },
+        });
 
         // Check if running in production mode (dist folder exists)
         const distIndexPath = path.join(APP_ROOT, 'dist', 'index.html');
