@@ -28,6 +28,11 @@ On Debian 12 amd64 with `build-essential`, `python3`, `git`, `curl`,
    bash packaging/build-release.sh --version=X.Y.Z --channel=test
    ```
 
+   Or start the **Release package** workflow (Actions, on the commit to
+   release) and download its artifact: the same script in a clean Debian 12.
+   Check the package against its `.sha256` before uploading it. Signing
+   (step 4) always happens on the maintainer's machine.
+
 2. Before publishing, run the two release checks on disposable machines:
    a fresh install (`packaging/test-install.sh`) and an update from the
    previous stable release (`packaging/test-update.sh`).

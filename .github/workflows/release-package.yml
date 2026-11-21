@@ -1,0 +1,57 @@
+name: Release package
+
+# Builds a release package from the chosen commit in a clean Debian 12, the
+# same way as packaging/build-release.sh on a maintainer's machine, and keeps
+# it as an artifact. Publishing stays with the maintainer: the package is
+# checked, uploaded to the GitHub Release, and added to the signed list with
+# the private key, which never comes near CI (doc/RELEASING.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, for example 2.0.0 (must match app/package.json)'
+        required: true
+        type: string
+      channel:
+        description: 'Channel written into the package'
+        required: true
+        default: test
+        type: choice
+        options: [test, stable]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: debian:12
+    timeout-minutes: 45
+    steps:
+      - name: Build tools
+        run: |
+          apt-get update -q
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
+            git ca-certificates curl xz-utils python3 build-essential
+      - uses: actions/checkout@v4
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: The version is the one in app/package.json
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [ "$(python3 -c 'import json; print(json.load(open("app/package.json"))["version"])')" = "$VERSION" ]
+      - name: Build
+        env:
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash packaging/build-release.sh --version="$VERSION" --channel="$CHANNEL" --out=release-out
+      - name: Record the commit
+        run: git rev-parse HEAD > release-out/source-commit.txt && cat release-out/*.sha256 release-out/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: claudeweb-${{ inputs.version }}
+          path: release-out
+          retention-days: 7
+          compression-level: 0
