@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.0.2",
+   "channel": "test",
+   "published_at": "2026-11-21T15:07:22Z",
+   "notes": "Test release: domains through Cloudflare Tunnel, moving from WebDesktop by backup, project folders, user settings and plugin list in backups.",
+   "package": {
+    "name": "claudeweb-2.0.2-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.0.2/claudeweb-2.0.2-linux-x64.tar.xz",
+    "bytes": 66576160,
+    "sha256": "76b36d5c94f5a064bc567c31a195dca2ea6e7d256385ff646625b7f197677dcb"
+   }
+  },
+  {
    "version": "2.0.1",
    "channel": "test",
    "published_at": "2026-11-21T12:30:29Z",
@@ -26,5 +38,5 @@
    }
   }
  ],
- "generated_at": "2026-11-21T12:30:29Z"
+ "generated_at": "2026-11-21T15:07:22Z"
 }
