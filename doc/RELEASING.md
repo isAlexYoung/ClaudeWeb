@@ -33,9 +33,13 @@ On Debian 12 amd64 with `build-essential`, `python3`, `git`, `curl`,
    Check the package against its `.sha256` before uploading it. Signing
    (step 4) always happens on the maintainer's machine.
 
-2. Before publishing, run the two release checks on disposable machines:
-   a fresh install (`packaging/test-install.sh`) and an update from the
-   previous stable release (`packaging/test-update.sh`).
+2. Before publishing, start the **CI** workflow by hand on the commit to
+   release (pushes do not start it): it runs the app checks and the release
+   checks on disposable machines, among them a fresh install
+   (`packaging/test-install.sh`) and an update from the previous stable
+   release (`packaging/test-update.sh`). `packaging/test-domain.sh` checks
+   `claudeweb domain` on a test install against a local stand-in for the
+   Cloudflare API.
 
 3. Create the GitHub Release `vX.Y.Z` (marked as a pre-release while the
    channel is `test`) and upload the package.

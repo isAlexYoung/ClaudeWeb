@@ -1,8 +1,8 @@
 name: CI
 
+# Started by hand (Actions > CI > Run workflow) before a release, and for pull
+# requests; pushes to main do not start it.
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
