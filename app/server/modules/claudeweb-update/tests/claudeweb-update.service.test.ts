@@ -53,7 +53,7 @@ test('check and update relay one request each over the root socket and surface i
         const request = JSON.parse(data.trim()) as { op: string; version?: string };
         received.push(request);
         const reply = request.op === 'check'
-          ? { ok: true, installed: '1.0.0', webdesktop: '3.0.1', latest: '1.0.1', newer: [{ version: '1.0.1', notes: 'n', requires_webdesktop: '3.0.1', compatible: true, download_bytes: 5 }] }
+          ? { ok: true, installed: '1.0.0', latest: '1.0.1', newer: [{ version: '1.0.1', notes: 'n', compatible: true, download_bytes: 5 }] }
           : request.version === '1.0.1' ? { ok: true, started: true } : { ok: false, error: 'CLAUDEWEB_NOT_NEWER' };
         connection.end(`${JSON.stringify(reply)}\n`);
       });

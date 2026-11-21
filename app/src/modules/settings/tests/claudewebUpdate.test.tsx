@@ -4,7 +4,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { i18n } from '@/modules/i18n';
 import type { ClaudeWebUpdateStatus } from '@/shared/types';
 
-const mocks = vi.hoisted(() => ({ status: vi.fn(), check: vi.fn(), update: vi.fn() }));
+const mocks = vi.hoisted(() => ({ status: vi.fn(), check: vi.fn(), update: vi.fn(), activity: vi.fn() }));
 vi.mock('@/shared/api', async (original) => ({
   ...(await original<Record<string, unknown>>()),
   api: { claudewebUpdate: mocks },
@@ -19,13 +19,14 @@ function status(overrides: Partial<ClaudeWebUpdateStatus> = {}, state: ClaudeWeb
 }
 
 const offer = {
-  installed: '1.0.0', webdesktop: '3.0.1', latest: '1.0.1',
-  newer: [{ version: '1.0.1', notes: 'Faster start', requires_webdesktop: '3.0.1', compatible: true, download_bytes: 60 * 1024 * 1024 }],
+  installed: '1.0.0', latest: '1.0.1',
+  newer: [{ version: '1.0.1', notes: 'Faster start', compatible: true, download_bytes: 60 * 1024 * 1024 }],
 };
 
 beforeEach(async () => {
   await i18n.changeLanguage('en');
   vi.clearAllMocks();
+  mocks.activity.mockResolvedValue(json({ runningConversations: 0 }));
 });
 
 test('shows the installed version, finds a newer one and installs it only after the interruption warning', async () => {
@@ -42,16 +43,28 @@ test('shows the installed version, finds a newer one and installs it only after 
   fireEvent.click(screen.getByRole('button', { name: 'Update to 1.0.1' }));
   expect(mocks.update).not.toHaveBeenCalled();
   expect(screen.getByText(/conversations that are running now are interrupted/)).toBeTruthy();
+  expect(await screen.findByText('No conversation is running right now.')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Update to 1.0.1 now' }));
   await waitFor(() => expect(mocks.update).toHaveBeenCalledWith('1.0.1'));
   expect(await screen.findByRole('status')).toBeTruthy();
+});
+
+test('the update confirmation says how many running conversations the restart stops', async () => {
+  mocks.status.mockResolvedValue(json(status()));
+  mocks.check.mockResolvedValue(json(offer));
+  mocks.activity.mockResolvedValue(json({ runningConversations: 2 }));
+  render(<ClaudeWebUpdateSection reload={vi.fn()} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Check for updates' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Update to 1.0.1' }));
+  expect(await screen.findByText(/2 conversations are running now \(scheduled tasks included\); the restart stops them/)).toBeTruthy();
+  expect(mocks.update).not.toHaveBeenCalled();
 });
 
 test('updating to a version that is already installed shows up to date, not an error', async () => {
   mocks.status.mockResolvedValue(json(status()));
   mocks.check
     .mockResolvedValueOnce(json(offer))
-    .mockResolvedValue(json({ installed: '1.0.1', webdesktop: '3.0.1', latest: '1.0.1', newer: [] }));
+    .mockResolvedValue(json({ installed: '1.0.1', latest: '1.0.1', newer: [] }));
   mocks.update.mockResolvedValue(refusal('CLAUDEWEB_NOT_NEWER'));
   render(<ClaudeWebUpdateSection reload={vi.fn()} />);
 
@@ -85,7 +98,7 @@ test('follows the updater through the restart and reloads once the new version i
 
 test('explains refusals, a version that needs a newer WebDesktop, and hides the check outside WebDesktop', async () => {
   mocks.status.mockResolvedValue(json(status()));
-  mocks.check.mockResolvedValueOnce(json({ ...offer, newer: [{ ...offer.newer[0], compatible: false, requires_webdesktop: '3.1.0' }] }));
+  mocks.check.mockResolvedValueOnce(json({ ...offer, newer: [{ ...offer.newer[0], compatible: false }] }));
   const { unmount } = render(<ClaudeWebUpdateSection reload={vi.fn()} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Check for updates' }));
   expect(await screen.findByText(/Version 1.0.1 cannot be installed on this server/)).toBeTruthy();

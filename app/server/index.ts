@@ -197,6 +197,10 @@ app.post('/api/claudeweb-update/update', authenticateToken, (req: Request, res: 
         error: { code: 'NOT_MAIN_DEVICE', message: 'Only the main device can update ClaudeWeb.' },
     });
 });
+// What an update would interrupt: the restart stops every conversation that is still running.
+app.get('/api/claudeweb-update/activity', authenticateToken, (_req: Request, res: Response) => {
+    res.json({ runningConversations: chatRunRegistry.countRunning() });
+});
 app.use('/api/claudeweb-update', authenticateToken, claudeWebUpdateRoutes);
 // The browser panel: the server's Chromium on this server.
 app.use('/api/browser', authenticateToken, browserRoutes);

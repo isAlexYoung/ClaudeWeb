@@ -241,6 +241,13 @@ export const chatRunRegistry = {
     return runs.get(appSessionId)?.status === 'running';
   },
 
+  /** Runs still generating, scheduled tasks included; shown before an update restarts ClaudeWeb. */
+  countRunning(): number {
+    let running = 0;
+    for (const run of runs.values()) if (run.status === 'running') running += 1;
+    return running;
+  },
+
   listRunningRuns(): Array<{
     sessionId: string;
     provider: LLMProvider;

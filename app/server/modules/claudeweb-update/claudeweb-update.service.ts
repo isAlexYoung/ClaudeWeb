@@ -8,12 +8,12 @@ import { AppError } from '@/shared/utils.js';
 export type ClaudeWebAvailableVersion = {
   version: string;
   notes: string;
-  requires_webdesktop: string;
+  /** False for a release this server cannot run (none so far; kept for other platforms). */
   compatible: boolean;
   download_bytes: number;
 };
 
-/** Written by the root updater to /var/lib/wd-claudeweb/status.json while it works. */
+/** Written by the root updater to /run/claudeweb-update/status.json while it works. */
 export type ClaudeWebUpdateStatus = {
   state: 'idle' | 'queued' | 'checking' | 'downloading' | 'installing' | 'restarting' | 'done' | 'failed';
   version?: string;
@@ -131,7 +131,6 @@ export function createClaudeWebUpdateService(dependencies: Dependencies) {
       const newer = Array.isArray(reply.newer) ? (reply.newer as ClaudeWebAvailableVersion[]) : [];
       return {
         installed: (reply.installed as string | null) ?? null,
-        webdesktop: (reply.webdesktop as string | undefined) ?? null,
         latest: (reply.latest as string | null) ?? null,
         newer,
       };

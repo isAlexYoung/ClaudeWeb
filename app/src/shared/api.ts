@@ -687,6 +687,8 @@ export const api = {
     status: () => get('/api/claudeweb-update/status'),
     check: () => post('/api/claudeweb-update/check', {}),
     update: (version: string) => post('/api/claudeweb-update/update', { version }),
+    // How many conversations (scheduled tasks included) the restart would interrupt.
+    activity: () => get('/api/claudeweb-update/activity'),
   },
 
   // Code home reads local history through the existing authenticated plugin transport.

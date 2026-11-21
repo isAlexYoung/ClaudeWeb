@@ -1453,7 +1453,6 @@ export type ClaudeWebUpdateStatus = {
 export type ClaudeWebAvailableVersion = {
   version: string;
   notes: string;
-  requires_webdesktop: string;
   compatible: boolean;
   download_bytes: number;
 };
@@ -1461,7 +1460,6 @@ export type ClaudeWebAvailableVersion = {
 /** `POST /api/claudeweb-update/check`: what this server can install, newest first. */
 export type ClaudeWebUpdateCheck = {
   installed: string | null;
-  webdesktop: string | null;
   latest: string | null;
   newer: ClaudeWebAvailableVersion[];
 };

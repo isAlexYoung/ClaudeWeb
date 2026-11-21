@@ -829,7 +829,6 @@
       "minutesAgo": "{{count}} min ago",
       "earlier": "earlier",
       "via": {
-        "desktop": "WebDesktop",
         "claudeweb": "Claude web",
         "cmcp": "CMCP"
       },
@@ -852,8 +851,11 @@
       "check": "Check for updates",
       "upToDate": "ClaudeWeb is up to date.",
       "available": "Version {{version}} is available ({{size}} MB download).",
-      "needsWebDesktop": "Version {{version}} cannot be installed on this server.",
+      "notCompatible": "Version {{version}} cannot be installed on this server.",
       "install": "Update to {{version}}",
+      "running_one": "{{count}} conversation is running now (scheduled tasks included); the restart stops it. Wait for it to finish, or update anyway.",
+      "running_other": "{{count}} conversations are running now (scheduled tasks included); the restart stops them. Wait for them to finish, or update anyway.",
+      "noneRunning": "No conversation is running right now.",
       "confirm": "ClaudeWeb restarts during the update, so conversations that are running now are interrupted. Your conversation history and settings are kept, and the database is backed up first.",
       "confirmButton": "Update to {{version}} now",
       "cancel": "Cancel",

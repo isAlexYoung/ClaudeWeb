@@ -6,6 +6,7 @@ import SettingsCard from '@/modules/settings/SettingsCard';
 import SettingsRow from '@/modules/settings/SettingsRow';
 import SettingsSection from '@/modules/settings/SettingsSection';
 import { useClaudeWebUpdate } from '@/modules/settings/hooks/useClaudeWebUpdate';
+import { api } from '@/shared/api';
 import { Button } from '@/shared/ui';
 
 // Codes the root updater reports that have their own explanation; anything else shows the code.
@@ -31,6 +32,17 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
   const { t } = useTranslation('settings');
   const { phase, status, offer, error, check, update } = useClaudeWebUpdate(reload);
   const [confirming, setConfirming] = useState(false);
+  // Conversations running when the confirmation opened; null until known (or when it cannot be read).
+  const [running, setRunning] = useState<number | null>(null);
+
+  const startConfirming = () => {
+    setConfirming(true);
+    setRunning(null);
+    api.claudewebUpdate.activity()
+      .then(async (response) => (response.ok ? (await response.json() as { runningConversations?: number }).runningConversations : undefined))
+      .then((count) => setRunning(typeof count === 'number' ? count : null))
+      .catch(() => setRunning(null));
+  };
 
   if (phase === 'loading' || !status) return null;
   const installed = status.installed;
@@ -73,7 +85,7 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
 
         {phase === 'ready' && blocked && (
           <div className="px-4 py-4 text-sm text-muted-foreground">
-            {t('about.update.needsWebDesktop', { version: blocked.version, webdesktop: blocked.requires_webdesktop })}
+            {t('about.update.notCompatible', { version: blocked.version })}
           </div>
         )}
 
@@ -89,6 +101,11 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
                   <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                   {t('about.update.confirm')}
                 </p>
+                {running !== null && (
+                  <p className={running > 0 ? 'text-sm font-medium text-amber-700 dark:text-amber-400' : 'text-sm text-muted-foreground'}>
+                    {running > 0 ? t('about.update.running', { count: running }) : t('about.update.noneRunning')}
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => { setConfirming(false); void update(next.version); }}>
                     {t('about.update.confirmButton', { version: next.version })}
@@ -97,7 +114,7 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
                 </div>
               </div>
             ) : (
-              <Button size="sm" onClick={() => setConfirming(true)}>{t('about.update.install', { version: next.version })}</Button>
+              <Button size="sm" onClick={startConfirming}>{t('about.update.install', { version: next.version })}</Button>
             )}
           </div>
         )}

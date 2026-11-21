@@ -530,7 +530,7 @@ cmd_serve_update() {
       newer="$(newer_stable "$work/releases.json" "$current")"
       jq -cn --arg installed "$current" --argjson newer "$newer" '{
         ok: true, installed: $installed, latest: ($newer[0].version // $installed),
-        newer: [$newer[] | {version, notes: (.notes // ""), requires_webdesktop: "", compatible: true, download_bytes: .package.bytes}]
+        newer: [$newer[] | {version, notes: (.notes // ""), compatible: true, download_bytes: .package.bytes}]
       }'
       ;;
     update)

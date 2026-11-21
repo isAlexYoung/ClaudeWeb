@@ -839,7 +839,6 @@
       "minutesAgo": "{{count}} 分钟前",
       "earlier": "更早",
       "via": {
-        "desktop": "云电脑",
         "claudeweb": "Claude 网页版",
         "cmcp": "CMCP"
       },
@@ -862,8 +861,11 @@
       "check": "检查更新",
       "upToDate": "已是最新版本。",
       "available": "有新版本 {{version}}（下载约 {{size}} MB）。",
-      "needsWebDesktop": "{{version}} 无法安装在这台服务器上。",
+      "notCompatible": "{{version}} 无法安装在这台服务器上。",
       "install": "更新到 {{version}}",
+      "running_one": "现在有 {{count}} 个对话正在运行（含定时任务），重启会让它中断。可以等它完成，或者直接更新。",
+      "running_other": "现在有 {{count}} 个对话正在运行（含定时任务），重启会让它们中断。可以等它们完成，或者直接更新。",
+      "noneRunning": "现在没有正在运行的对话。",
       "confirm": "更新时 ClaudeWeb 会重启，正在运行的对话会中断。对话记录和设置都会保留，更新前会先备份数据库。",
       "confirmButton": "立即更新到 {{version}}",
       "cancel": "取消",
