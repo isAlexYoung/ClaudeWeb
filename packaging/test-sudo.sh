@@ -35,8 +35,10 @@ check "the sudo password file is root-only" "[[ \$(stat -c '%U %a' /etc/claudewe
 check "claudeweb is in the sudo group" "id -nG claudeweb | tr ' ' '\n' | grep -qx sudo"
 check "claudeweb has no password-free sudo" "! sudo -l -U claudeweb | grep -q NOPASSWD"
 check "claudeweb cannot use sudo without the password" "! runuser -u claudeweb -- sudo -n true 2>/dev/null"
-check "SSH does not accept claudeweb's password" "sshd -T -C user=claudeweb,host=localhost,addr=127.0.0.1 | grep -qx 'passwordauthentication no'"
-check "other users' SSH settings are unchanged" "[[ \$(sshd -T -C user=root,host=localhost,addr=127.0.0.1 | grep '^passwordauthentication') == \$(sshd -T | grep '^passwordauthentication') ]]"
+sshd -T > /tmp/cw-s-sshd.out 2>&1
+check "the SSH configuration is still valid" "sshd -t"
+check "SSH refuses claudeweb" "grep -qix 'denyusers claudeweb' /tmp/cw-s-sshd.out"
+check "SSH still lets root in" "! grep -qi '^denyusers.*root' /tmp/cw-s-sshd.out"
 check "the confirmation socket is private" "[[ \$(stat -c '%U %a' $SOCKET) == 'claudeweb 600' ]]"
 password="$(claudeweb password)"
 token="$(curl -s -H 'content-type: application/json' -d "{\"password\":\"$password\",\"mode\":\"takeover\"}" http://127.0.0.1:3001/api/auth/login | jq -r .token)"

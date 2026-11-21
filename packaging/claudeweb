@@ -187,7 +187,8 @@ cmd_sudo_password() {
       # A new group is seen by processes started after this; install.sh restarts the service.
       usermod -aG sudo "$SERVICE_USER"
       if [[ -d $(dirname "$SSHD_DROPIN") && ! -f $SSHD_DROPIN ]]; then
-        printf '# ClaudeWeb: the claudeweb user has a password only for sudo; no SSH login with it.\nMatch User %s\n    PasswordAuthentication no\n    KbdInteractiveAuthentication no\n' \
+        # A plain DenyUsers line: a Match block here could take in the main file's later settings.
+        printf '# ClaudeWeb: the claudeweb user has a password only for sudo; it never logs in over SSH.\nDenyUsers %s\n' \
           "$SERVICE_USER" > "$SSHD_DROPIN"
         chmod 0644 "$SSHD_DROPIN"
         systemctl reload ssh >/dev/null 2>&1 || true

@@ -8,7 +8,8 @@ import { getClaudeSettings } from '@/modules/chat/utils/chatStorage';
 import { getPermissionPanel, registerPermissionPanel } from '@/modules/chat/tools/configs/permissionPanelRegistry';
 import { AskUserQuestionPanel } from '@/modules/chat/tools/InteractiveRenderers/AskUserQuestionPanel';
 import { McpElicitationPanel } from '@/modules/chat/tools/InteractiveRenderers/McpElicitationPanel';
-import { MCP_ELICITATION_TOOL_NAME } from '@/shared/constants';
+import { SensitiveAccessPanel } from '@/modules/chat/tools/InteractiveRenderers/SensitiveAccessPanel';
+import { MCP_ELICITATION_TOOL_NAME, SENSITIVE_ACCESS_TOOL_NAME } from '@/shared/constants';
 import {
   Confirmation,
   ConfirmationAction,
@@ -19,6 +20,7 @@ import {
 
 registerPermissionPanel('AskUserQuestion', AskUserQuestionPanel);
 registerPermissionPanel(MCP_ELICITATION_TOOL_NAME, McpElicitationPanel);
+registerPermissionPanel(SENSITIVE_ACCESS_TOOL_NAME, SensitiveAccessPanel);
 
 type PermissionRequestsBannerProps = {
   pendingPermissionRequests: PendingPermissionRequest[];

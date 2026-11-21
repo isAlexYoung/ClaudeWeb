@@ -138,6 +138,9 @@ export const MCP_GLOBAL_SUPPORTED_TRANSPORTS: McpTransport[] = ['stdio', 'http']
  * panel, and the composer steps aside while one is open, as it does for a question.
  */
 export const MCP_ELICITATION_TOOL_NAME = 'McpElicitation';
+// A tool call that names the user's sensitive information asks first under this
+// name (the server's PreToolUse hook); the panel shows what it would reach.
+export const SENSITIVE_ACCESS_TOOL_NAME = 'ClaudeWebSensitiveAccess';
 
 /** Whether a provider honours an MCP server's working-directory setting; the form hides the field when it does not. */
 export const MCP_SUPPORTS_WORKING_DIRECTORY: Record<McpProvider, boolean> = {

@@ -609,5 +609,21 @@
       "project": "项目",
       "user": "用户"
     }
+  },
+  "sensitiveAccess": {
+    "title": "此类内容为用户敏感信息",
+    "description": "Claude 想要读取或发送：",
+    "kinds": {
+      "claudeCredentials": "Claude 的登录凭据",
+      "browserData": "内置浏览器的 Cookie 和登录数据",
+      "claudewebData": "ClaudeWeb 数据库",
+      "claudewebSettings": "ClaudeWeb 的设置和登录密码文件",
+      "signingKey": "发布签名密钥"
+    },
+    "tool": "工具：",
+    "limits": "只能拦截明确指向这些文件的调用；在服务器上运行的程序仍然可能读到它们。",
+    "allowOnce": "仅允许这一次",
+    "refuse": "拒绝",
+    "refused": "用户拒绝了访问其敏感信息。"
   }
 }

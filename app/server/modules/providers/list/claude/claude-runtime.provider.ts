@@ -39,6 +39,7 @@ import {
 } from '@/modules/providers/list/claude/claude-models.provider.js';
 import { resolveClaudeCodeExecutablePath } from '@/shared/claude-cli-path.js';
 import { sudoShimEnvironment } from '@/modules/sudo/index.js';
+import { findSensitiveAccess } from '@/modules/sensitive-access/index.js';
 import {
   createNotificationEvent,
   notifyBackgroundWorkCompleted,
@@ -175,6 +176,12 @@ const TOOLS_REQUIRING_INTERACTION = new Set(['AskUserQuestion', 'ExitPlanMode'])
 // client's McpElicitation panel and keys it in the pending-approval list, so a
 // page refresh replays it like any other prompt.
 const MCP_ELICITATION_TOOL_NAME = 'McpElicitation';
+// A tool call that names the user's sensitive information (modules/sensitive-access)
+// asks first, as a permission request under this name. The answer may take a while,
+// but must come before the SDK gives up on the hook, which would let the call run.
+const SENSITIVE_ACCESS_TOOL_NAME = 'ClaudeWebSensitiveAccess';
+const SENSITIVE_ANSWER_WAIT_MS = 10 * 60_000;
+const SENSITIVE_HOOK_TIMEOUT_SECONDS = 15 * 60;
 
 /**
  * Turns the client's answer to an McpElicitation request into the MCP result.
@@ -1415,6 +1422,54 @@ async function queryClaudeSDK(
             dedupeKey: `claude:hook:notification:${sessionId || capturedSessionId || 'none'}:${message}`
           }));
           return {};
+        }]
+      }],
+      // Runs before the permission mode is applied, so the question is asked even
+      // when tool approvals are turned off. Allowing answers for this call only.
+      PreToolUse: [{
+        matcher: '',
+        timeout: SENSITIVE_HOOK_TIMEOUT_SECONDS,
+        hooks: [async (input: AnyRecord, _toolUseId?: string, hookOptions?: { signal?: AbortSignal }) => {
+          const kinds = findSensitiveAccess(input?.tool_input, { cwd: typeof input?.cwd === 'string' ? input.cwd : (options.cwd || process.cwd()) });
+          if (!kinds.length) return {};
+          const refuse = (reason: string) => ({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } });
+          const what = `the user's sensitive information (${kinds.join(', ')})`;
+          if (options.unattended) {
+            return refuse(`This call reaches ${what}, and nobody is here to allow it in an unattended run. Continue without it.`);
+          }
+          const requestId = createRequestId();
+          const promptInput = { toolName: input?.tool_name, toolInput: input?.tool_input, kinds };
+          ws.send(createNormalizedMessage({ kind: 'permission_request', requestId, toolName: SENSITIVE_ACCESS_TOOL_NAME, input: promptInput, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
+          emitNotification(notificationEvent({
+            provider: 'claude',
+            sessionId: sessionId || capturedSessionId || null,
+            kind: 'action_required',
+            code: 'permission.required',
+            meta: { toolName: input?.tool_name, sessionName: sessionSummary },
+            severity: 'warning',
+            requiresUserAction: true,
+            dedupeKey: `claude:sensitive:${sessionId || capturedSessionId || 'none'}:${requestId}`
+          }));
+          const decision = await waitForToolApproval(requestId, {
+            timeoutMs: SENSITIVE_ANSWER_WAIT_MS,
+            signal: hookOptions?.signal,
+            metadata: {
+              _sessionId: sessionId || capturedSessionId || null,
+              _toolName: SENSITIVE_ACCESS_TOOL_NAME,
+              _input: promptInput,
+              _receivedAt: new Date(),
+            },
+            onCancel: (reason: string) => {
+              ws.send(createNormalizedMessage({ kind: 'permission_cancelled', requestId, reason, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
+            }
+          });
+          if (decision && !decision.cancelled) {
+            ws.send(createNormalizedMessage({ kind: 'permission_resolved', requestId, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
+          }
+          if (decision?.allow) {
+            return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow', permissionDecisionReason: `The user allowed this call to reach ${what}.` } };
+          }
+          return refuse(`This call reaches ${what}, and the user did not allow it. Do not try to reach it another way unless the user asks.`);
         }]
       }]
     };

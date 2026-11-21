@@ -62,9 +62,17 @@ release is a test release.
   `sudo -S -k`, Refuse or five minutes without an answer fails it. The
   password goes only to sudo: not to Claude, the logs or the browser's
   storage. The installer puts the claudeweb user in the sudo group with a
-  generated password (never password-free sudo), shows it once, and turns
-  off SSH password login for that user; `claudeweb sudo-password` shows or
+  generated password (never password-free sudo), shows it once, and keeps
+  that user out of SSH (DenyUsers); `claudeweb sudo-password` shows or
   changes it. In the terminal, sudo asks for the password as usual.
+- A tool call of Claude's that names the user's sensitive information asks
+  first, even when tool approvals are off: Claude's login credentials, the
+  built-in browser's cookies and sign-in data, ClaudeWeb's database and
+  settings, and a release signing key. The card says "This is the user's
+  sensitive information" and what the call would reach; Allow this once
+  or Refuse. Unattended runs refuse. Only calls that name these files are
+  caught (file tools, searches, command lines); one list in
+  server/modules/sensitive-access.
 
 ### Changed
 

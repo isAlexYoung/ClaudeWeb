@@ -612,5 +612,21 @@
       "project": "Project",
       "user": "User"
     }
+  },
+  "sensitiveAccess": {
+    "title": "This is the user's sensitive information",
+    "description": "Claude wants to read or send:",
+    "kinds": {
+      "claudeCredentials": "Claude's login credentials",
+      "browserData": "the built-in browser's cookies and sign-in data",
+      "claudewebData": "ClaudeWeb's database",
+      "claudewebSettings": "ClaudeWeb's settings and login password file",
+      "signingKey": "the release signing key"
+    },
+    "tool": "Tool:",
+    "limits": "Only calls that name these files are caught; a program run on the server can still read them.",
+    "allowOnce": "Allow this once",
+    "refuse": "Refuse",
+    "refused": "The user refused access to their sensitive information."
   }
 }
