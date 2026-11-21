@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 
+import { useAuth } from '@/modules/auth';
 import { api } from '@/shared/api';
 import {
   readUserPreference,
@@ -79,11 +80,19 @@ export const TasksSettingsProvider = ({ children }: { children: ReactNode }) => 
     setTasksEnabled(readUserPreference('tasksEnabled', TASKS_ENABLED_DEFAULT));
   }), []);
 
-  // Check TaskMaster installation status asynchronously on component mount
+  // This provider sits above the login gate, so a check made on mount ran
+  // before sign-in, was refused, and left TaskMaster shown as not installed
+  // for the whole session. Check once a signed-in session exists.
+  const { user, token, isLoading: isAuthLoading } = useAuth();
+  const canCheck = !isAuthLoading && Boolean(user) && Boolean(token);
+
   useEffect(() => {
+    if (!canCheck) return;
+    let cancelled = false;
     const checkInstallation = async () => {
       try {
         const response = await api.taskmaster.installationStatus();
+        if (cancelled) return;
         if (response.ok) {
           const data = (await response.json()) as TaskMasterInstallationStatus;
           setInstallationStatus(data);
@@ -103,17 +112,22 @@ export const TasksSettingsProvider = ({ children }: { children: ReactNode }) => 
           setIsTaskMasterReady(false);
         }
       } catch (error) {
+        if (cancelled) return;
         console.error('Error checking TaskMaster installation:', error);
         setIsTaskMasterInstalled(false);
         setIsTaskMasterReady(false);
       } finally {
-        setIsCheckingInstallation(false);
+        if (!cancelled) setIsCheckingInstallation(false);
       }
     };
 
     // Run check asynchronously without blocking initial render
-    setTimeout(checkInstallation, 0);
-  }, []);
+    const timer = setTimeout(checkInstallation, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [canCheck]);
 
   const toggleTasksEnabled = useCallback(() => {
     chooseTasksEnabled(prev => !prev);

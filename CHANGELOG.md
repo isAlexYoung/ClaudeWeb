@@ -4,6 +4,15 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0,
 the first standalone release; everything published before the 2.0.0 stable
 release is a test release.
 
+## Unreleased
+
+### Fixed
+
+- Settings showed "TaskMaster AI CLI is not installed" after signing in on
+  the login page (or through CMCP), although the bundled TaskMaster works.
+  The check ran before sign-in, was refused, and was not repeated; it now
+  runs once the session is signed in.
+
 ## 2.0.0 - 2026-11-21 (test release)
 
 ### Added
