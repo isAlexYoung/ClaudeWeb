@@ -32,7 +32,7 @@ export default function AboutTab() {
           className="inline-flex items-center gap-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <GitHubIcon className="h-4 w-4" />
-          <span>github.com/isAlexYoung/ClaudeWeb</span>
+          <span>{t('about.openRepository')}</span>
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </div>

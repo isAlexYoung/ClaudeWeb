@@ -5,6 +5,14 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.1.4 - 2026-11-23 (stable)
+
+- Keep login and loading screens on the chosen theme, with warm white as the default.
+- Refine extension list separators, input focus, MCP form colours and the repository link.
+- Refresh plugins, MCP and skills together without clearing visible lists or repeated background scans.
+- Add skills from public GitHub links, including supporting files.
+- Move technical setting notes into `doc/SETTINGS.md` with their storage locations.
+
 ## 2.1.3 - 2026-11-22 (stable)
 
 - Updated UI layout.

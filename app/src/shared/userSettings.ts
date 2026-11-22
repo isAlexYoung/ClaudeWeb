@@ -110,6 +110,10 @@ function readMirror(): PreferenceRecord {
 function writeMirror(): void {
   try {
     localStorage.setItem(MIRROR_STORAGE_KEY, JSON.stringify(preferences));
+    // Public appearance only: login keeps its colour after private settings are cleared.
+    if (['warm', 'light', 'dark', 'system'].includes(String(preferences.theme))) {
+      localStorage.setItem('appearance-theme', String(preferences.theme));
+    }
   } catch {
     // A full or unavailable localStorage costs the first-paint optimization,
     // not the setting itself — the server copy is authoritative.
@@ -348,8 +352,8 @@ export function hasHydratedUserPreferences(): boolean {
 }
 
 /**
- * Drops the in-memory and mirrored copies on sign-out, so the next user on
- * this device does not start out looking at the previous user's settings.
+ * Drops private preferences on sign-out. The non-sensitive colour theme stays
+ * on this browser so login and authentication loading retain its appearance.
  */
 export function resetUserPreferences(): void {
   preferences = {};

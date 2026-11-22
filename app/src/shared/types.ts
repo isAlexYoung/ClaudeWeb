@@ -2224,3 +2224,6 @@ export type ProjectMemoryEntry = {
 export type ProjectMemorySnapshot = {
   projectId: string; path: string; version: string; entries: ProjectMemoryEntry[];
 };
+//----------------- SETTINGS EXTENSION REFRESH ------------
+/** Registers one mounted extension list's refresh action with Settings; null removes it on unmount. */
+export type SettingsExtensionRefreshRegistration = (refresh: (() => Promise<void>) | null) => void;

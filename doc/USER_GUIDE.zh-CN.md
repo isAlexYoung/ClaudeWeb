@@ -2,6 +2,8 @@
 
 [English](USER_GUIDE.md)
 
+设置的保存文件、权限与记忆说明见[设置说明](SETTINGS.md)。
+
 ClaudeWeb 装在你自己的 Linux 服务器上，用浏览器使用 Claude Code。本文说明安装、访问方式、
 CMCP 连接、从 WebDesktop 迁移，以及常见问题。所有 `claudeweb` 命令都以 root 运行，
 `claudeweb help` 列出全部命令。
@@ -11,7 +13,7 @@ CMCP 连接、从 WebDesktop 迁移，以及常见问题。所有 `claudeweb` �
 要求：一台拥有管理权限的 amd64 服务器，系统为 Debian 12、Debian 13、Ubuntu 22.04、Ubuntu 24.04 或 Ubuntu 26.04，
 至少 2 核 CPU、2 GB 内存，不支持 ARM64。
 
-以 root 运行，安装最新正式版（2.1.3）：
+以 root 运行，安装最新正式版（2.1.4）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash

@@ -7,8 +7,6 @@ import {
   FolderUp,
   Loader2,
   Plus,
-  RefreshCw,
-  Search,
   Upload,
   X,
 } from 'lucide-react';
@@ -24,11 +22,12 @@ import {
   Input,
 } from '@/shared/ui';
 import { useProviderSkills } from '@/modules/skills/hooks/useProviderSkills';
-import type { ProviderSkill, ProviderSkillCreateEntryPayload, SkillsProject, SkillsProvider, SkillsScope } from '@/shared/types';
+import type { ProviderSkill, ProviderSkillCreateEntryPayload, SkillsProject, SkillsProvider, SkillsScope, SettingsExtensionRefreshRegistration } from '@/shared/types';
 
 type ProviderSkillsProps = {
   selectedProvider: SkillsProvider;
   currentProjects: SkillsProject[];
+  onRefreshReady?: SettingsExtensionRefreshRegistration;
 };
 
 type QueuedSkillSourceFile = {
@@ -178,22 +177,23 @@ const buildQueuedSkillFolders = (selectedFiles: File[], t: (key: string, options
 };
 
 /** Rendered by the settings module's agents tab to list, upload and delete one provider's skills. */
-export default function ProviderSkills({ selectedProvider, currentProjects }: ProviderSkillsProps) {
+export default function ProviderSkills({ selectedProvider, currentProjects, onRefreshReady }: ProviderSkillsProps) {
   const { t } = useTranslation('settings');
   const {
     skills,
     isLoading,
-    isLoadingProjectScopes,
     loadError,
     saveStatus,
     addSkills,
+    addSkillFromUrl,
     refreshSkills,
   } = useProviderSkills({ selectedProvider, currentProjects });
   const [queuedFiles, setQueuedFiles] = useState<QueuedSkillFile[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [justInstalled, setJustInstalled] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  // The link typed into the add dialog is submitted independently of uploaded files.
+  const [skillUrl, setSkillUrl] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [showInstallPath, setShowInstallPath] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -206,7 +206,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
     setQueuedFiles([]);
     setSubmitError(null);
     setIsSubmitting(false);
-    setSearchQuery('');
+    setSkillUrl('');
     setIsAddDialogOpen(false);
     setShowInstallPath(false);
     setJustInstalled(false);
@@ -222,28 +222,26 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
     node.setAttribute('directory', '');
   }, []);
 
-  const filteredSkills = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
-    if (!normalizedQuery) {
-      return skills;
-    }
+  const groupedSkills = useMemo(() => groupSkillsByScope(skills), [skills]);
+  const refresh = useCallback(() => refreshSkills({ force: true }), [refreshSkills]);
+  useEffect(() => {
+    onRefreshReady?.(refresh);
+    return () => onRefreshReady?.(null);
+  }, [onRefreshReady, refresh]);
 
-    return skills.filter((skill) => (
-      [
-        skill.command,
-        skill.name,
-        skill.description,
-        skill.scope,
-        skill.pluginName,
-        skill.projectDisplayName,
-        skill.sourcePath,
-      ]
-        .filter(Boolean)
-        .some((value) => value?.toLocaleLowerCase().includes(normalizedQuery))
-    ));
-  }, [searchQuery, skills]);
-
-  const groupedSkills = useMemo(() => groupSkillsByScope(filteredSkills), [filteredSkills]);
+  const handleUrlInstall = async () => {
+    if (!skillUrl.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await addSkillFromUrl(skillUrl.trim());
+      setSkillUrl('');
+      setJustInstalled(true);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : t('skillsPage.errors.importFailed'));
+    } finally { setIsSubmitting(false); }
+  };
 
   const queueSkillFolders = useCallback((selectedFiles: File[]) => {
     const queuedFolders = buildQueuedSkillFolders(selectedFiles, t);
@@ -503,55 +501,10 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative min-w-0 flex-1 sm:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t('skillsPage.searchPlaceholder')}
-              aria-label={t('skillsPage.searchAriaLabel')}
-              className="h-9 w-full pl-9 pr-9"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                aria-label={t('skillsPage.clearSearch')}
-                className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            className="w-full sm:w-auto"
-            onClick={() => handleAddDialogOpenChange(true)}
-          >
-            <Plus className="h-4 w-4" />
-            {t('skillsPage.addSkill')}
-          </Button>
-          <Button
-            onClick={() => void refreshSkills({ force: true })}
-            variant="outline"
-            size="sm"
-            className="w-full sm:w-auto"
-            disabled={isLoading || isLoadingProjectScopes}
-          >
-            <RefreshCw className={cn('h-4 w-4', (isLoading || isLoadingProjectScopes) && 'animate-spin')} />
-            {t('skillsPage.refresh')}
-          </Button>
-        </div>
-        {isLoadingProjectScopes && (
-          <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            {t('skillsPage.scanningProjectSkills')}
-          </div>
-        )}
+      <div className="flex justify-end">
+        <Button type="button" size="sm" onClick={() => handleAddDialogOpenChange(true)}>
+          <Plus className="h-4 w-4" />{t('skillsPage.addSkill')}
+        </Button>
       </div>
 
       <Dialog open={isAddDialogOpen} onOpenChange={handleAddDialogOpenChange}>
@@ -586,6 +539,17 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <form className="mb-5 space-y-2" onSubmit={event => { event.preventDefault(); void handleUrlInstall(); }}>
+              <label htmlFor="skill-url" className="text-sm font-medium">{t('skillsPage.link.label')}</label>
+              <div className="flex gap-2 p-1">
+                <Input id="skill-url" type="url" value={skillUrl} onChange={event => setSkillUrl(event.target.value)}
+                  placeholder="https://github.com/owner/repo/tree/main/skills/my-skill" disabled={isSubmitting} required className="min-w-0 flex-1" />
+                <Button type="submit" disabled={isSubmitting || !skillUrl.trim()}>
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}{t('skillsPage.link.add')}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">{t('skillsPage.link.hint')}</p>
+            </form>
             {uploadPanel}
           </div>
 
@@ -647,7 +611,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
         </div>
       )}
 
-      <div className="space-y-5">
+      <div className="extension-list space-y-5 border-y border-border/50">
         {isLoading && skills.length === 0 && (
           <div className="flex min-h-[180px] items-center justify-center text-sm text-muted-foreground">
             {t('skillsPage.loading', { provider: providerName })}
@@ -655,22 +619,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
         )}
 
         {!isLoading && skills.length === 0 && (
-          <div className="border-b border-border/50 py-6">
-            <div className="text-sm font-medium text-foreground">{t('skillsPage.emptyTitle')}</div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {t('skillsPage.emptyDescription')}
-            </div>
-          </div>
-        )}
-
-        {!isLoading && skills.length > 0 && filteredSkills.length === 0 && (
-          <div className="border-b border-border/50 py-6">
-            <Search className="mx-auto h-6 w-6 text-muted-foreground" />
-            <div className="mt-3 text-sm font-medium text-foreground">{t('skillsPage.noMatchTitle')}</div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              {t('skillsPage.noMatchDescription')}
-            </div>
-          </div>
+          <div className="py-8 text-center text-sm text-muted-foreground">{t('skillsPage.emptyTitle')}</div>
         )}
 
         {groupedSkills.map((group) => (

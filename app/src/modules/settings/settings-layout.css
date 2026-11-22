@@ -18,6 +18,15 @@
   outline-offset: 2px;
 }
 
+/* A single rounded focus boundary around the URL control, with no clipped input edges. */
+.settings-surface .settings-composite-input:focus-within {
+  outline: 2px solid hsl(var(--primary) / .55);
+  outline-offset: 2px;
+}
+.settings-surface .settings-composite-input input:focus-visible {
+  outline: none;
+}
+
 .settings-surface .settings-archive-row,
 .settings-surface .settings-archive-note {
   padding-inline: 0;

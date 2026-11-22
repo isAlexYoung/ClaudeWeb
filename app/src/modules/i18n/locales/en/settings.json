@@ -699,6 +699,11 @@
       "project": "Project",
       "admin": "Admin",
       "system": "System"
+    },
+    "link": {
+      "label": "Add from link",
+      "add": "Add",
+      "hint": "Supports public GitHub repositories, skill folders and SKILL.md links."
     }
   },
   "mcpServersAdd": {
@@ -793,7 +798,8 @@
         "other": "The update failed ({{code}}).",
         "NOT_MAIN_DEVICE": "Only the main device can update ClaudeWeb. See Signed-in devices below."
       }
-    }
+    },
+    "openRepository": "Open repository"
   },
   "workspaceThemes": {
     "system": "Follow system",

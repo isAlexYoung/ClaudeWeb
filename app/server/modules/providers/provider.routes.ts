@@ -749,6 +749,18 @@ router.post(
 );
 
 // ----------------- Skills routes -----------------
+router.post(
+  '/:provider/skills/import',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseProvider(req.params.provider);
+    if (typeof req.body?.url !== 'string' || !req.body.url.trim() || req.body.url.length > 2048) {
+      throw new AppError('A skill URL is required (maximum 2048 characters).', { code: 'PROVIDER_SKILL_URL_INVALID', statusCode: 400 });
+    }
+    const skills = await providerSkillsService.importProviderSkills(provider, req.body.url.trim());
+    res.json(createApiSuccessResponse({ provider, skills }));
+  }),
+);
+
 router.get(
   '/:provider/skills',
   asyncHandler(async (req: Request, res: Response) => {

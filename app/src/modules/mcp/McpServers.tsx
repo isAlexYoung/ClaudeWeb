@@ -1,8 +1,9 @@
+import { useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Edit3, Globe, Lock, Plus, Server, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import type { McpProject, McpProvider, McpScope, ProviderMcpServer } from '@/shared/types';
+import type { McpProject, McpProvider, McpScope, ProviderMcpServer, SettingsExtensionRefreshRegistration } from '@/shared/types';
 import { ActionMenu, Badge, Button } from '@/shared/ui';
 import { MCP_GLOBAL_SUPPORTED_TRANSPORTS, MCP_PROVIDER_NAMES } from '@/shared/constants';
 import { useMcpServers } from '@/modules/mcp/hooks/useMcpServers';
@@ -13,6 +14,7 @@ type McpServersProps = {
   selectedProvider: McpProvider;
   currentProjects: McpProject[];
   children?: ReactNode;
+  onRefreshReady?: SettingsExtensionRefreshRegistration;
 };
 
 const MCP_GLOBAL_SUPPORTED_SCOPES: McpScope[] = ['user', 'project'];
@@ -45,12 +47,11 @@ function ConfigLine({ label, children }: { label: string; children: string }) {
 }
 
 /** Used by General and the legacy agent category panel to list and manage one provider's MCP servers. */
-export default function McpServers({ selectedProvider, currentProjects, children }: McpServersProps) {
+export default function McpServers({ selectedProvider, currentProjects, children, onRefreshReady }: McpServersProps) {
   const { t } = useTranslation('settings');
   const {
     servers,
     isLoading,
-    isLoadingProjectScopes,
     loadError,
     deleteError,
     saveStatus,
@@ -61,7 +62,13 @@ export default function McpServers({ selectedProvider, currentProjects, children
     submitForm,
     submitGlobalForm,
     deleteServer,
+    refreshServers,
   } = useMcpServers({ selectedProvider, currentProjects });
+  const refresh = useCallback(() => refreshServers({ force: true }), [refreshServers]);
+  useEffect(() => {
+    onRefreshReady?.(refresh);
+    return () => onRefreshReady?.(null);
+  }, [onRefreshReady, refresh]);
 
   const providerName = MCP_PROVIDER_NAMES[selectedProvider];
   const description = t(`mcpServers.description.${selectedProvider}`, {
@@ -79,7 +86,7 @@ export default function McpServers({ selectedProvider, currentProjects, children
         <div className="flex min-w-0 items-start gap-3">
           <div className="min-w-0 space-y-1">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('mcpServers.title')}</h3>
-            <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{saveStatus === 'success' ? t('saveStatus.success') : description}</p>
           </div>
         </div>
         <ActionMenu
@@ -107,16 +114,6 @@ export default function McpServers({ selectedProvider, currentProjects, children
 
       </div>
 
-      <div className="space-y-2">
-        <div className="min-h-4">
-          {saveStatus === 'success' && (
-            <span className="animate-in fade-in text-xs text-muted-foreground">{t('saveStatus.success')}</span>
-          )}
-          {isLoadingProjectScopes && (
-            <span className="animate-in fade-in text-xs text-muted-foreground">{t('mcpServersAdd.refreshingScopes')}</span>
-          )}
-        </div>
-      </div>
 
       {(loadError || deleteError) && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200">
@@ -124,7 +121,7 @@ export default function McpServers({ selectedProvider, currentProjects, children
         </div>
       )}
 
-      <div className="settings-group divide-y divide-border/50">
+      <div className="extension-list divide-y divide-border/50 border-y border-border/50">
         {children}
         {isLoading && servers.length === 0 && (
           <div className="py-8 text-center text-muted-foreground">{t('mcpServersAdd.loadingServers')}</div>
@@ -218,7 +215,7 @@ export default function McpServers({ selectedProvider, currentProjects, children
           );
         })}
 
-        {!isLoading && !isLoadingProjectScopes && servers.length === 0 && (
+        {!isLoading && servers.length === 0 && (
           <div className="py-8 text-center text-muted-foreground">{t('mcpServers.empty')}</div>
         )}
       </div>

@@ -57,11 +57,6 @@ type McpServersCacheEntry = {
   updatedAt: number;
 };
 
-type ScopedProjectRequest = {
-  scope: McpScope;
-  project: ProjectTarget;
-};
-
 const MCP_CACHE_TTL_MS = 30_000;
 const mcpServersCache = new Map<string, McpServersCacheEntry>();
 
@@ -307,14 +302,16 @@ export function useMcpServers({ selectedProvider, currentProjects }: UseMcpServe
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
-  const [isLoadingProjectScopes, setIsLoadingProjectScopes] = useState(false);
   // One value rather than three: `isFormOpen`, `isGlobalFormOpen` and
   // `editingServer` made eight combinations representable, of which three were
   // legal, and both modals stayed mounted running a full form hook while closed.
   const [serverForm, setServerForm] = useState<McpServerFormState>(null);
   const activeLoadIdRef = useRef(0);
 
-  const projectTargets = useMemo(() => createProjectTargets(currentProjects), [currentProjects]);
+  // Compare project values, not the fresh array produced by each Settings render.
+  const serializedTargets = JSON.stringify(createProjectTargets(currentProjects));
+  const projectTargets = useMemo<ProjectTarget[]>(() => JSON.parse(serializedTargets), [serializedTargets]);
+  const lastResult = useRef<{ key: string; servers: ProviderMcpServer[] } | null>(null);
   const cacheKey = useMemo(() => getCacheKey(selectedProvider, projectTargets), [projectTargets, selectedProvider]);
 
   const refreshServers = useCallback(async (options: { force?: boolean } = {}) => {
@@ -324,95 +321,42 @@ export function useMcpServers({ selectedProvider, currentProjects }: UseMcpServe
     const cachedEntry = mcpServersCache.get(cacheKey);
     const canUseCache = !options.force && cachedEntry && Date.now() - cachedEntry.updatedAt < MCP_CACHE_TTL_MS;
     if (canUseCache) {
+      lastResult.current = { key: cacheKey, servers: cachedEntry.servers };
       setServers(cachedEntry.servers);
       setIsLoading(false);
-      setIsLoadingProjectScopes(false);
       setLoadError(null);
       return;
     }
 
-    if (cachedEntry && !options.force) {
-      setServers(cachedEntry.servers);
-    } else {
-      setServers([]);
-    }
-
-    setIsLoading(!cachedEntry);
-    setIsLoadingProjectScopes(false);
+    const previous = cachedEntry?.servers ?? (lastResult.current?.key === cacheKey ? lastResult.current.servers : undefined);
+    if (previous) setServers(previous);
+    else setServers([]);
+    setIsLoading(!previous);
     setLoadError(null);
-
+    const requests: Array<{ scope: McpScope; project?: ProjectTarget }> = [];
     const supportedScopes = MCP_SUPPORTED_SCOPES[selectedProvider];
-    let nextServers: ProviderMcpServer[] = cachedEntry && !options.force ? cachedEntry.servers : [];
-    let firstError: string | null = null;
-
-    // Load the global/user scope first so the visible list can paint quickly.
-    // Project and local scopes can involve many project config files, so they
-    // are appended below as background requests instead of blocking this render.
-    if (supportedScopes.includes('user')) {
-      try {
-        const userServers = await fetchProviderScopeServers(selectedProvider, 'user');
-        if (activeLoadIdRef.current !== loadId) {
-          return;
-        }
-
-        nextServers = replaceScopedServers(nextServers, userServers, 'user');
-        setServers(sortServers(nextServers));
-      } catch (error) {
-        firstError = getErrorMessage(error);
-      }
-    }
-
-    if (activeLoadIdRef.current !== loadId) {
-      return;
-    }
-
-    setIsLoading(false);
-
-    const projectScopeRequests: ScopedProjectRequest[] = [];
-    projectTargets.forEach((project) => {
-      if (supportedScopes.includes('project')) {
-        projectScopeRequests.push({ scope: 'project', project });
-      }
-
-      if (supportedScopes.includes('local')) {
-        projectScopeRequests.push({ scope: 'local', project });
-      }
+    if (supportedScopes.includes('user')) requests.push({ scope: 'user' });
+    projectTargets.forEach(project => {
+      if (supportedScopes.includes('project')) requests.push({ scope: 'project', project });
+      if (supportedScopes.includes('local')) requests.push({ scope: 'local', project });
     });
-
-    if (projectScopeRequests.length === 0) {
-      const finalServers = sortServers(nextServers);
-      mcpServersCache.set(cacheKey, { servers: finalServers, updatedAt: Date.now() });
-      setLoadError(firstError);
-      return;
-    }
-
-    setIsLoadingProjectScopes(true);
-
-    // Update the UI as each project scope resolves. This avoids waiting for the
-    // slowest project before showing servers from faster config files.
-    await Promise.all(projectScopeRequests.map(async ({ scope, project }) => {
-      try {
-        const scopedServers = await fetchProviderScopeServers(selectedProvider, scope, project);
-        if (activeLoadIdRef.current !== loadId) {
-          return;
-        }
-
-        nextServers = replaceScopedServers(nextServers, scopedServers, scope, project.path);
-        setServers(nextServers);
-      } catch (error) {
-        firstError = firstError || getErrorMessage(error);
-      }
-    }));
-
-    if (activeLoadIdRef.current !== loadId) {
-      return;
-    }
-
+    // Commit one snapshot after every scope settles; failed scopes retain their last contents.
+    const results = await Promise.allSettled(requests.map(({ scope, project }) => fetchProviderScopeServers(selectedProvider, scope, project)));
+    if (activeLoadIdRef.current !== loadId) return;
+    let nextServers = previous ?? [];
+    let firstError: string | null = null;
+    results.forEach((result, index) => {
+      const { scope, project } = requests[index];
+      if (result.status === 'fulfilled') nextServers = replaceScopedServers(nextServers, result.value, scope, project?.path);
+      else firstError ??= getErrorMessage(result.reason);
+    });
     const finalServers = sortServers(nextServers);
-    mcpServersCache.set(cacheKey, { servers: finalServers, updatedAt: Date.now() });
+    lastResult.current = { key: cacheKey, servers: finalServers };
+    // Failed requests must be retried rather than cached as a successful scan.
+    if (!firstError) mcpServersCache.set(cacheKey, { servers: finalServers, updatedAt: Date.now() });
     setServers(finalServers);
+    setIsLoading(false);
     setLoadError(firstError);
-    setIsLoadingProjectScopes(false);
   }, [cacheKey, projectTargets, selectedProvider]);
 
   const openForm = useCallback((server?: ProviderMcpServer) => {
@@ -506,6 +450,7 @@ export function useMcpServers({ selectedProvider, currentProjects }: UseMcpServe
 
   useEffect(() => {
     void refreshServers();
+    return () => { activeLoadIdRef.current += 1; };
   }, [refreshServers]);
 
   useEffect(() => {
@@ -526,7 +471,7 @@ export function useMcpServers({ selectedProvider, currentProjects }: UseMcpServe
   return {
     servers,
     isLoading,
-    isLoadingProjectScopes,
+    refreshServers,
     loadError,
     deleteError,
     saveStatus,

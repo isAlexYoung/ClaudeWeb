@@ -227,10 +227,10 @@ type UseProviderSkillsArgs = {
 export function useProviderSkills({ selectedProvider, currentProjects }: UseProviderSkillsArgs) {
   const [skills, setSkills] = useState<ProviderSkill[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingProjectScopes, setIsLoadingProjectScopes] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
   const activeLoadIdRef = useRef(0);
+  const lastResult = useRef<{ key: string; skills: ProviderSkill[] } | null>(null);
 
   const serializedProjectTargets = JSON.stringify(createProjectTargets(currentProjects));
   const projectTargets = useMemo<ProjectTarget[]>(
@@ -246,77 +246,39 @@ export function useProviderSkills({ selectedProvider, currentProjects }: UseProv
     const cachedEntry = skillsCache.get(cacheKey);
     const canUseCache = !options.force && cachedEntry && Date.now() - cachedEntry.updatedAt < SKILLS_CACHE_TTL_MS;
     if (canUseCache) {
+      lastResult.current = { key: cacheKey, skills: cachedEntry.skills };
       setSkills(cachedEntry.skills);
       setIsLoading(false);
-      setIsLoadingProjectScopes(false);
       setLoadError(null);
       return;
     }
 
-    if (cachedEntry) {
-      setSkills(cachedEntry.skills);
-    } else {
-      setSkills([]);
-    }
-
-    setIsLoading(Boolean(options.force) || !cachedEntry);
-    setIsLoadingProjectScopes(false);
+    const previous = cachedEntry?.skills ?? (lastResult.current?.key === cacheKey ? lastResult.current.skills : undefined);
+    if (previous) setSkills(previous);
+    else setSkills([]);
+    setIsLoading(!previous);
     setLoadError(null);
-
-    let nextSkills = cachedEntry && !options.force ? cachedEntry.skills : [];
+    const results = await Promise.allSettled([
+      fetchProviderSkills(selectedProvider),
+      ...projectTargets.map(project => fetchProviderSkills(selectedProvider, project)),
+    ]);
+    if (activeLoadIdRef.current !== loadId) return;
+    let nextSkills: ProviderSkill[] = [];
     let firstError: string | null = null;
-
-    try {
-      const globalSkills = await fetchProviderSkills(selectedProvider);
-      if (activeLoadIdRef.current !== loadId) {
-        return;
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') nextSkills = mergeSkills(nextSkills, result.value);
+      else {
+        firstError ??= result.reason instanceof Error ? result.reason.message : 'Failed to load skills';
+        const failedProject = index === 0 ? undefined : projectTargets[index - 1].path;
+        nextSkills = mergeSkills(nextSkills, (previous ?? []).filter(skill => skill.projectPath === failedProject));
       }
-
-      nextSkills = mergeSkills(nextSkills, globalSkills);
-      setSkills(nextSkills);
-    } catch (error) {
-      firstError = error instanceof Error ? error.message : 'Failed to load skills';
-    }
-
-    if (activeLoadIdRef.current !== loadId) {
-      return;
-    }
-
-    setIsLoading(false);
-
-    if (projectTargets.length === 0) {
-      const finalSkills = sortSkills(nextSkills);
-      skillsCache.set(cacheKey, { skills: finalSkills, updatedAt: Date.now() });
-      setSkills(finalSkills);
-      setLoadError(firstError);
-      return;
-    }
-
-    setIsLoadingProjectScopes(true);
-
-    await Promise.all(projectTargets.map(async (project) => {
-      try {
-        const projectSkills = await fetchProviderSkills(selectedProvider, project);
-        if (activeLoadIdRef.current !== loadId) {
-          return;
-        }
-
-        nextSkills = mergeSkills(nextSkills, projectSkills);
-        setSkills(nextSkills);
-      } catch (error) {
-        firstError = firstError || (error instanceof Error ? error.message : 'Failed to load skills');
-      }
-    }));
-
-    if (activeLoadIdRef.current !== loadId) {
-      return;
-    }
-
+    });
     const finalSkills = sortSkills(nextSkills);
-    skillsCache.set(cacheKey, { skills: finalSkills, updatedAt: Date.now() });
+    lastResult.current = { key: cacheKey, skills: finalSkills };
+    if (!firstError) skillsCache.set(cacheKey, { skills: finalSkills, updatedAt: Date.now() });
     setSkills(finalSkills);
     setLoadError(firstError);
-    setIsLoadingProjectScopes(false);
+    setIsLoading(false);
   }, [cacheKey, projectTargets, selectedProvider]);
 
   const addSkills = useCallback(async (payload: ProviderSkillCreatePayload) => {
@@ -330,6 +292,15 @@ export function useProviderSkills({ selectedProvider, currentProjects }: UseProv
       setSaveStatus('error');
       throw error;
     }
+  }, [refreshSkills, selectedProvider]);
+
+  const addSkillFromUrl = useCallback(async (url: string) => {
+    const response = await api.providers.importSkill(selectedProvider, url);
+    const data = await toResponseJson<ApiResponse<ProviderSkillsResponse>>(response);
+    if (!response.ok || !data.success) throw new Error(getApiErrorMessage(data, 'Failed to add skill from link'));
+    clearProviderSkillCache(selectedProvider);
+    await refreshSkills({ force: true });
+    setSaveStatus('success');
   }, [refreshSkills, selectedProvider]);
 
   useEffect(() => {
@@ -356,10 +327,10 @@ export function useProviderSkills({ selectedProvider, currentProjects }: UseProv
   return {
     skills,
     isLoading,
-    isLoadingProjectScopes,
     loadError,
     saveStatus,
     addSkills,
+    addSkillFromUrl,
     refreshSkills,
   };
 }

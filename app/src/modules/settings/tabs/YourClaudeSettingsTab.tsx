@@ -103,7 +103,6 @@ export default function YourClaudeSettingsTab() {
             </select>
           </SettingsRow>
         </SettingsCard>
-        <p className="text-xs text-muted-foreground">{t('yourClaude.outputStyleNote')}</p>
       </SettingsSection>
 
       <SettingsSection title={t('yourClaude.memoryTitle')}>
@@ -166,7 +165,6 @@ export default function YourClaudeSettingsTab() {
           </SettingsRow>
         </SettingsCard>
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-        <p className="text-xs text-muted-foreground">{t('yourClaude.footnote', { path: current.settingsPath })}</p>
       </SettingsSection>
     </div>
   );

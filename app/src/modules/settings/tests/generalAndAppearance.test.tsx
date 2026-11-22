@@ -68,7 +68,7 @@ test('desktop and mobile settings open on Account without API/token, voice or br
 
 test('About keeps the ClaudeWeb repository link without the old descriptive blocks', () => {
   const { container } = render(<AboutTab />);
-  const link = screen.getByRole('link', { name: /github.com\/isAlexYoung\/ClaudeWeb/ });
+  const link = screen.getByRole('link', { name: 'Open repository' });
   assert.equal(link.getAttribute('href'), 'https://github.com/isAlexYoung/ClaudeWeb');
   assert.doesNotMatch(container.textContent ?? '', /CloudCLI|AGPL-3\.0|Discord|Star on GitHub|Pro Features/);
 });

@@ -118,17 +118,17 @@ test('a theme arriving from the store is applied without being written back', ()
   assert.equal(readUserPreference('theme', null), 'dark');
 });
 
-test('a user who has never chosen a theme is following the system', () => {
+test('a user who has never chosen a theme starts warm even when the OS is dark', () => {
   emulateSystemDarkAppearance(true);
 
   const { result } = renderHook(() => useTheme(), { wrapper });
 
-  assert.equal(result.current.themeMode, 'system');
-  assert.equal(result.current.isDarkMode, true);
+  assert.equal(result.current.themeMode, 'warm');
+  assert.equal(result.current.isDarkMode, false);
   assert.equal(
     readUserPreference<unknown>('theme', null),
     null,
-    'following the system is the default, not something to record',
+    'a default appearance does not overwrite server preferences',
   );
 });
 
@@ -188,14 +188,28 @@ test('an explicit toggle leaves system mode behind', () => {
   assert.equal(readUserPreference('theme', null), 'dark');
 });
 
-test('a stored value written by a newer client falls back to following the system', () => {
+test('an unknown stored mode falls back to warm white', () => {
   emulateSystemDarkAppearance(true);
   writeUserPreference('theme', 'solarized');
 
   const { result } = renderHook(() => useTheme(), { wrapper });
 
-  assert.equal(result.current.themeMode, 'system');
-  assert.equal(result.current.isDarkMode, true);
+  assert.equal(result.current.themeMode, 'warm');
+  assert.equal(result.current.isDarkMode, false);
+});
+
+test('sign-out clears private settings but login and loading keep the last chosen theme', () => {
+  const { result } = renderHook(() => useTheme(), { wrapper });
+  act(() => {
+    writeUserPreference('workspaceProfile', { displayName: 'Private name' });
+    result.current.setThemeMode('dark');
+    resetUserPreferences();
+  });
+  assert.equal(result.current.themeMode, 'dark');
+  assert.equal(document.documentElement.dataset.theme, 'dark');
+  assert.equal(readUserPreference('workspaceProfile', null), null);
+  assert.equal(localStorage.getItem('user-preferences'), null);
+  assert.equal(localStorage.getItem('appearance-theme'), 'dark');
 });
 
 test('warm is persisted and applied as its own palette', () => {

@@ -7,7 +7,6 @@ import {
   Loader2,
   RefreshCw,
   ServerCrash,
-  ShieldAlert,
   Trash2,
 } from 'lucide-react';
 
@@ -310,7 +309,7 @@ export default function PluginSettingsTab() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="mb-1 text-base font-semibold text-foreground">
+        <h3 className="mb-1 pr-28 text-base font-semibold text-foreground">
           {t('pluginSettings.title')}
         </h3>
         <p className="text-sm text-muted-foreground">
@@ -319,7 +318,7 @@ export default function PluginSettingsTab() {
       </div>
 
       {/* Install from Git — compact */}
-      <div className="flex items-center gap-0 overflow-hidden rounded-lg bg-muted/40">
+      <div className="settings-composite-input flex items-center gap-0 rounded-lg bg-muted/40">
         <span className="flex-shrink-0 pl-3 pr-1 text-muted-foreground/40">
           <GitBranch className="h-3.5 w-3.5" />
         </span>
@@ -340,7 +339,7 @@ export default function PluginSettingsTab() {
         <button
           onClick={handleInstall}
           disabled={installing || !gitUrl.trim()}
-          className="flex-shrink-0 bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-30"
+          className="flex-shrink-0 rounded-r-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-30"
         >
           {installing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -364,26 +363,21 @@ export default function PluginSettingsTab() {
         <p className="-mt-4 text-sm text-red-500">{installError}</p>
       )}
 
-      <p className="-mt-4 flex items-start gap-1.5 text-xs leading-snug text-muted-foreground/50">
-        <ShieldAlert className="mt-px h-3 w-3 flex-shrink-0" />
-        <span>
-          {t('pluginSettings.securityWarning')}
-        </span>
-      </p>
-
       {/* Plugin sections */}
+      <div className="extension-list border-y border-border/50">
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t('pluginSettings.scanningPlugins')}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="divide-y divide-border/50">
           {plugins.length ? plugins.map(renderPluginCard) : (
-            <p className="py-6 text-sm text-muted-foreground">{t('pluginSettings.noPluginsInstalled')}</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('pluginSettings.noPluginsInstalled')}</p>
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

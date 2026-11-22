@@ -25,11 +25,13 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
  *
  * `'warm'`, `'light'`, `'dark'` and `'system'` are the modes the app writes;
  * anything else — an absent value, or a value a newer client wrote — means
- * "follow the OS", which is also the default for a new user.
+ * warm white, which is also the default for a new user.
  */
 const readStoredThemeMode = (): ThemeMode => {
-  const savedTheme = readUserPreference<string | null>('theme', null);
-  return savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'warm' || savedTheme === 'system' ? savedTheme : 'system';
+  let loginTheme: string | null = null;
+  try { loginTheme = localStorage.getItem('appearance-theme') ?? localStorage.getItem('theme'); } catch { /* Storage may be disabled. */ }
+  const savedTheme = readUserPreference<string | null>('theme', loginTheme);
+  return savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'warm' || savedTheme === 'system' ? savedTheme : 'warm';
 };
 
 /** Whether the OS currently asks for a dark appearance; false when unknown. */

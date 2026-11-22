@@ -5,7 +5,8 @@
       "errors": {
         "CLAUDEWEB_PLATFORM_INCOMPATIBLE": "此更新不相容於伺服器目前的系統，原版本仍在執行，資料保留。"
       }
-    }
+    },
+    "openRepository": "開啟倉庫"
   },
   "tabs": {
     "account": "帳戶",
@@ -632,5 +633,12 @@
   },
   "profile": {
     "saveFailed": "儲存失敗，請重試。"
+  },
+  "skillsPage": {
+    "link": {
+      "label": "透過連結新增",
+      "add": "新增",
+      "hint": "支援公開 GitHub 倉庫、技能資料夾及 SKILL.md 連結。"
+    }
   }
 }

@@ -669,7 +669,7 @@
     "installWithCount_other": "安装 {{count}} 个技能",
     "installPlain": "安装技能",
     "loading": "正在加载 {{provider}} 技能…",
-    "emptyTitle": "尚未发现技能",
+    "emptyTitle": "未安装技能",
     "emptyDescription": "可在上方添加全局技能，或在工作区创建项目专用技能文件夹。",
     "noMatchTitle": "没有匹配的技能",
     "noMatchDescription": "请尝试其他命令、名称、作用范围、项目或来源路径。",
@@ -709,6 +709,11 @@
       "project": "项目",
       "admin": "管理员",
       "system": "系统"
+    },
+    "link": {
+      "label": "通过链接添加",
+      "add": "添加",
+      "hint": "支持公开 GitHub 仓库、技能文件夹及 SKILL.md 链接。"
     }
   },
   "mcpServersAdd": {
@@ -803,7 +808,8 @@
         "other": "更新失败（{{code}}）。",
         "NOT_MAIN_DEVICE": "只有主设备能更新 ClaudeWeb，见下方「登录设备」。"
       }
-    }
+    },
+    "openRepository": "打开仓库"
   },
   "profile": {
     "title": "个人资料",
