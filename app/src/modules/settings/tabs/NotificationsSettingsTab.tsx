@@ -50,39 +50,40 @@ export default function NotificationsSettingsTab({
   const pushDenied = pushPermission === 'denied';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div><h3 className="text-lg font-medium">{t('notifications.title')}</h3><p className="mt-1 text-xs text-muted-foreground">{t('notifications.description')}</p></div>
-      <SettingsSection title={t(isDesktop ? 'notifications.desktop.title' : 'notifications.webPush.title')}>
-        <SettingsCard>
-          <SettingsRow label={t(isDesktop ? 'notifications.desktop.enable' : 'notifications.webPush.enable')}>
-            {isDesktop ? <SettingsToggle
-              checked={desktopNotifications?.enabled ?? false} disabled={desktopNotifications?.supported === false}
-              ariaLabel={t('notifications.desktop.enable')}
-              onChange={enabled => { if (enabled) onEnableDesktopNotifications?.(); else onDisableDesktopNotifications?.(); }}
-            /> : <div className="flex items-center gap-2">
-              {isPushLoading && <span className="text-xs text-muted-foreground" role="status">{t('notifications.webPush.loading')}</span>}
-              <SettingsToggle checked={isPushSubscribed} disabled={isPushLoading || !pushSupported || pushDenied} ariaLabel={t('notifications.webPush.enable')}
-                onChange={enabled => { if (enabled) onEnablePush(); else onDisablePush(); }} />
-            </div>}
-          </SettingsRow>
-          {isDesktop ? <>
-            {desktopNotifications?.supported === false && <p className="px-4 pb-4 text-xs text-muted-foreground">{t('notifications.desktop.unsupported')}</p>}
-            {desktopNotifications?.lastError && <p role="alert" className="px-4 pb-4 text-xs text-destructive">{desktopNotifications.lastError}</p>}
-          </> : <>
-            {pushError && <p role="alert" className="px-4 pb-4 text-xs text-destructive">{pushError}</p>}
-            {!pushSupported ? <p className="px-4 pb-4 text-xs text-muted-foreground">{t('notifications.webPush.unsupported')}</p>
-              : pushDenied ? <p className="px-4 pb-4 text-xs text-muted-foreground">{t('notifications.webPush.denied')}</p> : null}
-          </>}
-        </SettingsCard>
-      </SettingsSection>
+      <SettingsCard>
+        <SettingsRow
+          label={t(isDesktop ? 'notifications.desktop.enable' : 'notifications.webPush.enable')}
+          description={t(isDesktop ? 'notifications.desktop.title' : 'notifications.webPush.title')}
+        >
+          {isDesktop ? <SettingsToggle
+            checked={desktopNotifications?.enabled ?? false} disabled={desktopNotifications?.supported === false}
+            ariaLabel={t('notifications.desktop.enable')}
+            onChange={enabled => { if (enabled) onEnableDesktopNotifications?.(); else onDisableDesktopNotifications?.(); }}
+          /> : <div className="flex items-center gap-2">
+            {isPushLoading && <span className="text-xs text-muted-foreground" role="status">{t('notifications.webPush.loading')}</span>}
+            <SettingsToggle checked={isPushSubscribed} disabled={isPushLoading || !pushSupported || pushDenied} ariaLabel={t('notifications.webPush.enable')}
+              onChange={enabled => { if (enabled) onEnablePush(); else onDisablePush(); }} />
+          </div>}
+        </SettingsRow>
+        {isDesktop ? <>
+          {desktopNotifications?.supported === false && <p className="px-4 pb-4 text-xs text-muted-foreground">{t('notifications.desktop.unsupported')}</p>}
+          {desktopNotifications?.lastError && <p role="alert" className="px-4 pb-4 text-xs text-destructive">{desktopNotifications.lastError}</p>}
+        </> : <>
+          {pushError && <p role="alert" className="px-4 pb-4 text-xs text-destructive">{pushError}</p>}
+          {!pushSupported ? <p className="px-4 pb-4 text-xs text-muted-foreground">{t('notifications.webPush.unsupported')}</p>
+            : pushDenied ? <p className="px-4 pb-4 text-xs text-muted-foreground">{t('notifications.webPush.denied')}</p> : null}
+        </>}
+      </SettingsCard>
       <SettingsSection title={t('notifications.sound.title')}>
         <SettingsCard>
           <SettingsRow label={t('notifications.sound.title')} description={t('notifications.sound.description')}>
-            <SettingsToggle checked={notificationPreferences.channels.sound} ariaLabel={t('notifications.sound.title')}
-              onChange={sound => onNotificationPreferencesChange({ ...notificationPreferences, channels: { ...notificationPreferences.channels, sound } })} />
-          </SettingsRow>
-          <SettingsRow label={t('notifications.sound.test')}>
-            <Button type="button" variant="outline" size="sm" onClick={() => { void playChatCompletionSound({ force: true }); }}>{t('notifications.sound.test')}</Button>
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="outline" size="sm" onClick={() => { void playChatCompletionSound({ force: true }); }}>{t('notifications.sound.test')}</Button>
+              <SettingsToggle checked={notificationPreferences.channels.sound} ariaLabel={t('notifications.sound.title')}
+                onChange={sound => onNotificationPreferencesChange({ ...notificationPreferences, channels: { ...notificationPreferences.channels, sound } })} />
+            </div>
           </SettingsRow>
         </SettingsCard>
       </SettingsSection>

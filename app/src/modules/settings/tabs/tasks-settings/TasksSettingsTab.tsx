@@ -32,7 +32,7 @@ export default function TasksSettingsTab({ onArchiveChanged, claudePermissions, 
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <SettingsSection title={t('tasks.sectionTitle')}>
         {isCheckingInstallation ? (
           <SettingsCard className="p-4">

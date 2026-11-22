@@ -23,7 +23,7 @@ export default function AboutTab() {
   return (
     <div className="space-y-6">
       <ClaudeWebUpdateSection />
-      <div className="space-y-3 border-t border-border/50 pt-5">
+      <div className="space-y-2">
         <h3 className="text-base font-semibold text-foreground">{t('about.title')}</h3>
         <a
           href={SOURCE_URL}

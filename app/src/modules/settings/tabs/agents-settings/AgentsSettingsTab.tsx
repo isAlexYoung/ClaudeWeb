@@ -16,7 +16,7 @@ type AgentsSettingsTabProps = {
 export default function AgentsSettingsTab({ providerAuthStatus, onProviderLogin }: AgentsSettingsTabProps) {
   const { t } = useTranslation('settings');
   return (
-    <div className="min-w-0 space-y-8" data-testid="account-settings-page">
+    <div className="min-w-0 space-y-6" data-testid="account-settings-page">
       <SettingsSection title={t('tabs.account')}>
         <ProfileSection>
           <ClaudeNameField />

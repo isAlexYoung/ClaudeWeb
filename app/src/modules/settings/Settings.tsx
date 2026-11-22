@@ -221,7 +221,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents', onArc
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-            <div key={activeTab} className="settings-content-enter settings-surface min-w-0 space-y-6 overflow-x-hidden p-4 pb-safe-area-inset-bottom md:space-y-8 md:p-6">
+            <div key={activeTab} className="settings-content-enter settings-surface min-w-0 space-y-6 overflow-x-hidden p-4 pb-safe-area-inset-bottom md:p-6">
               {activeTab === 'appearance' && (
                 <AppearanceSettingsTab
                   projectSortOrder={projectSortOrder}

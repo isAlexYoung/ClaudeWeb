@@ -27,7 +27,7 @@
   border-color: transparent;
 }
 
-.settings-surface button {
+.settings-surface button:not(.workspace-theme-card) {
   border-color: transparent;
 }
 

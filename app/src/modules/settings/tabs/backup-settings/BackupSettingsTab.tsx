@@ -481,7 +481,7 @@ function ImportSection() {
  */
 export default function BackupSettingsTab() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <ExportSection />
       <ImportSection />
     </div>

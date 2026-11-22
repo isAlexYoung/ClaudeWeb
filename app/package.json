@@ -1,6 +1,6 @@
 {
   "name": "claudeweb",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "productName": "ClaudeWeb",
   "description": "Self-hosted web interface for Claude Code, installed on your own Linux server",
   "type": "module",

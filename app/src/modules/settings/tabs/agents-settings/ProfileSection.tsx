@@ -71,7 +71,7 @@ export default function ProfileSection({ children }: { children?: ReactNode }) {
 
   return (
       <div className="settings-group divide-y divide-border/50">
-        <div className="flex items-center justify-between gap-4 py-5">
+        <div className="flex items-center justify-between gap-4 py-3">
           <div className="min-w-0">
             <div className="text-sm font-medium text-foreground">{t('profile.avatar.label')}</div>
             <div className="mt-0.5 text-xs text-muted-foreground">{t('profile.avatar.hint')}</div>
@@ -108,7 +108,7 @@ export default function ProfileSection({ children }: { children?: ReactNode }) {
           </div>
         </div>
 
-        <label className="flex items-center justify-between gap-4 py-5">
+        <label className="flex items-center justify-between gap-4 py-3">
           <span className="text-sm font-medium text-foreground">{t('profile.name.label')}</span>
           <input
             type="text"

@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import SettingsCard from '@/modules/settings/SettingsCard';
 import SettingsRow from '@/modules/settings/SettingsRow';
 import SettingsSection from '@/modules/settings/SettingsSection';
 import { useClaudeWebUpdate } from '@/modules/settings/hooks/useClaudeWebUpdate';
@@ -54,44 +53,42 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
 
   return (
     <SettingsSection title={t('about.update.title')}>
-      <SettingsCard>
+      <div className="space-y-3">
         <SettingsRow
           label={t('about.update.installed')}
           description={installed ? undefined : t('about.update.builtOnServer')}
         >
-          <div className="flex items-center gap-3">
-            <span className="text-sm tabular-nums text-foreground">{installed ?? t('about.update.unknown')}</span>
+          <div className="flex items-start gap-3">
+            <span className="pt-2 text-sm tabular-nums text-foreground">{installed ?? t('about.update.unknown')}</span>
             {status.supported && (
-              <Button variant="outline" size="sm" onClick={() => void check()} disabled={busy} className="gap-2">
-                {phase === 'checking' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                {t('about.update.check')}
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <Button variant="outline" size="sm" onClick={() => void check()} disabled={busy} className="gap-2">
+                  {phase === 'checking' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  {t('about.update.check')}
+                </Button>
+                {phase === 'ready' && offer && !next && !blocked && (
+                  <span role="status" className="text-xs text-muted-foreground">{t('about.update.upToDate')}</span>
+                )}
+              </div>
             )}
           </div>
         </SettingsRow>
 
         {(phase === 'updating' || phase === 'reloading' || phase === 'starting') && (
-          <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground" role="status">
+          <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground" role="status">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t(`about.update.progress.${phase === 'starting' ? 'queued' : progress}`, { version: status.status.version ?? '' })}
           </div>
         )}
 
-        {phase === 'ready' && offer && !next && !blocked && (
-          <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            {t('about.update.upToDate')}
-          </div>
-        )}
-
         {phase === 'ready' && blocked && (
-          <div className="px-4 py-4 text-sm text-muted-foreground">
+          <div className="py-3 text-sm text-muted-foreground">
             {t('about.update.notCompatible', { version: blocked.version })}
           </div>
         )}
 
         {phase === 'ready' && next && (
-          <div className="space-y-3 px-4 py-4">
+          <div className="space-y-3 py-3">
             <div className="text-sm font-medium text-foreground">
               {t('about.update.available', { version: next.version, size: megabytes(next.download_bytes) })}
             </div>
@@ -121,12 +118,12 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
         )}
 
         {error && phase === 'ready' && (
-          <div className="flex items-start gap-2 px-4 py-4 text-sm text-red-600 dark:text-red-400" role="alert">
+          <div className="flex items-start gap-2 py-3 text-sm text-red-600 dark:text-red-400" role="alert">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <span>{KNOWN_ERRORS.has(error) ? t(`about.update.errors.${error}`) : t('about.update.errors.other', { code: error })}</span>
           </div>
         )}
-      </SettingsCard>
+      </div>
     </SettingsSection>
   );
 }

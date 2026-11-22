@@ -12,7 +12,7 @@ type SettingsSectionProps = {
 /** Used by the settings module's account, appearance, tasks, notifications and backup tabs to title a block of settings. */
 export default function SettingsSection({ title, description, children, className }: SettingsSectionProps) {
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-2', className)}>
       <div>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           {title}

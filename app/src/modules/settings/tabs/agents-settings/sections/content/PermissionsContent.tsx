@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 
-import ClaudeSettingsFileRules from '@/modules/settings/tabs/agents-settings/sections/content/ClaudeSettingsFileRules';
 import SettingsCard from '@/modules/settings/SettingsCard';
 import SettingsRow from '@/modules/settings/SettingsRow';
 import SettingsSection from '@/modules/settings/SettingsSection';
@@ -11,11 +10,11 @@ type PermissionsContentProps = {
   onSkipPermissionsChange: (value: boolean) => void;
 };
 
-/** Used by Tasks & sessions and the legacy category panel for the permission mode and read-only CLI rules. */
+/** Used by Tasks & sessions and the legacy category panel to change the permission mode. */
 export default function PermissionsContent({ skipPermissions, onSkipPermissionsChange }: PermissionsContentProps) {
   const { t } = useTranslation('settings');
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <SettingsSection title={t('tabs.permissions')}>
         <SettingsCard>
           <SettingsRow label={t('permissions.skipPermissions.label')} description={t('permissions.skipPermissions.claudeDescription')}>
@@ -23,7 +22,6 @@ export default function PermissionsContent({ skipPermissions, onSkipPermissionsC
           </SettingsRow>
         </SettingsCard>
       </SettingsSection>
-      <ClaudeSettingsFileRules />
     </div>
   );
 }

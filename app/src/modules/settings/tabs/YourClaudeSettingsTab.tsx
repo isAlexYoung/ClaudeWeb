@@ -86,7 +86,7 @@ export default function YourClaudeSettingsTab() {
       : t('yourClaude.styleMissing');
 
   return (
-    <div className="space-y-8" data-testid="your-claude-settings">
+    <div className="space-y-6" data-testid="your-claude-settings">
       <SettingsSection title={t('yourClaude.responsesTitle')}>
         <SettingsCard>
           <SettingsRow label={t('yourClaude.outputStyleLabel')} description={status('outputStyle') ?? styleDescription}>
@@ -120,7 +120,7 @@ export default function YourClaudeSettingsTab() {
               ariaLabel={t('yourClaude.autoMemoryLabel')}
             />
           </SettingsRow>
-          <div className="space-y-2 px-4 py-4">
+          <div className="space-y-2 px-4 py-3">
             <label htmlFor="settings-your-claude-directory" className="block text-sm font-medium text-foreground">{t('yourClaude.directoryLabel')}</label>
             <form
               className="flex items-center gap-2"

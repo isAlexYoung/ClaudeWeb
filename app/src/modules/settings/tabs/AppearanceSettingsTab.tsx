@@ -56,7 +56,7 @@ export default function AppearanceSettingsTab({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <SettingsSection title={t('appearanceSettings.theme.label')}>
         <ThemeCards />
       </SettingsSection>

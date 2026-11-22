@@ -12,7 +12,6 @@ vi.mock('@/modules/task-master', () => ({
   useTasksSettings: () => ({ tasksEnabled: false, setTasksEnabled: vi.fn(), isTaskMasterInstalled: false, isCheckingInstallation: false }),
 }));
 vi.mock('@/modules/settings/tabs/tasks-settings/ArchivedSessionsSection', () => ({ default: () => <div data-testid="archive" /> }));
-vi.mock('@/modules/settings/hooks/useClaudeSettingsPermissionRules', () => ({ useClaudeSettingsPermissionRules: () => ({ sources: [], loadFailed: false }) }));
 vi.mock('@/shared/api', () => ({ api: { user: { savePreferences: async () => ({ ok: true }) } } }));
 
 beforeAll(async () => { await i18n.changeLanguage('en'); });

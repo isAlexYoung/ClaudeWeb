@@ -10,20 +10,24 @@ const THEMES: ThemeMode[] = ['system', 'warm', 'light', 'dark'];
 /** Used by AppearanceSettingsTab to choose between the workspace themes. */
 export default function ThemeCards() {
   const { t } = useTranslation('settings');
-  const { themeMode, setThemeMode } = useTheme();
+  const { themeMode, isDarkMode, setThemeMode } = useTheme();
 
   return (
-    <div className="flex flex-wrap gap-2 py-3">
+    <div className="workspace-theme-cards">
       {THEMES.map((id) => {
+        // "Follow system" previews whichever palette the OS currently picks.
+        const palette = id === 'system' ? (isDarkMode ? 'dark' : 'light') : id;
         return (
           <button
             key={id}
             type="button"
-            className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${themeMode === id ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent/50'}`}
+            className="workspace-theme-card"
+            data-palette={palette}
             aria-pressed={themeMode === id}
             onClick={() => setThemeMode(id)}
           >
-            <span className="inline-flex items-center gap-2">
+            <span className="workspace-theme-preview"><i /><b><em /><em /><em /></b><i /></span>
+            <span>
               {t(`workspaceThemes.${id}`)}
               {themeMode === id && <Check size={15} />}
             </span>

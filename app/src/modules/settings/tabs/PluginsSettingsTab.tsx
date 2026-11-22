@@ -17,7 +17,7 @@ export default function PluginsSettingsTab({ projects }: { projects: AgentSettin
     projectId: project.name, displayName: project.displayName, fullPath: project.fullPath, path: project.path,
   }));
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <section aria-label={t('mainTabs.plugins')}><PluginSettingsTab /></section>
       <section className="border-t border-border/50 pt-6" aria-label={t('tabs.mcpServers')}>
         <McpServers selectedProvider="claude" currentProjects={currentProjects}>
