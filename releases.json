@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.1.4",
+   "channel": "stable",
+   "published_at": "2026-11-22T16:25:28Z",
+   "notes": "Updated UI layout.",
+   "package": {
+    "name": "claudeweb-2.1.4-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.1.4/claudeweb-2.1.4-linux-x64.tar.xz",
+    "bytes": 68992240,
+    "sha256": "01388551847c2de84f3e4eb19a56c2cfffc7ce7a5083bf46aac91b392804f67e"
+   }
+  },
+  {
    "version": "2.1.3",
    "channel": "stable",
    "published_at": "2026-11-22T15:16:36Z",
@@ -50,5 +62,5 @@
    }
   }
  ],
- "generated_at": "2026-11-22T15:16:36Z"
+ "generated_at": "2026-11-22T16:25:28Z"
 }
