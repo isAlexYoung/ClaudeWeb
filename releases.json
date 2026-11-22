@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.0.3",
+   "channel": "test",
+   "published_at": "2026-11-22T04:47:19Z",
+   "notes": "Test release: ClaudeDesktop with lifecycle cleanup, minimized tool indicators, staged installer, Ubuntu 22.04 compatibility and working swap initialization.",
+   "package": {
+    "name": "claudeweb-2.0.3-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.0.3/claudeweb-2.0.3-linux-x64.tar.xz",
+    "bytes": 68872760,
+    "sha256": "50f87b89c1325227706c4a6e6fa259499a766d16f66360ba37f379695d2f5c3e"
+   }
+  },
+  {
    "version": "2.0.2",
    "channel": "test",
    "published_at": "2026-11-21T15:07:22Z",
@@ -38,5 +50,5 @@
    }
   }
  ],
- "generated_at": "2026-11-21T15:07:22Z"
+ "generated_at": "2026-11-22T04:47:20Z"
 }
