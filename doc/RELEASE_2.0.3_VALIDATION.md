@@ -21,7 +21,7 @@
 ## 自动检查
 
 - 发布前平台与安装输出检查 17 项通过；后端测试 866 项通过、1 项跳过。
-- [发布提交 CI](https://github.com/isAlexYoung/ClaudeWeb/actions/runs/44986272642)：应用检查和测试包构建通过，Debian 12 / Ubuntu 22.04 的 VM 矩阵运行中。
+- [发布提交 CI](https://github.com/isAlexYoung/ClaudeWeb/actions/runs/44986272642) 全部通过：应用检查、测试包构建，以及 Debian 12 / Ubuntu 22.04 各五项安装、更新回滚、浏览器、设备和 sudo 检查，共 12 个任务。
 - 公开发行验证通过：[Ubuntu 22.04 初装](https://github.com/isAlexYoung/ClaudeWeb/actions/runs/44986715155)，以及 [Debian 12 从 2.0.2 更新至 2.0.3](https://github.com/isAlexYoung/ClaudeWeb/actions/runs/44986711301)。
 
 ## 待验收
