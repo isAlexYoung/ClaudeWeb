@@ -8,6 +8,12 @@ release is a test release.
 
 ## 2.0.3 - 2026-11-22 (test release)
 
+### Fixed
+
+- Creating swap works with Ubuntu 22.04's util-linux: silence `mkswap` output
+  without its unavailable `-q` option. VM installation checks now verify active
+  swap, including installations through the published one-line command.
+
 ### Changed
 
 - Installers and repair commands accept Ubuntu 22.04 LTS amd64 as

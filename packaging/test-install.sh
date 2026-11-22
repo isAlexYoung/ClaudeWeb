@@ -34,6 +34,9 @@ check "right password signs in" "[[ \$(login \"\$password\") == 200 ]]"
 check "wrong password is refused" "[[ \$(login wrong-password-1) == 401 ]]"
 check "Claude CLI installed for claudeweb" "runuser -u claudeweb -- /home/claudeweb/.local/bin/claude --version >/dev/null 2>&1"
 check "IPv6 turned off" "[[ \$(sysctl -n net.ipv6.conf.all.disable_ipv6) == 1 ]]"
+if ! systemd-detect-virt --container >/dev/null 2>&1; then
+  check "swap is active on the VM" "[[ \$(awk '/^SwapTotal:/ {print \$2}' /proc/meminfo) -gt 0 ]]"
+fi
 check "claudeweb status works" "claudeweb status >/tmp/cw-status.out 2>&1 && grep -q answering /tmp/cw-status.out"
 check "claudeweb doctor has no password" "claudeweb doctor >/tmp/cw-doctor.out 2>&1; ! grep -qF -- \"\$password\" /tmp/cw-doctor.out"
 check "claudeweb help lists uninstall" "claudeweb help | grep -q -- '--delete-projects'"

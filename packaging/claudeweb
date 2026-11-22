@@ -348,7 +348,8 @@ swap_create() {
   swap_remove
   fallocate -l "${size_mib}M" "$SWAP_FILE" 2>/dev/null || dd if=/dev/zero of="$SWAP_FILE" bs=1M count="$size_mib" status=none
   chmod 0600 "$SWAP_FILE"
-  mkswap -q "$SWAP_FILE"
+  # Jammy's util-linux does not have mkswap --quiet. Silence stdout instead.
+  mkswap "$SWAP_FILE" >/dev/null
   swapon "$SWAP_FILE"
   echo "$SWAP_FILE none swap sw 0 0" >> /etc/fstab
   echo "Swap file $SWAP_FILE: ${size_mib} MiB"

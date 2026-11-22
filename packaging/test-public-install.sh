@@ -29,6 +29,9 @@ password="$(claudeweb password)"
 check "the login password works" "[[ \$(curl -s -o /dev/null -w '%{http_code}' -H 'content-type: application/json' -d \"{\\\"password\\\":\\\"\$password\\\",\\\"mode\\\":\\\"takeover\\\"}\" http://127.0.0.1:3001/api/auth/login) == 200 ]]"
 check "the browser was installed" "ls /home/claudeweb/.cache/ms-playwright/chromium-*/chrome-linux*/chrome >/dev/null 2>&1"
 check "a sudo password was set" "[[ -s /etc/claudeweb/sudo-password ]]"
+if ! systemd-detect-virt --container >/dev/null 2>&1; then
+  check "swap is active on the VM" "[[ \$(awk '/^SwapTotal:/ {print \$2}' /proc/meminfo) -gt 0 ]]"
+fi
 check "update --check works against the published list" "claudeweb update --check > /tmp/cw-p-check.out 2>&1"
 if [[ -n $FROM ]]; then
   claudeweb update --version="$VERSION" > /tmp/cw-p-update.out 2>&1
