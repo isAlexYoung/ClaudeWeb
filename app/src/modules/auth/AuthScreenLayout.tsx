@@ -32,8 +32,10 @@ export default function AuthScreenLayout({
       <div className="relative mx-auto flex min-h-full w-full max-w-md items-center justify-center p-4 py-8">
         <div className="w-full rounded-2xl border border-border/70 bg-card/90 p-8 shadow-[0_24px_60px_-20px_hsl(var(--foreground)/0.18)] ring-1 ring-foreground/5 backdrop-blur-xl sm:p-10">
           <div className="text-center">
-            {/* ClaudeWeb shows its name without a logo; a caller may still pass one. */}
-            {logo && <div className="mb-5 flex justify-center">{logo}</div>}
+            {/* The ClaudeWeb mark above its name; a caller may pass another. */}
+            <div className="mb-5 flex justify-center">
+              {logo ?? <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" aria-hidden="true" className="h-14 w-14" />}
+            </div>
             <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">{title}</h1>
             <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">{description}</p>
           </div>
