@@ -100,7 +100,7 @@ path, version, channel, commit, node = sys.argv[1:]
 json.dump({"version": version, "channel": channel, "source_commit": commit,
            "node": node, "node_abi": "127", "arch": "x64", "os": "linux",
            "build_platform": "ubuntu-22.04", "glibc_min": "2.35",
-           "platforms": ["debian-12", "ubuntu-22.04"]},
+           "platforms": ["debian-12", "debian-13", "ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04"]},
           open(path, "w"), indent=1)
 EOF
 echo "$VERSION" > "$STAGE/VERSION"

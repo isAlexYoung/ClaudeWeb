@@ -31,6 +31,7 @@ import ComposerAddMenu from '@/modules/chat/composer/ComposerAddMenu';
 import { ScheduledMessageList } from '@/modules/chat/composer/ScheduledMessageList';
 import ComposerModelMenu from '@/modules/chat/composer/ComposerModelMenu';
 import ComposerPermissionMenu from '@/modules/chat/composer/ComposerPermissionMenu';
+import { useComposerAuthentication } from '@/modules/chat/hooks/useComposerAuthentication';
 
 type MentionableFile = {
   name: string;
@@ -212,6 +213,7 @@ export default function ChatComposer({
   taskMenu = null,
 }: ChatComposerProps) {
   const { t } = useTranslation('chat');
+  const cliAuthenticated = useComposerAuthentication();
   const fileDropdownRef = useRef<HTMLDivElement | null>(null);
   const selectedFileRef = useRef<HTMLDivElement | null>(null);
   const commandMenuPosition = useMemo(() => {
@@ -474,6 +476,7 @@ export default function ChatComposer({
           modelOptions={availableModelOptions}
           onSelectModel={onSelectModel}
           modelsLoading={modelsLoading}
+          disabled={!cliAuthenticated}
           fastMode={fastMode}
           onToggleFastMode={onToggleFastMode}
         />

@@ -34,14 +34,14 @@ it('uses the profile and local weekday, has no icon, and keeps the same greeting
   expect(view.getByRole('heading').textContent).toBe('Coffee and Claude time?');
 });
 
-it('uses the signed-in username when no profile name is set', () => {
-  expect(greetingAt(10, 0.5)).toBe("What's on your mind, alex?");
+it('uses User when no profile name is set, independently of the signed-in username', () => {
+  expect(greetingAt(10, 0.5)).toBe("What's on your mind, User?");
   expect(greetingAt(10, 0.9)).toBe('What shall we think through?');
 });
 
 it('writes the weekday greeting in Chinese and never adds a name to the mood greetings', async () => {
   await i18n.changeLanguage('zh-CN');
-  expect(greetingAt(10, 0)).toBe('星期日愉快，alex');
+  expect(greetingAt(10, 0)).toBe('星期日愉快，User');
   expect(greetingAt(10, 0.3)).toBe('咖啡与 Claude 时光？');
   expect(greetingAt(23, 0.3)).toBe('月光下的对话');
   expect(greetingAt(23, 0.9)).toBe('深夜即兴时刻');

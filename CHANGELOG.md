@@ -1,10 +1,58 @@
 # Changelog
 
-All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0,
-the first standalone release; everything published before the 2.0.0 stable
-release is a test release.
+All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
+2.0.0 to 2.0.3 were test releases and 2.1.0 is the first stable release.
 
-## Unreleased
+## 2.1.0 - 2026-11-22 (stable)
+
+The first stable release, for amd64 servers running Debian 12, Debian 13,
+Ubuntu 22.04, Ubuntu 24.04 or Ubuntu 26.04, each accepted on a real VPS.
+The default one-line install and Settings > About now offer it.
+
+### Added
+
+- The ClaudeWeb logo: a chat-bubble C around a folded, raised W in white on
+  Claude-style orange. It is the browser tab icon, the home-screen icon
+  (192 and 512 px, Apple touch icon) and the mark on the login page.
+
+### Changed
+
+- Hide composer model/effort and permission menu scrollbars while retaining
+  scrolling. Disable the model/effort control until Claude CLI is signed in,
+  rechecking login when the page regains focus and while it remains visible.
+  Animate Side chat and Memory with the same disclosure used by Context and Connectors.
+- Default the workspace account label and named home greetings to `User`,
+  preserving custom profile names. Remove the API and tokens settings page
+  from desktop/mobile navigation and fall back to General for old links to it.
+- Add Debian 13 amd64 to the shared platform rules, release metadata and VM
+  matrix, using Debian's minisign and ALSA t64 packages. Preserve Debian's
+  graphical sandbox policy and use the existing disk-backed staging and
+  `/etc/sysctl.d` configuration. Older packages remain refused on Debian 13.
+  Accepted on a real Debian 13 VPS.
+- Add Ubuntu 26.04 LTS amd64 admission, metadata and VM checks alongside
+  24.04. Keep large installer/update staging under
+  `/var/tmp` so Resolute's default `/tmp` tmpfs does not hold release archives.
+  sudo-rs, Rust coreutils and the graphical policies were checked on a real
+  Ubuntu 26.04 VPS.
+- Start the loopback web service and retrying tunnel after `network.target`
+  without pulling in `network-online.target`. VPS images whose interfaces are
+  managed outside systemd-networkd no longer block ClaudeWeb installation while
+  its unrelated wait-online service waits.
+- Recognize sudo-rs authentication failures, including messages split across
+  pipe chunks, so an incorrect password gets the existing wrong-password hint.
+- Poll graphical window readiness so class/visibility changes after mapping
+  are observed. Lifecycle acceptance checks retain the main application and
+  displays, allowing transient renderer/GPU helpers to exit normally.
+- Add Ubuntu 24.04 LTS amd64 to the shared installer and package platform rules,
+  using the distro's minisign and ALSA t64 package. Keep the Ubuntu 22.04 glibc
+  2.35 build baseline and refuse older packages that do not declare Noble.
+- Prepare an application-specific AppArmor user-namespace profile for Playwright
+  Chromium on Noble, preserving official ClaudeDesktop's own profile. Install,
+  repair and update load it without disabling global restrictions or browser sandboxes;
+  uninstall removes only ClaudeWeb-managed policy. Existing administrator policy
+  and unsafe symlinks are left unchanged with an actionable error.
+- Add pinned Ubuntu 24.04 VM targets, AppArmor policy checks and actual Desktop
+  lifecycle checks to the Noble browser test.
 
 ## 2.0.3 - 2026-11-22 (test release)
 

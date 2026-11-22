@@ -6,6 +6,7 @@ import { afterEach, beforeAll, test } from 'vitest';
 import { readTranscriptAppearance, writeTranscriptAppearance, applyTranscriptAppearance } from '@/shared/utils';
 import { i18n } from '@/modules/i18n';
 import { resetUserPreferences, writeUserPreference } from '@/shared/userSettings';
+import { SETTINGS_MAIN_TABS } from '@/shared/constants';
 import {
   applyWorkspaceFonts,
   readWorkspaceFonts,
@@ -50,13 +51,15 @@ test('the profile keeps only an image data URL as the avatar and trims the name 
   assert.equal(profile.avatar, null, 'a remote URL is never rendered');
 });
 
-test('settings open on General, and voice and browser are no longer offered', () => {
+test('desktop and mobile settings open on General without API/token, voice or browser pages', () => {
   render(<SettingsSidebar activeTab="agents" onChange={() => {}} />);
   const labels = screen.getAllByRole('button').map((button) => button.textContent?.trim());
 
   assert.equal(labels[0], 'General');
   assert.ok(!labels.includes('Voice'));
   assert.ok(!labels.includes('Browser'));
+  assert.ok(!labels.some(label => /API|Tokens/i.test(label || '')));
+  assert.ok(!SETTINGS_MAIN_TABS.some(tab => /API|Tokens/i.test(tab.label)), 'the command palette must not reopen the removed page');
 });
 
 test('About says what the interface is built on and links to upstream CloudCLI UI, with the license notice', () => {

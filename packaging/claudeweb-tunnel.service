@@ -1,7 +1,8 @@
 [Unit]
 Description=Cloudflare Tunnel to ClaudeWeb (set up by: claudeweb domain)
-After=network-online.target claudeweb.service
-Wants=network-online.target
+# cloudflared retries lost connectivity; a provider's unrelated wait-online
+# service must not block its startup.
+After=network.target claudeweb.service
 
 [Service]
 Type=simple

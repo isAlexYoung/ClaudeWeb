@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       os:
-        description: 'Target OS (old Debian-only releases cannot install on Ubuntu)'
+        description: 'Target OS must be declared by the package (2.0.3 excludes Debian 13 and Ubuntu 24.04/26.04)'
         required: true
         default: debian-12
         type: choice
-        options: [debian-12, ubuntu-22.04]
+        options: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
       version:
         description: 'Published version, for example 2.0.0'
         required: true

@@ -1,4 +1,4 @@
-import { ArchiveRestore, Bell, Gauge, GitBranch, Info, Key, ListChecks, Palette, Puzzle, Settings2, Sparkles } from 'lucide-react';
+import { ArchiveRestore, Bell, Gauge, GitBranch, Info, ListChecks, Palette, Puzzle, Settings2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/shared/utils';
@@ -22,7 +22,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'usage', labelKey: 'mainTabs.usage', icon: Gauge },
   { id: 'claude', labelKey: 'mainTabs.yourClaude', icon: Sparkles },
   { id: 'git', labelKey: 'mainTabs.git', icon: GitBranch },
-  { id: 'api', labelKey: 'mainTabs.apiTokens', icon: Key },
   { id: 'tasks', labelKey: 'mainTabs.tasks', icon: ListChecks },
   { id: 'plugins', labelKey: 'mainTabs.plugins', icon: Puzzle },
   { id: 'notifications', labelKey: 'mainTabs.notifications', icon: Bell },

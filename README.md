@@ -1,157 +1,137 @@
+<p align="center"><img src="app/public/logo-256.png" width="112" alt="ClaudeWeb logo"></p>
+
 # ClaudeWeb
 
-[中文说明](README.zh-CN.md)
+### Use Claude Code on your own server, from a browser
 
-ClaudeWeb is a self-hosted web interface for [Claude Code](https://docs.claude.com/en/docs/claude-code/overview).
-You install it on your own Linux server and use Claude Code from a browser:
-chats, projects, a terminal, a file panel, scheduled tasks, a task board and a
-built-in browser, all running on that server with the official Claude CLI.
+Keep chats, projects, files, a terminal, a browser and ClaudeDesktop in one web interface, running on your Linux server with the official Claude CLI.
 
-> **Status: test release.** ClaudeWeb 2.0.3 is out as a test release for
-> checking on real servers; there is no stable release yet. To try it on a
-> disposable Debian 12 or Ubuntu 22.04 amd64 server, name the version:
->
-> ```bash
-> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.3
-> ```
->
-> Run it as root. Signed in as another user with sudo, write `sudo bash`
-> instead of `bash`. A server on an earlier test release updates with
-> `claudeweb update --version=2.0.3` (Settings > About offers stable
-> releases only).
->
-> The [user guide](doc/USER_GUIDE.md) covers installing, the SSH tunnel and
-> domains, CMCP, moving from WebDesktop and common problems.
+English | [中文](README.zh-CN.md) | [Changelog](CHANGELOG.md)
 
-## Not affiliated with Anthropic
+[Install](#install) · [Quick Start](#quick-start) · [Features](#features) · [FAQ](#faq) · [License](#license)
 
-ClaudeWeb is an independent open-source project. It is not made, endorsed or
-supported by Anthropic. "Claude" and "Claude Code" are trademarks of
-Anthropic, PBC, used here only to say what the software works with. You need
-your own Claude account or API key, and your use of Claude is governed by
-Anthropic's terms.
+## Install
 
-## Based on CloudCLI UI
-
-ClaudeWeb is a modified version of
-[CloudCLI UI](https://github.com/siteboon/claudecodeui) (Claude Code UI) by
-Siteboon AI B.V. and contributors, based on upstream commit `58a28e0`. It is
-not the original CloudCLI UI and is not endorsed by its authors. The upstream
-license and its additional terms are kept in [LICENSE](LICENSE) and
-[NOTICE](NOTICE).
-
-## Planned installation
-
-When 2.0.0 is released, installation will be one command run as root on a
-fresh server:
+The current stable release is **2.1.0**. Run this as root on the server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
 ```
 
-Run it as root (`sudo bash` instead of `bash` for a user with sudo).
+If signed in as a user with sudo access, replace `bash` with `sudo bash`. To install a specific release, add `-s -- --version=X.Y.Z` after `bash`.
 
-`--version=2.0.0` will pick a specific version; the default is the latest
-stable release. The installer prints the login password at the end; root can
-show it again with `claudeweb password` and replace it with
-`claudeweb password --set`, which signs every device out.
+You need an amd64 (x86_64) server with at least **2 CPU cores and 2 GB RAM**, and your own Claude account or API credentials.
 
-Planned requirements:
+| System | 2.1.0 |
+| --- | --- |
+| Debian 12 | Supported |
+| Debian 13 | Supported |
+| Ubuntu 22.04 LTS | Supported |
+| Ubuntu 24.04 LTS | Supported |
+| Ubuntu 26.04 LTS | Supported |
 
-- Test release 2.0.3 targets Debian 12 and Ubuntu 22.04 LTS amd64.
-  It is still under acceptance testing, including real account sign-in. See the
-  [platform plan](doc/LINUX_COMPATIBILITY_PLAN.md) for later targets.
-- At least 2 CPU cores and 2 GB of memory. The installer sizes swap from the
-  machine.
-- Port 3001 on `127.0.0.1` only. Without a domain you reach ClaudeWeb through
-  an SSH tunnel; with a domain, through Cloudflare Tunnel. Phones and tablets
-  need a domain.
+ARM64 is not supported yet; see the [Linux compatibility plan](doc/LINUX_COMPATIBILITY_PLAN.md).
 
-Management commands (run as root): `claudeweb help`, `status`, `logs`,
-`doctor`, `password`, `swap`, `domain`, `uninstall` (keeps
-`/home/claudeweb/projects` unless you add `--delete-projects`), `update` and
-`rollback`.
+The installer sets up ClaudeWeb, the official Claude Code CLI, Chromium and ClaudeDesktop, configures swap, and prints the login and sudo passwords at the end. It shows numbered stages and saves download details in `/var/log/claudeweb/install.log`, readable only by root. A failed optional graphical installation can be retried later.
 
-## Domain
+Packages are available in [Releases](https://github.com/isAlexYoung/ClaudeWeb/releases). The installer verifies packages against a signed release list. Without `--version`, it installs the latest stable release.
 
-At the end of the installation (or later with `claudeweb domain`) you can give
-ClaudeWeb an HTTPS address under a domain managed in Cloudflare, for phones,
-tablets and other computers. It goes through a Cloudflare Tunnel: cloudflared
-on the server connects out to Cloudflare, and no port is opened on the server.
-You need:
+## Quick Start
 
-- the domain's **Account ID** and **Zone ID** (on the domain's overview page in
-  Cloudflare);
-- an **API token** with *Account > Cloudflare Tunnel > Edit* and
-  *Zone > DNS > Edit* for that domain.
+1. Run the installation command on your server and keep the passwords it prints.
+2. On your computer, open an SSH tunnel, replacing `YOUR_SERVER` with your server address:
 
-ClaudeWeb picks a random name under the domain, or uses one you give (exactly
-one level under it, such as `claude.example.com`, so Cloudflare's free
-certificate covers it). The API token is typed hidden, used only during the
-setup and never stored; the server keeps only the tunnel's own token. An
-interrupted setup continues when you run `claudeweb domain` again, or is
-cleaned up if you choose not to. `claudeweb domain --remove` deletes the tunnel
-and its DNS record again. The login password and the per-address lockout
-protect the page exactly as over an SSH tunnel.
+   ```bash
+   ssh -L 3001:127.0.0.1:3001 root@YOUR_SERVER
+   ```
 
-Updates come from a release list signed with ClaudeWeb's key; a package is
-only used when it matches that list. `claudeweb update` (or Settings > About)
-installs the latest stable release, backs up the database, and returns to
-the previous version by itself if the new one does not start.
-`claudeweb rollback` returns to the previous version at any time. See
-[doc/RELEASING.md](doc/RELEASING.md).
+3. Keep that terminal open, visit [http://localhost:3001](http://localhost:3001) and enter the login password.
+4. Open ClaudeWeb's terminal and run `claude`. Open its sign-in link in the built-in browser and finish signing in.
+5. Create or choose a project and start chatting.
 
-## Built-in browser
+ClaudeWeb listens only on `127.0.0.1:3001`. To use it from a phone or tablet, [configure a domain](#domain-access) instead of an SSH tunnel.
 
-The browser panel shows a Chromium that runs on the server (Playwright's
-build, installed by the installer), with Chinese fonts and Pinyin input
-(press Shift to switch). It runs as the `claudeweb` user on a private
-display that only ClaudeWeb can reach, keeps Chromium's own sandbox, and
-stays open for ten minutes when the connection drops. Opening the panel on
-another device takes the same browser over. `claudeweb install-browser`
-repairs it.
+The [user guide](doc/USER_GUIDE.md) covers installation, access, CMCP, migration and troubleshooting.
 
-## Security model
+## Features
 
-- One login password for the web page, with lockout per source IP after
-  repeated failures.
-- ClaudeWeb, Claude, the terminal and the browser run as one unprivileged user,
-  `claudeweb`. Program files belong to root, and updates are signed.
-- `sudo` is only available after you confirm it in the ClaudeWeb session.
-- No telemetry.
+- Chats and projects: use Claude Code with streaming replies, quoted messages, search and collapsible thinking/execution sections.
+- Server tools: work with files and run commands in the built-in terminal.
+- Built-in browser: use server-side Chromium with Chinese fonts, Pinyin input and clipboard support. Press Shift to switch input modes.
+- ClaudeDesktop: open it from the asterisk next to Terminal; minimize, restore, go fullscreen or close it. An orange dot marks a hidden live tool window.
+- Task management: scheduled tasks and a task board in the same interface.
+- Backup and migration: export and restore data, including moving from ClaudeWeb inside WebDesktop. See the [migration guide](doc/USER_GUIDE.md#5-move-from-webdesktop).
+- Personalization: light and dark themes, English and Simplified Chinese.
+- Web updates: Settings → About → Check for updates → Update, with package verification and automatic return to the previous version if startup fails. The page offers stable releases only.
 
-See [SECURITY.md](SECURITY.md) to report a vulnerability.
+## Connect this computer with CMCP
 
-## Development
+[CMCP](https://github.com/isAlexYoung/cmcp) lets Claude on your server use this computer's files, commands and desktop tools.
 
-The application is in [`app/`](app). It needs Node.js 22 or later.
+Use CMCP 4.24.1 or later, add the server's SSH details, choose ClaudeWeb sign-in and enter the ClaudeWeb address and login password. Connect the device; CMCP opens the page and can sign in automatically. Local MCP tools travel through that device's background SSH connection.
+
+See the [connection steps](doc/USER_GUIDE.md#4-connect-cmcp).
+
+## Domain access
+
+Run this as root during installation or afterwards:
 
 ```bash
-cd app
-npm ci
-npm run typecheck
-npm run lint
-npm test             # server tests
-npm run test:client  # browser-side tests
+claudeweb domain
 ```
 
-To build on Ubuntu 22.04 amd64 (with `build-essential`, `pkg-config`, `python3`,
-`git`, `curl` and `xz-utils`) and install on a disposable test server:
+Use a domain whose DNS is managed by Cloudflare; it can be purchased from another registrar. Prepare the domain's **Account ID**, **Zone ID**, and an **API token** with **Account → Cloudflare Tunnel → Edit** and **Zone → DNS → Edit** permissions for that domain.
+
+Follow the prompts to choose a subdomain such as `claude.example.com`. Cloudflare Tunnel gives it an HTTPS address without exposing ClaudeWeb's listening port. The server needs outbound connectivity to Cloudflare on port 7844. The setup API token is not stored; only the tunnel's own token is retained.
+
+Run `claudeweb domain --status` to check it or `claudeweb domain --remove` to delete its tunnel and DNS record. See the [domain guide](doc/USER_GUIDE.md#3-reach-it-through-a-domain-phones-and-tablets-too).
+
+## FAQ
+
+**How do I update?**
+
+Open Settings → About → Check for updates → Update, or run as root:
 
 ```bash
-bash packaging/build-release.sh --version=2.0.0
-sudo bash install.sh --package=release-out/claudeweb-2.0.0-linux-x64.tar.xz
+claudeweb update
 ```
 
-`packaging/test-install.sh` runs the whole install, repair and uninstall
-cycle on a disposable machine.
+An older package cannot be used on a system it does not declare. `claudeweb rollback` returns to the previous installed version; see the [release guide](doc/RELEASING.md).
 
-[`doc/PROJECT_CHECKLIST.md`](doc/PROJECT_CHECKLIST.md) tracks the plan for
-2.0.0. Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
+**What happens when I minimize or close a tool?**
+
+Minimizing the terminal, browser or ClaudeDesktop hides the panel and keeps the session running; click its icon to restore it. Closing ends that tool's session. Closing ClaudeDesktop also removes regenerable caches and runtime files while retaining its profile and keyring. It does not erase all disk or inode usage. See [ClaudeDesktop integration](doc/CLAUDE_DESKTOP.md).
+
+**Does each chat have its own sandbox or resource quota?**
+
+No. ClaudeWeb, Claude CLI, the terminal, browser and ClaudeDesktop run as the same ordinary user, `claudeweb`, and share that user's files. Chromium and Electron keep their own sandboxes. ClaudeWeb adds no memory, CPU or process-count quotas; VPS and operating-system limits still apply. IPv6 is disabled globally during installation. Installation and updates use root-managed components; chat commands using the sudo integration need your confirmation and sudo password.
+
+**I forgot a password.**
+
+Run `claudeweb password` or `claudeweb sudo-password` as root. `claudeweb password --set` changes the web login password and signs every device out.
+
+**The browser or ClaudeDesktop will not open.**
+
+Run `claudeweb doctor` and check `claudeweb logs`. Retry the relevant installation with `claudeweb install-browser` or `claudeweb install-desktop`, as root.
+
+**Where are the logs and management commands?**
+
+Run `claudeweb status`, `claudeweb logs` or `claudeweb help` as root. Installation details are in `/var/log/claudeweb/install.log`.
+
+**How do I uninstall?**
+
+If using a domain, run `claudeweb domain --remove` first to remove the Cloudflare resources. Then run `claudeweb uninstall` and confirm. It removes the application and user data, keeping only `/home/claudeweb/projects` by default. `--delete-projects` deletes that folder too. Export a backup before uninstalling if you want to keep chats and settings.
+
+**Is ClaudeWeb an Anthropic product?**
+
+No. ClaudeWeb is an independent open-source project, not made, endorsed or supported by Anthropic. “Claude” and “Claude Code” are trademarks of Anthropic, PBC. You supply your own account or API credentials and follow Anthropic's terms.
+
+## Contributing
+
+The application lives in [`app/`](app). Start with [Contributing](CONTRIBUTING.md); the [project checklist](doc/PROJECT_CHECKLIST.md) tracks remaining work. Report vulnerabilities using [SECURITY.md](SECURITY.md).
 
 ## License
 
-ClaudeWeb is licensed under the GNU Affero General Public License v3.0 or
-later, with the additional terms under Section 7 that come from CloudCLI UI.
-See [LICENSE](LICENSE), [NOTICE](NOTICE) and
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+ClaudeWeb is a modified version of [CloudCLI UI](https://github.com/siteboon/claudecodeui) (Claude Code UI), by Siteboon AI B.V. and contributors, based on upstream commit `58a28e0`. It is not the original CloudCLI UI and is not endorsed by its authors.
+
+The code is licensed under **GNU AGPL v3.0 or later**, with the upstream additional terms under Section 7. See [LICENSE](LICENSE), [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md).

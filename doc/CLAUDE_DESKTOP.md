@@ -34,6 +34,15 @@ amd64. Ubuntu 22.04 VPS checks received real Desktop frames and exercised
 minimize, fullscreen, close, cache cleanup and reopening. Real account sign-in
 and long-running acceptance remain pending.
 
+The unreleased Ubuntu 24.04/26.04 adaptation installs a root-managed AppArmor file at
+`/etc/apparmor.d/claudeweb-graphical` for Playwright's cached Chromium. Current official
+Desktop packages create their own `/etc/apparmor.d/claude-desktop` profile. ClaudeWeb
+does not duplicate that executable attachment or remove the official profile.
+The system-wide user namespace restriction remains enabled.
+Repair and updates reload the policy; uninstall removes only the managed file.
+An existing non-managed policy or symlink is refused. These changes are not in
+the published 2.0.3 package.
+
 ## Profile and cleanup
 
 The app runs as the existing ordinary service user, on its own private X display

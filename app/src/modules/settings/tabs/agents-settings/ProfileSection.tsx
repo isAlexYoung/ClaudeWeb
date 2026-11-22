@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useAuth } from '@/modules/auth';
+import { DEFAULT_WORKSPACE_DISPLAY_NAME } from '@/shared/constants';
 import {
   MAX_DISPLAY_NAME_LENGTH,
   useWorkspaceProfile,
@@ -43,12 +43,11 @@ async function toAvatarDataUrl(file: File): Promise<string> {
  */
 export default function ProfileSection({ children }: { children?: ReactNode }) {
   const { t } = useTranslation('settings');
-  const { user } = useAuth();
   const profile = useWorkspaceProfile();
   // Upload errors belong beside the avatar and clear after the next successful upload.
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const shownName = profile.displayName.trim() || user?.username || '';
+  const shownName = profile.displayName.trim() || DEFAULT_WORKSPACE_DISPLAY_NAME;
 
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -115,7 +114,7 @@ export default function ProfileSection({ children }: { children?: ReactNode }) {
             type="text"
             value={profile.displayName}
             maxLength={MAX_DISPLAY_NAME_LENGTH}
-            placeholder={user?.username || t('profile.name.placeholder')}
+            placeholder={DEFAULT_WORKSPACE_DISPLAY_NAME}
             onChange={(event) => writeWorkspaceProfile({ displayName: event.target.value })}
             className="w-full max-w-[16rem] rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />

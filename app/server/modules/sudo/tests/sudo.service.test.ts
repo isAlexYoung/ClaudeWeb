@@ -35,10 +35,10 @@ process.stdin.on('end', () => {
 });
 `;
 
-function harness(timeoutMs = 60_000) {
+function harness(timeoutMs = 60_000, program = FAKE_SUDO) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cw-sudo-'));
   const script = path.join(directory, 'fake-sudo.cjs');
-  fs.writeFileSync(script, FAKE_SUDO);
+  fs.writeFileSync(script, program);
   let announced = 0;
   const service = createSudoService({
     socketPath: path.join(directory, 'run', 'sudo.sock'),
@@ -131,6 +131,27 @@ test('refusing, a wrong password and an unanswered request each fail the command
     const late = ask(h.socketPath, { argv: ['id'], cwd: '/' });
     assert.deepEqual((await late.done).exit, { code: 1, outcome: 'timeout' });
     assert.deepEqual(h.service.list(), []);
+  } finally {
+    await h.cleanup();
+  }
+});
+
+test('sudo-rs authentication errors split across pipe chunks report a wrong password', unix, async () => {
+  const program = FAKE_SUDO.replace(
+    "process.stderr.write('Sorry, try again.\\nsudo: 1 incorrect password attempt\\n');",
+    "process.stderr.write('sudo: Authenti'); setTimeout(() => { process.stderr.write('cation failed, try again.\\nsudo: Authentication required but not attempted\\n'); process.exit(1); }, 30); return;",
+  );
+  assert.notEqual(program, FAKE_SUDO, 'the fixture must use sudo-rs wording');
+  const h = harness(60_000, program);
+  await h.service.start();
+  try {
+    const wrong = ask(h.socketPath, { argv: ['id'], cwd: '/' });
+    const [request] = await waitFor(() => (h.service.list().length ? h.service.list() : undefined));
+    h.service.answer(request.id, { approve: true, password: 'wrong' });
+    const frames = await wrong.done;
+    assert.deepEqual(frames.exit, { code: 1, outcome: 'password' });
+    assert.equal(frames.stdout, '');
+    assert.match(frames.stderr, /Authentication failed, try again/);
   } finally {
     await h.cleanup();
   }

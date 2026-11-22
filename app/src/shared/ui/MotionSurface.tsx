@@ -3,7 +3,7 @@ import type { HTMLAttributes } from 'react';
 import { useSurfacePresence } from '@/shared/hooks/useSurfacePresence';
 import { cn } from '@/shared/utils';
 
-/** Used by sidebar project menus/trees and the workspace Context disclosure to retain their exit. */
+/** Used by sidebar menus/trees and workspace, side-chat and project-memory disclosures to retain their exit. */
 export function MotionSurface({ open, kind = 'menu', children, className, ...props }: HTMLAttributes<HTMLDivElement> & {
   open: boolean;
   kind?: 'menu' | 'disclosure';

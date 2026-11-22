@@ -66,10 +66,17 @@ async function connect(kind, id) {
 function ownedGraphicalProcesses() {
   const found = [];
   for (const name of fs.readdirSync('/proc').filter((name) => /^\d+$/.test(name))) {
+    let owned = false;
     try {
       const env = fs.readFileSync(`/proc/${name}/environ`).toString();
-      if (env.includes(`HOME=${home}\0`)) found.push(Number(name));
-    } catch { /* Other users and exited processes. */ }
+      owned = env.includes(`HOME=${home}\0`);
+    } catch { /* Chromium may make its environment unreadable after sandboxing. */ }
+    if (!owned) {
+      try {
+        owned = fs.readFileSync(`/proc/${name}/cmdline`).toString().includes(`${home}/`);
+      } catch { /* Other users and exited processes. */ }
+    }
+    if (owned) found.push(Number(name));
   }
   return found;
 }
@@ -94,6 +101,17 @@ try {
   const [one, two] = await Promise.all([connect('desktop', ids.desktop), connect('browser', ids.browser)]);
   assert.equal(JSON.parse((await desktop.status(ids.desktop)).body).state, 'open');
   console.log('PASS official ClaudeDesktop renders an RFB frame as the ordinary user');
+  const osRelease = fs.readFileSync('/etc/os-release', 'utf8');
+  if (/^ID=ubuntu$/m.test(osRelease) && /^VERSION_ID="(?:24|26)\.04"$/m.test(osRelease)
+    && fs.readFileSync('/sys/module/apparmor/parameters/enabled', 'utf8').trim() === 'Y') {
+    assert.equal(fs.readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim(), '1');
+    const labels = ownedGraphicalProcesses().flatMap((pid) => {
+      try { return [fs.readFileSync(`/proc/${pid}/attr/current`, 'utf8')]; } catch { return []; }
+    });
+    assert.ok(labels.some((label) => label.startsWith('claude-desktop ')), 'official Desktop package supplies its AppArmor profile');
+    assert.ok(labels.some((label) => label.includes('claudeweb-playwright')));
+    console.log('PASS Ubuntu uses official Desktop and ClaudeWeb browser profiles while retaining global user namespace restrictions');
+  }
   const profile = path.join(home, '.config/claudeweb-desktop');
   const secret = fs.readFileSync(path.join(profile, '.keyring-secret'));
   const marker = path.join(profile, 'Claude/acceptance-kept.json');
@@ -102,9 +120,13 @@ try {
   fs.mkdirSync(codeCache, { recursive: true });
   for (let i = 0; i < 200; i++) fs.writeFileSync(path.join(codeCache, `${i}`), 'cache');
   const before = ownedGraphicalProcesses();
+  // Renderer/GPU helpers may legitimately exit during startup. The application
+  // and display exit handlers must instead leave this session/connection open.
   await new Promise((resolve) => setTimeout(resolve, 1500));
   assert.ok(before.length > 0);
-  assert.ok(before.every((pid) => fs.existsSync(`/proc/${pid}`)), 'parking the connected panel retains its processes');
+  assert.equal(JSON.parse((await desktop.status(ids.desktop)).body).state, 'open');
+  assert.equal(one.readyState, WebSocket.OPEN);
+  assert.ok(before.some((pid) => fs.existsSync(`/proc/${pid}`)), 'parking retains existing session processes');
   console.log('PASS minimized/parked connection retains the same Desktop processes');
   await desktop.end(ids.desktop);
   assert.equal(fs.existsSync(codeCache), false);

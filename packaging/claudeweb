@@ -62,8 +62,16 @@ cw_platform_select() {
   [[ $3 == x86_64 ]] || { echo "only amd64 (x86_64) is supported (found $3)" >&2; return 1; }
   case "$1:$2" in
     debian:12) CW_PLATFORM=debian-12; CW_BASE_PACKAGES+=(minisign) ;;
+    debian:13)
+      CW_PLATFORM=debian-13
+      CW_BASE_PACKAGES+=(minisign)
+      CW_GUI_PACKAGES+=(libasound2t64) ;;
     ubuntu:22.04) CW_PLATFORM=ubuntu-22.04 ;;
-    *) echo "only Debian 12 and Ubuntu 22.04 LTS are enabled (found ${1:-unknown} ${2:-unknown})" >&2; return 1 ;;
+    ubuntu:24.04|ubuntu:26.04)
+      CW_PLATFORM=ubuntu-$2
+      CW_BASE_PACKAGES+=(minisign)
+      CW_GUI_PACKAGES+=(apparmor libasound2t64) ;;
+    *) echo "only Debian 12/13 and Ubuntu 22.04/24.04/26.04 LTS are enabled (found ${1:-unknown} ${2:-unknown})" >&2; return 1 ;;
   esac
 }
 
@@ -78,7 +86,7 @@ cw_platform_detect() {
 
 cw_prepare_apt() {
   apt-get -o DPkg::Lock::Timeout=180 update -q || return
-  if [[ $CW_PLATFORM == ubuntu-22.04 ]] && ! LC_ALL=C apt-cache policy tigervnc-standalone-server \
+  if [[ $CW_PLATFORM == ubuntu-* ]] && ! LC_ALL=C apt-cache policy tigervnc-standalone-server \
     | awk '$1 == "Candidate:" && $2 != "(none)" { found=1 } END { exit !found }'; then
     # Respect the server's selected mirrors and signing keys. The distro tool
     # adds Universe to its configured sources; do not replace sources.list.
@@ -86,6 +94,55 @@ cw_prepare_apt() {
     add-apt-repository -y universe || return
     apt-get -o DPkg::Lock::Timeout=180 update -q || return
   fi
+}
+
+# Ubuntu 24.04/26.04 restrict unprivileged user namespaces. Keep that restriction
+# globally; grant only Playwright's browser executable user namespace permission.
+# Official Desktop manages its own profile; a duplicate attachment breaks it.
+cw_graphical_apparmor_profile() {
+  cat <<'EOF'
+# Managed by ClaudeWeb: graphical user namespaces (schema 1).
+abi <abi/4.0>,
+include <tunables/global>
+
+profile claudeweb-playwright /home/claudeweb/.cache/ms-playwright/chromium-[0-9]*/chrome-linux{,64}/chrome flags=(unconfined) {
+  userns,
+}
+
+EOF
+}
+
+cw_configure_graphical_sandbox() (
+  [[ $CW_PLATFORM == ubuntu-24.04 || $CW_PLATFORM == ubuntu-26.04 ]] || exit 0
+  # Containers/custom kernels may not enable AppArmor. Do not change the host's
+  # policy or attempt to mount securityfs on their behalf.
+  [[ -r /sys/module/apparmor/parameters/enabled ]] \
+    && [[ $(cat /sys/module/apparmor/parameters/enabled) == Y ]] || exit 0
+  command -v apparmor_parser >/dev/null || { echo 'AppArmor parser is missing; repair graphical dependencies' >&2; exit 1; }
+  local profile=/etc/apparmor.d/claudeweb-graphical work
+  [[ ! -L $profile && ( ! -e $profile || -f $profile ) ]] \
+    || { echo "refusing unsafe AppArmor profile: $profile" >&2; exit 1; }
+  if [[ -f $profile ]] && ! grep -qxF '# Managed by ClaudeWeb: graphical user namespaces (schema 1).' "$profile"; then
+    echo "existing $profile is not managed by ClaudeWeb; review it before retrying" >&2; exit 1
+  fi
+  work="$(mktemp)" || exit
+  trap 'rm -f -- "$work"' EXIT
+  cw_graphical_apparmor_profile > "$work" || exit
+  apparmor_parser -Q -T "$work" || exit
+  apparmor_parser -r -T "$work" || { echo 'could not load ClaudeWeb AppArmor profiles; global restrictions were kept' >&2; exit 1; }
+  install -d -m 0755 /etc/apparmor.d || exit
+  install -m 0644 -o root -g root "$work" "$profile" || exit
+)
+
+cw_remove_graphical_sandbox() {
+  local profile=/etc/apparmor.d/claudeweb-graphical
+  [[ -f $profile && ! -L $profile ]] || return 0
+  grep -qxF '# Managed by ClaudeWeb: graphical user namespaces (schema 1).' "$profile" || return 0
+  if [[ -r /sys/module/apparmor/parameters/enabled ]] \
+    && [[ $(cat /sys/module/apparmor/parameters/enabled) == Y ]]; then
+    command -v apparmor_parser >/dev/null && apparmor_parser -R "$profile" || return
+  fi
+  rm -f -- "$profile"
 }
 
 cw_minisign() {
@@ -503,7 +560,9 @@ cmd_update() {
   current="$(installed_version)"
   UPDATE_TARGET="$wanted"
   (( check_only )) || write_status checking "$wanted"
-  work="$(mktemp -d)"
+  # Release archives and extraction must not consume /tmp tmpfs on small VPSes.
+  work="$(mktemp -d /var/tmp/claudeweb-update.XXXXXXXX)" \
+    || update_failed CLAUDEWEB_CATALOGUE_UNAVAILABLE "cannot create update staging directory; nothing was changed"
   trap "rm -rf '$work'" EXIT   # expanded now: $work is local and gone by exit time
   fetch_release_list "$work" || update_failed CLAUDEWEB_CATALOGUE_UNAVAILABLE "the release list could not be used; nothing was changed"
   if [[ -n $wanted ]]; then
@@ -565,6 +624,10 @@ cmd_update() {
     "$RELEASES/$target/bin/claudeweb" install-desktop \
       || echo "warning: ClaudeDesktop is unavailable; run: claudeweb install-desktop" >&2
   fi
+  # A distribution upgrade can introduce AppArmor restrictions even when the
+  # browser revision and Desktop package have not changed.
+  cw_configure_graphical_sandbox \
+    || update_failed CLAUDEWEB_PLATFORM_INCOMPATIBLE "the graphical sandbox policy could not be prepared; the current version is still running"
 
   install -d -m 0700 "$UPDATE_DIR"
   printf '{"from": "%s", "to": "%s", "phase": "switching", "started_at": "%s"}\n' "$current" "$target" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$UPDATE_STATE"
@@ -685,10 +748,11 @@ cmd_install_browser() {
   [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "unexpected Playwright version: $version"
   node_dir="$release/node/bin"
   echo "Installing the browser (Playwright $version)"
-  env -i PATH="$node_dir:/usr/sbin:/usr/bin:/sbin:/bin" HOME=/root LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive \
+  env -i PATH="$node_dir:/usr/sbin:/usr/bin:/sbin:/bin" HOME=/root TMPDIR=/var/tmp LANG=C.UTF-8 DEBIAN_FRONTEND=noninteractive \
     "$node_dir/npx" --yes "playwright@$version" install-deps chromium
-  as_service env -i PATH="$node_dir:/usr/bin:/bin" HOME="$SERVICE_HOME" LANG=C.UTF-8 \
+  as_service env -i PATH="$node_dir:/usr/bin:/bin" HOME="$SERVICE_HOME" TMPDIR=/var/tmp LANG=C.UTF-8 \
     "$node_dir/npx" --yes "playwright@$version" install chromium
+  cw_configure_graphical_sandbox || die "browser sandbox policy could not be prepared"
 }
 
 # Installs the official APT package; no third-party Electron repack and no sandbox bypass.
@@ -699,6 +763,7 @@ cmd_install_desktop() (
   trap 'rm -rf -- "$work"' EXIT
   cw_install_dependencies desktop || die "ClaudeDesktop dependencies could not be installed"
   if [[ $(dpkg-query -W -f='${Status}' claude-desktop 2>/dev/null || true) == 'install ok installed' ]]; then
+    cw_configure_graphical_sandbox || die 'ClaudeDesktop sandbox policy could not be prepared'
     echo 'ClaudeDesktop is already installed; its profile and package version were kept.'
     exit 0
   fi
@@ -718,6 +783,7 @@ cmd_install_desktop() (
   [[ -e $source ]] || install -m 0644 "$work/claude.list" "$source"
   apt-get -o DPkg::Lock::Timeout=180 update
   apt-get -o DPkg::Lock::Timeout=180 install -y --no-install-recommends claude-desktop
+  cw_configure_graphical_sandbox || die 'ClaudeDesktop sandbox policy could not be prepared'
   echo 'ClaudeDesktop is installed. Open it with the asterisk in ClaudeWeb.'
 )
 
@@ -1070,6 +1136,7 @@ cmd_uninstall() {
   pkill -u "$SERVICE_USER" 2>/dev/null || true
   sleep 1
   pkill -KILL -u "$SERVICE_USER" 2>/dev/null || true
+  cw_remove_graphical_sandbox || echo 'warning: the managed AppArmor profile could not be removed' >&2
   if (( delete_projects )); then
     rm -rf "$SERVICE_HOME"
   elif [[ -d $SERVICE_HOME ]]; then

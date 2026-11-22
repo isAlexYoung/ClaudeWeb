@@ -9,17 +9,17 @@ WebDesktop, and common problems. Every `claudeweb` command runs as root;
 
 ## 1. Install
 
-You need a Debian 12 or Ubuntu 22.04 LTS (amd64) server you can reinstall, with at least 2 CPU
-cores and 2 GB of memory.
+You need an amd64 server you can reinstall, running Debian 12, Debian 13,
+Ubuntu 22.04, Ubuntu 24.04 or Ubuntu 26.04, with at least 2 CPU cores and
+2 GB of memory. See the [platform plan](LINUX_COMPATIBILITY_PLAN.md).
 
-This describes test release 2.0.3, including the Ubuntu 22.04 adaptation.
-Older Debian-only packages must not be installed on Ubuntu. See the [platform plan](LINUX_COMPATIBILITY_PLAN.md) for acceptance status.
-
-As root (only test releases exist so far, so name the version):
+As root, this installs the latest stable release (2.1.0):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.3
+curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
 ```
+
+To install a specific release, add `-s -- --version=X.Y.Z` after `bash`.
 
 Signed in as a user with sudo, write `sudo bash` instead of `bash`. The installer:
 

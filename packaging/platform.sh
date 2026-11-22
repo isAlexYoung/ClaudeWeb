@@ -10,8 +10,16 @@ cw_platform_select() {
   [[ $3 == x86_64 ]] || { echo "only amd64 (x86_64) is supported (found $3)" >&2; return 1; }
   case "$1:$2" in
     debian:12) CW_PLATFORM=debian-12; CW_BASE_PACKAGES+=(minisign) ;;
+    debian:13)
+      CW_PLATFORM=debian-13
+      CW_BASE_PACKAGES+=(minisign)
+      CW_GUI_PACKAGES+=(libasound2t64) ;;
     ubuntu:22.04) CW_PLATFORM=ubuntu-22.04 ;;
-    *) echo "only Debian 12 and Ubuntu 22.04 LTS are enabled (found ${1:-unknown} ${2:-unknown})" >&2; return 1 ;;
+    ubuntu:24.04|ubuntu:26.04)
+      CW_PLATFORM=ubuntu-$2
+      CW_BASE_PACKAGES+=(minisign)
+      CW_GUI_PACKAGES+=(apparmor libasound2t64) ;;
+    *) echo "only Debian 12/13 and Ubuntu 22.04/24.04/26.04 LTS are enabled (found ${1:-unknown} ${2:-unknown})" >&2; return 1 ;;
   esac
 }
 
@@ -26,7 +34,7 @@ cw_platform_detect() {
 
 cw_prepare_apt() {
   apt-get -o DPkg::Lock::Timeout=180 update -q || return
-  if [[ $CW_PLATFORM == ubuntu-22.04 ]] && ! LC_ALL=C apt-cache policy tigervnc-standalone-server \
+  if [[ $CW_PLATFORM == ubuntu-* ]] && ! LC_ALL=C apt-cache policy tigervnc-standalone-server \
     | awk '$1 == "Candidate:" && $2 != "(none)" { found=1 } END { exit !found }'; then
     # Respect the server's selected mirrors and signing keys. The distro tool
     # adds Universe to its configured sources; do not replace sources.list.
@@ -34,6 +42,55 @@ cw_prepare_apt() {
     add-apt-repository -y universe || return
     apt-get -o DPkg::Lock::Timeout=180 update -q || return
   fi
+}
+
+# Ubuntu 24.04/26.04 restrict unprivileged user namespaces. Keep that restriction
+# globally; grant only Playwright's browser executable user namespace permission.
+# Official Desktop manages its own profile; a duplicate attachment breaks it.
+cw_graphical_apparmor_profile() {
+  cat <<'EOF'
+# Managed by ClaudeWeb: graphical user namespaces (schema 1).
+abi <abi/4.0>,
+include <tunables/global>
+
+profile claudeweb-playwright /home/claudeweb/.cache/ms-playwright/chromium-[0-9]*/chrome-linux{,64}/chrome flags=(unconfined) {
+  userns,
+}
+
+EOF
+}
+
+cw_configure_graphical_sandbox() (
+  [[ $CW_PLATFORM == ubuntu-24.04 || $CW_PLATFORM == ubuntu-26.04 ]] || exit 0
+  # Containers/custom kernels may not enable AppArmor. Do not change the host's
+  # policy or attempt to mount securityfs on their behalf.
+  [[ -r /sys/module/apparmor/parameters/enabled ]] \
+    && [[ $(cat /sys/module/apparmor/parameters/enabled) == Y ]] || exit 0
+  command -v apparmor_parser >/dev/null || { echo 'AppArmor parser is missing; repair graphical dependencies' >&2; exit 1; }
+  local profile=/etc/apparmor.d/claudeweb-graphical work
+  [[ ! -L $profile && ( ! -e $profile || -f $profile ) ]] \
+    || { echo "refusing unsafe AppArmor profile: $profile" >&2; exit 1; }
+  if [[ -f $profile ]] && ! grep -qxF '# Managed by ClaudeWeb: graphical user namespaces (schema 1).' "$profile"; then
+    echo "existing $profile is not managed by ClaudeWeb; review it before retrying" >&2; exit 1
+  fi
+  work="$(mktemp)" || exit
+  trap 'rm -f -- "$work"' EXIT
+  cw_graphical_apparmor_profile > "$work" || exit
+  apparmor_parser -Q -T "$work" || exit
+  apparmor_parser -r -T "$work" || { echo 'could not load ClaudeWeb AppArmor profiles; global restrictions were kept' >&2; exit 1; }
+  install -d -m 0755 /etc/apparmor.d || exit
+  install -m 0644 -o root -g root "$work" "$profile" || exit
+)
+
+cw_remove_graphical_sandbox() {
+  local profile=/etc/apparmor.d/claudeweb-graphical
+  [[ -f $profile && ! -L $profile ]] || return 0
+  grep -qxF '# Managed by ClaudeWeb: graphical user namespaces (schema 1).' "$profile" || return 0
+  if [[ -r /sys/module/apparmor/parameters/enabled ]] \
+    && [[ $(cat /sys/module/apparmor/parameters/enabled) == Y ]]; then
+    command -v apparmor_parser >/dev/null && apparmor_parser -R "$profile" || return
+  fi
+  rm -f -- "$profile"
 }
 
 cw_minisign() {

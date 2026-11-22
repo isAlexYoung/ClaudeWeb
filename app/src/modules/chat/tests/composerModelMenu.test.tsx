@@ -29,6 +29,26 @@ test('an unresolved inherited model asks for a selection without claiming an act
   assert.equal(rows[0].getAttribute('aria-checked'), 'true');
 });
 
+test('missing CLI login disables model and effort together, closes an open menu and restores after login', () => {
+  const props = { effort: 'high', effortOptions: [{ value: 'high' }], onSelectEffort: () => {},
+    model: 'opus', modelOptions: customEndpointModels.map(option => ({ ...option, effort: { default: 'high', values: [{ value: 'high' }] } })),
+    onSelectModel: () => {}, modelsLoading: false };
+  const view = render(<ComposerModelMenu {...props} disabled />);
+  const trigger = view.getByRole('button') as HTMLButtonElement;
+  assert.equal(trigger.disabled, true);
+  assert.match(trigger.textContent || '', /High/);
+  fireEvent.click(trigger);
+  assert.equal(view.queryByRole('menu'), null);
+  view.rerender(<ComposerModelMenu {...props} disabled={false} />);
+  assert.equal(trigger.disabled, false);
+  fireEvent.click(trigger);
+  assert.ok(view.getByRole('menu'));
+  view.rerender(<ComposerModelMenu {...props} disabled />);
+  assert.equal(view.queryByRole('menu'), null);
+  view.rerender(<ComposerModelMenu {...props} disabled={false} />);
+  assert.equal(view.queryByRole('menu'), null, 'logging in must not reopen a previously dismissed menu');
+});
+
 test('Chat and Code shared model control names the resolved model and sends the displayed effort', () => {
   const levels = [{ value: 'medium' }, { value: 'high' }];
   const models: ProviderModelOption[] = [

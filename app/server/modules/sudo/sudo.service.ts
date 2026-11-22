@@ -106,10 +106,13 @@ export function createSudoService({ socketPath, sudoPath = '/usr/bin/sudo', time
       return;
     }
     let wrongPassword = false;
+    let authenticationMessage = '';
     let done = false;
     child.stdout?.on('data', (data: Buffer) => frame(socket, { t: 'out', fd: 1, data: data.toString('base64') }));
     child.stderr?.on('data', (data: Buffer) => {
-      if (/incorrect password attempt|Sorry, try again/.test(data.toString())) wrongPassword = true;
+      // sudo.ws and sudo-rs use different messages; pipe chunks may split a phrase.
+      authenticationMessage = (authenticationMessage + data.toString()).slice(-256);
+      if (/incorrect password attempt|Sorry, try again|Authentication failed, try again/i.test(authenticationMessage)) wrongPassword = true;
       frame(socket, { t: 'out', fd: 2, data: data.toString('base64') });
     });
     child.stdin?.on('error', () => {});

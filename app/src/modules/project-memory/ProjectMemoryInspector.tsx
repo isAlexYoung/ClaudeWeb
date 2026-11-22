@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { api } from '@/shared/api';
+import { MotionSurface } from '@/shared/ui';
 import type { ProjectMemoryEntry } from '@/shared/types';
 import { useProjectMemory } from '@/modules/project-memory/hooks/useProjectMemory';
 import { ProjectMemoryEditor } from '@/modules/project-memory/ProjectMemoryEditor';
@@ -43,7 +44,8 @@ export function ProjectMemoryInspector({ projectId, projectName, sessionId, onFi
   useEffect(() => { setOpen(false); setEditing(null); setDeleting(null); setError(''); setNotice(''); }, [projectId]);
   return <section className="project-memory-inspector" data-open={open}>
     <button type="button" className="workspace-inspector-heading" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}<h2>{t('projectMemory.title')}</h2></button>
-    {open && <div className="project-memory-list">
+    <MotionSurface open={open} kind="disclosure">
+    <div className="project-memory-list">
       {!projectId ? <p>{t('projectMemory.chooseProject')}</p> : <>
         <div className="project-memory-list-tools"><span title={collection.data?.path}>{projectName} · CLAUDE.md</span><button type="button" title={t('projectMemory.reload')} aria-label={t('projectMemory.reload')} onClick={() => void collection.refresh()}><RotateCw size={14} /></button>{collection.data && <button type="button" title={t('projectMemory.openFile')} aria-label={t('projectMemory.openFile')} onClick={() => onFileOpen(collection.data!.path)}><FileText size={14} /></button>}</div>
         <p className="project-memory-help">{t('projectMemory.scope')}</p>
@@ -57,7 +59,8 @@ export function ProjectMemoryInspector({ projectId, projectName, sessionId, onFi
       </>}
       {(error || collection.error) && <p role="alert">{t(`projectMemory.errors.${error || collection.error}`, { defaultValue: t('projectMemory.errors.default') })}</p>}
       {notice && <p role="status">{notice}</p>}
-    </div>}
+    </div>
+    </MotionSurface>
     {editing && projectId && <ProjectMemoryEditor projectId={projectId} projectName={projectName} sessionId={sessionId || ''} entry={editing.entry} initialVersion={editing.version} anchor={editing.anchor} onClose={() => setEditing(null)} onSaved={() => { setNotice(t('projectMemory.saved')); void collection.refresh(); }} />}
     {deleting && <div role="alertdialog" aria-modal="false" aria-label={t('projectMemory.confirmDelete')} data-side-chat-surface="true" className="project-memory-delete" onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape' && !busy) setDeleting(null); }}>
       <strong>{t('projectMemory.confirmDelete')}</strong><p>{deleting.entry.text}</p><footer><button type="button" disabled={busy} onClick={() => setDeleting(null)}>{t('projectMemory.cancel')}</button><button type="button" disabled={busy} onClick={() => {

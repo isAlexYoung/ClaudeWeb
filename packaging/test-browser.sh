@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end browser check on disposable Debian 12 / Ubuntu 22.04 amd64, as root:
+# End-to-end browser check on disposable Debian 12/13 / Ubuntu 22.04/24.04/26.04 amd64, as root:
 #   bash packaging/test-browser.sh /path/to/claudeweb-X.Y.Z-linux-x64.tar.xz
 set -uo pipefail
 PACKAGE="$1"
@@ -21,6 +21,13 @@ node_pid=$!
 for _ in $(seq 1 120); do pgrep -u claudeweb -f 'ms-playwright/chromium' >/dev/null && break; sleep 1; done
 sleep 3
 check "Chromium runs as claudeweb" "pgrep -u claudeweb -f 'ms-playwright/chromium' >/dev/null"
+platform="$(. /etc/os-release; echo "$ID-$VERSION_ID")"
+if [[ $platform == ubuntu-24.04 || $platform == ubuntu-26.04 ]] \
+  && [[ $(cat /sys/module/apparmor/parameters/enabled 2>/dev/null) == Y ]]; then
+  check "Ubuntu keeps its global namespace restriction" "[[ \$(sysctl -n kernel.apparmor_restrict_unprivileged_userns) == 1 ]]"
+  check "Chromium has the application-specific AppArmor profile" "grep -q claudeweb-playwright /proc/\$(pgrep -u claudeweb -o -f 'ms-playwright/chromium')/attr/current"
+  check "Chromium sandbox was not disabled" "! pgrep -a -u claudeweb -f 'ms-playwright/chromium' | grep -q -- '--no-sandbox'"
+fi
 check "nothing of the browser runs as root" "! pgrep -u root -f 'ms-playwright|Xtigervnc' >/dev/null"
 check "the Chinese input method runs" "pgrep -u claudeweb -x fcitx5 >/dev/null"
 check "the display listens on no TCP port" "! ss -ltnp | grep -q Xtigervnc"
@@ -33,6 +40,15 @@ sleep 3
 check "no Chromium is left after the panel closed" "! pgrep -u claudeweb -f 'ms-playwright/chromium' >/dev/null"
 check "no display is left after the panel closed" "! pgrep -u claudeweb -x Xtigervnc >/dev/null"
 check "the service is still running" "systemctl is-active --quiet claudeweb"
+if [[ $platform == debian-13 || $platform == ubuntu-24.04 || $platform == ubuntu-26.04 ]]; then
+  install -d -m 0755 /var/tmp/claudeweb-ci
+  install -m 0644 "$REPO/packaging/test-desktop.mjs" /var/tmp/claudeweb-ci/test-desktop.mjs
+  (cd /home/claudeweb && runuser -u claudeweb -- /opt/claudeweb/current/node/bin/node \
+    /var/tmp/claudeweb-ci/test-desktop.mjs /opt/claudeweb/current/app) > /tmp/cw-b-desktop.out 2>&1
+  desktop_status=$?
+  cat /tmp/cw-b-desktop.out
+  check "Desktop and browser lifecycle checks pass" "[[ $desktop_status -eq 0 ]]"
+fi
 journalctl -u claudeweb -n 30 --no-pager > /tmp/cw-b-journal.out 2>&1
 
 echo y | claudeweb uninstall > /dev/null 2>&1

@@ -22,7 +22,8 @@ rebuilt.
 Build on Ubuntu 22.04 amd64 with `build-essential`, `pkg-config`, `python3`,
 `git`, `curl`, and `xz-utils`. Native modules are rebuilt against this glibc
 2.35 baseline and the package declares `debian-12` and `ubuntu-22.04` as its
-target platforms beginning with test release 2.0.3; run the target
+target platforms beginning with test release 2.0.3. The unreleased adaptation
+also declares `debian-13`, `ubuntu-24.04` and `ubuntu-26.04`; the old 2.0.3 package does not. Run the target
 acceptance tests before publishing. Keep the signing key on the maintainer's
 machine, where minisign is installed.
 
@@ -46,7 +47,9 @@ machine, where minisign is installed.
    Cloudflare API.
 
    CI builds once on Ubuntu 22.04, then runs the installation, update, browser,
-   device and sudo checks in both Debian 12 and Ubuntu 22.04 VMs. Shared platform
+   device and sudo checks in Debian 12/13, Ubuntu 22.04, Ubuntu 24.04 and Ubuntu 26.04 VMs.
+   The Noble/Resolute browser jobs also check Desktop lifecycle and AppArmor attachment.
+   Shared platform
    rules live in `packaging/platform.sh`; after changing them, run
    `python3 packaging/sync-platform.py` to refresh both standalone entry points.
    CI rejects stale embedded copies. A VM check alone does not replace the

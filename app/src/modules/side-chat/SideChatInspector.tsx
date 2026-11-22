@@ -5,6 +5,7 @@ import { useSideChats } from '@/modules/side-chat/hooks/useSideChats';
 import { SideChatHistoryRow } from '@/modules/side-chat/SideChatHistoryRow';
 import { DeleteSideChatDialog } from '@/modules/side-chat/DeleteSideChatDialog';
 import { pickFileDownload } from '@/shared/utils';
+import { MotionSurface } from '@/shared/ui';
 import type { SideChat } from '@/shared/types';
 import '@/modules/side-chat/side-chat.css';
 
@@ -30,7 +31,8 @@ export function SideChatInspector({ sessionId }: { sessionId: string | null }) {
     <button type="button" className="workspace-inspector-heading" aria-expanded={open} onClick={() => setOpen(!open)}>
       {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}<h2>{t('sideChat.title')}</h2>
     </button>
-    {open && <div className="side-chat-history">
+    <MotionSurface open={open} kind="disclosure">
+    <div className="side-chat-history">
       {collection.loading && <p role="status">{t('sideChat.loading')}</p>}
       {collection.error && <p role="alert">{t('sideChat.loadFailed')} <button onClick={() => void collection.refresh()}>{t('sideChat.retry')}</button></p>}
       {!collection.loading && !collection.chats.length && <p>{t('sideChat.empty')}</p>}
@@ -39,7 +41,8 @@ export function SideChatInspector({ sessionId }: { sessionId: string | null }) {
         onJump={() => window.dispatchEvent(new CustomEvent('claudeweb:sidechat-jump', { detail: { parentSessionId: sessionId, id: chat.id } }))}
         onOpen={() => void collection.update(chat.id, { minimized: false }).catch(report)}
         onCopy={() => void navigator.clipboard.writeText(chat.source.text).catch(report)} onExport={() => void exportChat(chat).catch(report)} onDelete={() => setDeleting(chat.id)} />)}
-    </div>}
+    </div>
+    </MotionSurface>
     {deleting && <DeleteSideChatDialog onCancel={() => setDeleting(null)} onConfirm={() => { void collection.remove(deleting).catch(report); setDeleting(null); }} />}
   </section>;
 }

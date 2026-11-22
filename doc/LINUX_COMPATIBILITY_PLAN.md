@@ -1,6 +1,6 @@
 # Linux 发行版适配与真实 VPS 验收计划
 
-日期：2026-11-22。状态：2.0.3 测试版已发布；Ubuntu 22.04 真实 VPS 的基础与图形检查通过，账号交互、重启、长期运行及完整更新回归待验收，其余三个新增目标尚未放行。
+日期：2026-11-22。状态：2.0.3 测试版已发布；Ubuntu 22.04 真实 VPS 的基础与图形检查通过。Debian 13、Ubuntu 24.04、26.04 未发布适配已通过真实 VPS 的基础、修复及图形检查；Debian 13、Ubuntu 26.04 另验证了 sudo 与网页更新检查。账号交互、完整升级回滚、重启及长期运行仍单独待验收。
 
 2.0.3 测试版安装器接受 Debian 12 和 Ubuntu 22.04 LTS amd64；旧 2.0.2 包仍只面向 Debian 12，不能直接用于 Ubuntu。按用户本轮授权，将之前的 ClaudeDesktop、安装输出和 Ubuntu 适配改动一并发布为测试版，不提升为正式版。
 
@@ -99,10 +99,10 @@
 | 系统（均 amd64） | 干净安装与修复 | CLI / 终端与权限 | 浏览器 | ClaudeDesktop | 网页更新与回滚 | 重启与长期运行 |
 | --- | --- | --- | --- | --- | --- | --- |
 | Debian 12 | 待测 | 待测 | 待测 | 待测 | 待测 | 待测 |
-| Debian 13 | 待测 | 待测 | 待测 | 待测 | 待测 | 待测 |
+| Debian 13 | 私有候选初装及重复安装修复通过；最终源码包 CI 待跑 | CLI、原生模块及 sudo 授权通过；账号待交互 | 画面、中文/PNG 剪贴板通过 | 画面、生命周期及网页操作通过；账号待交互 | “关于”签名清单检查接口通过；完整升级回滚待测 | 待测 |
 | Ubuntu 22.04 LTS | 初装与最终公开包安装通过；修复回归待测 | 基础通过；真实账号待交互 | 画面与剪贴板通过 | 画面与生命周期通过；账号待交互 | 公开清单检查通过；完整升级回滚待测 | 待测 |
-| Ubuntu 24.04 LTS | 待测 | 待测 | 待测 | 待测 | 待测 | 待测 |
-| Ubuntu 26.04 LTS | 待测 | 待测 | 待测 | 待测 | 待测 | 待测 |
+| Ubuntu 24.04 LTS | 私有候选初装与重复修复通过；完整卸载待 CI | CLI 与原生 SQLite/bcrypt/PTY 操作通过；账号待交互 | 画面、中文及图片剪贴板通过 | 画面、生命周期与网页操作通过；账号待交互 | 旧包拒绝通过；完整升级回滚待测 | 待测 |
+| Ubuntu 26.04 LTS | 初装及适配后修复通过；最终包干净 VM 验收待 CI | CLI、原生模块及 sudo-rs 授权通过；账号待交互 | 画面、中文/PNG 剪贴板通过 | 画面、生命周期及网页操作通过；账号待交互 | 签名清单与“关于”检查接口通过；完整升级回滚待测 | 待测 |
 
 结果按「通过 / 失败 / 待测 / 待用户交互」记录，并附日期、候选提交、包校验值、测试入口、实际现象与证据位置。一个单元格内的所有检查通过，才能填写「通过」。
 
@@ -129,4 +129,62 @@
 
 用户已通过厂商控制台重装为 Ubuntu 22.04；2026-11-22 已重新连接并只读确认 Ubuntu 22.04.1 LTS / x86_64 / systemd / glibc 2.35，2 核、约 2 GiB 内存、无 swap、根分区约 15 GiB 可用，尚无 ClaudeWeb 安装。接续 2.0.3 包的真实验收。每次重装前先取回本轮材料；连接信息及原始记录只留在本地。
 
+上面两段为先前系统的历史基线。当前测试 VPS 已由用户重装为 Ubuntu 24.04 LTS amd64：glibc 2.39、2 核约 2 GiB 内存，AppArmor 开启，`kernel.apparmor_restrict_unprivileged_userns=1`。本轮直接在实机验证，没有创建或安装新的 WSL 环境。
+
 2.0.3 的提交、最终包校验值及真实 VPS 结果见 [发布验证记录](RELEASE_2.0.3_VALIDATION.md)。
+
+## Ubuntu 24.04 第一批实现（未发布）
+
+- [x] 在共享平台规则中精确识别 `ubuntu:24.04` / x86_64，使用发行版 minisign 与 `libasound2t64`，保留 Universe 检查和其他系统的拒绝规则。
+- [x] 构建基线保持 Ubuntu 22.04 / glibc 2.35，未来候选包显式声明 `ubuntu-24.04`。公开的 2.0.3 包仍不声明该平台，不能因此直接用于 24.04。
+- [x] 按 [Ubuntu 发行说明](https://discourse.ubuntu.com/t/ubuntu-24-04-lts-noble-numbat-release-notes/39890) 和 [Chromium 文档](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md) 添加仅匹配 Playwright Chromium 路径的 AppArmor `userns` 权限，保留全局限制及浏览器沙箱。官方 Desktop 安装包自行创建其配置，不重复匹配同一程序路径。缓存路径中的二进制可由该用户替换，因此这是一项针对运行账户的命名空间授权，不是新增文件系统隔离。
+- [x] 安装、修复和更新配置相同的 root 管理策略；卸载只移除带 ClaudeWeb 管理标记的策略，不覆盖管理员文件或跟随符号链接。
+- [x] 新增固定 Ubuntu Minimal 24.04 镜像与官方 SHA-256 的 CI 目标；Noble 浏览器测试同时覆盖 Desktop 生命周期及实际 AppArmor 标签。当前仅修改本地配置，未推送运行 CI。
+- [x] 真实 Ubuntu 24.04 上 12 项平台检查、8 项安装输出检查通过；实际 AppArmor 语法解析、加载及全局限制保留验证通过。
+- [x] 私有候选实机基础/图形共 43 项检查通过：普通用户服务、仅本地监听、IPv6 禁用、原生 SQLite/bcrypt/PTY 实际操作、Claude CLI、浏览器画面与中文/PNG 剪贴板、Desktop 画面及实际 AppArmor 标签、启动中取消、最小化保留进程、关闭清理 200 个缓存文件并保留配置/钥匙串、重开与图形进程退出。
+- [x] 实机 4 项修复/策略检查通过：重复安装保留密码及项目；移除和恢复仅 ClaudeWeb 管理的策略，保留官方 Desktop 策略；系统 AppArmor 重载后全局限制仍为 1；公开 2.0.3 的旧平台元数据仍被拒绝。策略移除函数验证不等于完整卸载验收。
+- [x] 通过 SSH 隧道以本机 Edge 访问实机网页，验证 Desktop 画面、最小化橙点、恢复、全屏和关闭；官方 Desktop 实测为 `6.28899.6`。测试登录会话已撤销。
+- [ ] 真实账号交互、重启、长期运行、完整升级回滚和干净 VM 的完整卸载验收；新增三平台 CI 尚未推送运行。
+
+2026-11-22 实机私有候选 SHA-256：`afbf0cb747125ff2c5f52262edd7043e7ad836ce6fe99737ca91c8cbb34ed017`。测试入口为 `packaging/test-platform.py`、`packaging/test-install-output.py`、`packaging/test-browser.mjs` 与 `packaging/test-desktop.mjs`，另有本轮专用安装/修复及网页驱动；日志分别为 `ubuntu2404-platform-checks.log`、`ubuntu2404-output-checks.log`、`ubuntu2404-vps-acceptance.log`、`ubuntu2404-repair-checks.log` 和 `ubuntu2404-ui-check.log`。源码为未提交工作区，应用主体复用下述公开构件，不能据此宣称正式源码发布构建已通过。
+
+实机候选直接复用已核验 SHA-256 的 2.0.3 应用/原生模块，替换适配脚本并将测试元数据标为 `validation_only`，在 VPS 上打包，不使用 WSL 重新下载构建。这个私有构件不是新发布的版本，也不替换公开的 2.0.3 包。后续正式发包仍需在规定的构建基线上从提交构建并运行发布检查。
+
+## Ubuntu 26.04 第一批实现（未发布）
+
+- [x] 共享平台规则精确接入 `ubuntu:26.04` / x86_64，沿用发行版 minisign、ALSA t64、Universe 检查及浏览器 AppArmor 配置；官方 Desktop 策略由官方包管理。
+- [x] 未来包元数据增加 `ubuntu-26.04`，继续用 Ubuntu 22.04 / glibc 2.35 构建；公开 2.0.3 与先前仅声明 24.04 的私有候选仍不能用于 26.04。
+- [x] 安装和更新的大文件暂存改为 `/var/tmp/claudeweb-{install,update}.XXXXXXXX` 私有临时目录，CLI 和浏览器安装子进程使用 `TMPDIR=/var/tmp`，避免新版默认 `/tmp` tmpfs 持有下载与解压文件；不更改系统的挂载策略。
+- [x] 新增四平台 CI 矩阵及官方 Resolute Minimal `release-20261024` 镜像的固定 SHA-256；只获取校验清单，未下载本机 WSL/VM 镜像。
+- [x] 修复服务等待 `network-online.target` 的安装停顿：本地服务与可自行重试的 tunnel 改为 `After=network.target`，不再主动拉起 wait-online。实机网络可用但网卡均为 unmanaged 时复现了该问题；不修改系统的网络管理或 wait-online 配置。
+- [x] 实机 12 项平台、8 项安装输出检查及 5 项 sudo 后端测试通过；Windows 构建、typecheck、lint 通过（有既有构建/lint 警告）。后端 Unix socket 测试在 VPS 执行，不把 Windows 跳过的结果当作通过。
+- [x] 实机 43 项基础/图形检查通过：普通用户服务、原生 SQLite/bcrypt/PTY 实际操作、CLI、浏览器 RFB 与中文/PNG 剪贴板、Desktop 窗口、取消启动、保持会话、清理 200 个缓存文件并保留配置/钥匙串、重开与进程退出；全局 AppArmor 命名空间限制仍为 1。
+- [x] 默认 sudo-rs 21 项实机检查通过，覆盖网页授权、错误密码、拒绝、管道输入及日志隐私。补上 sudo-rs 错误文案及跨数据块识别，不替换系统默认 sudo 提供者。
+- [x] 修复窗口可见性检测为有界状态轮询；生命周期测试改为验证会话/连接持续存在，允许临时 renderer/GPU 进程正常退出。保留了初次失败与诊断记录；最终正常流程和网页验证均未启用额外诊断包装。
+- [x] 4 项重复修复/策略检查通过：密码、项目和官方 Desktop 策略保留；仅 ClaudeWeb 策略可移除/恢复；旧公开包仍被拒绝。策略移除函数验证不等于完整卸载。
+- [x] 网页 Desktop 画面、最小化橙点、恢复、全屏和关闭通过；官方包为 `6.28899.6`。CLI 签名清单检查与“设置 → 关于”的更新状态/检查接口通过；没有执行升级。
+- [x] Rust coreutils、现有 APT、systemd 与当前 CPU 环境实际跑通上述安装/修复及命令；大文件暂存使用磁盘，目录退出时清理。
+- [ ] 最终源码发布构建、四平台完整 CI、真实账号交互、域名/tunnel 端到端、完整升级回滚/卸载、重启和长期运行验收；本轮不发布。
+
+2026-11-22 私有候选 SHA-256：`be0ee7cde0cd30d2050e4c5be875c5a99dd9738a65457cf065bd21a1941187cb`。复用公开 2.0.3 的应用和原生依赖，覆盖适配脚本、service unit，以及本轮编译的 sudo/graphical-session 两个后端模块；`validation_only` 与模块校验值写入测试元数据，未替换公开构件。真实 VPS 首次安装后经现场适配和重复修复达到最终状态；最终源码包的全新安装仍由后续 CI 验收。日志为 `ubuntu2604-{platform-checks,output-checks,sudo-unit-checks,vps-acceptance,sudo-checks,repair-checks,ui-check}.log`，并保存不含凭据的 `ubuntu2604-vps-evidence.json` 和 `ubuntu2604-update-api-evidence.json`。
+
+差异依据：[Ubuntu 26.04 LTS 官方说明](https://documentation.ubuntu.com/release-notes/26.04/summary-for-lts-users/)。Playwright 采用包内固定版本的原生 26.04 识别，不通过发行版伪装或关闭沙箱规避兼容性检查。本轮先编写代码，再等待用户重装的测试 VPS 进行验证；不发布新版。
+
+## Debian 13 第一批实现（未发布）
+
+- [x] 精确接入 debian:13 / x86_64，使用 Debian 的 minisign 与 ALSA t64 包；不添加 Ubuntu 仓库，不套用 Ubuntu 专属 AppArmor userns 配置。
+- [x] 包声明与 CI 增加第五个系统，固定 Debian 13 官方云镜像及 SHA-512；仍用 Ubuntu 22.04 / glibc 2.35 构建。
+- [x] 沿用磁盘暂存 /var/tmp，IPv6 配置写入 /etc/sysctl.d，适应 Debian 13 的 tmpfs 与 sysctl 加载规则。旧 2.0.3 包仍拒绝 Debian 13。
+- [x] 真实 VPS 私有候选安装、原生模块、浏览器、Desktop 生命周期、sudo 与修复检查通过。
+- [ ] 最终源码包全新 CI、账号交互、完整升级回滚、卸载、重启及长期运行验收。
+
+依据：[Debian 13 发行说明](https://www.debian.org/releases/trixie/release-notes/issues.en.html)、[ALSA t64](https://packages.debian.org/trixie/libasound2t64)、[minisign](https://packages.debian.org/trixie/minisign)。先改代码，待用户重装完成再验证；本轮不发布。
+
+2026-11-22 实机结果：Debian 13.6 / x86_64，内核 `6.12.95+deb13-amd64`，glibc 2.41，AppArmor 4.1.0，sudo 1.9.16p2；约 2 GiB 内存。`/tmp` 为约 987 MiB tmpfs，`/var/tmp` 位于根磁盘。原有 `kernel.unprivileged_userns_clone=1` 和 `kernel.unprivileged_userns_apparmor_policy=1` 保持不变，未安装 Ubuntu 专用策略。IPv6 配置仍由 `/etc/sysctl.d/90-claudeweb-disable-ipv6.conf` 管理。
+
+- 平台 13 项、安装输出 8 项、Linux sudo 后端单元测试 5 项通过，无跳过；Shell 语法、嵌入规则同步与五系统 workflow YAML 检查通过。
+- 15 个安装阶段成功；43 项基础/图形检查通过：CLI 2.1.330，SQLite/bcrypt/PTY 实际操作，浏览器画面及中文/PNG 剪贴板，Desktop 6.28899.6 启动中取消、保留、关闭清理 200 个缓存文件、配置/密钥环保留、重开及进程退出。最初检查脚本路径遗漏在修正测试夹具后重跑通过，非应用故障。
+- 21 项 sudo 授权、错误密码、拒绝、管道输入与日志保密检查通过；4 项重复安装修复、密码/项目保留、Debian 策略保留和旧包拒绝检查通过。
+- 实际 Edge 网页验证 Desktop 欢迎画面、最小化橙点、恢复、全屏、关闭；“设置 → 关于”更新状态及签名清单检查接口通过。临时认证已注销，测试项目已删除；服务保持运行，仅监听 `127.0.0.1:3001`，关闭后无图形进程残留。
+
+验收包是已校验公开 2.0.3 包叠加当前管理器、服务单元及上一轮两处后端修复的私有候选，`validation_only=true`，未上传替换公开版本。候选 SHA-256：`f8c2b149ce09204ed0dd9c496d6ae7c51235b18ed64e5d25b4149ab655ee1929`；覆盖文件逐项哈希已核对。最终源码包全新构建/CI、账号登录、域名端到端、完整升级回滚、卸载、重启及长期运行仍未验收。本轮无 WSL 下载。证据在维护机 `E:\WSL\Logs\debian13-*`，包含安全日志、覆盖文件哈希及已目视检查的 Desktop 截图。

@@ -21,9 +21,9 @@ afterEach(() => {
   resetUserPreferences();
 });
 
-test('the account button shows the profile name and photo, and falls back to the login name', () => {
+test('the account button defaults to User and preserves a custom profile name and photo', () => {
   const { container, unmount } = render(<WorkspaceAccount onSettings={() => {}} />);
-  assert.ok(screen.getByText('platform-user'));
+  assert.ok(screen.getByText('User'));
   assert.equal(container.querySelector('.workspace-account-avatar img'), null);
 
   act(() => {
@@ -37,7 +37,7 @@ test('the account button shows the profile name and photo, and falls back to the
 test('Usage in the account menu opens Settings on its Usage tab; the gear opens Settings as it was', () => {
   const onSettings = vi.fn();
   const { unmount } = render(<WorkspaceAccount onSettings={onSettings} />);
-  fireEvent.click(screen.getByRole('button', { name: /platform-user/ }));
+  fireEvent.click(screen.getByRole('button', { name: /User/ }));
   fireEvent.click(screen.getByRole('menuitem', { name: 'Usage' }));
   assert.deepEqual(onSettings.mock.calls, [['usage']]);
   assert.equal(screen.queryByRole('dialog'), null, 'no separate usage dialog any more');

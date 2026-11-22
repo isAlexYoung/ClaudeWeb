@@ -1,6 +1,6 @@
 """CI only: run one packaging test in a fresh supported VM and throw it away.
 
-usage: python3 packaging/ci/run-vm.py --os debian-12|ubuntu-22.04 --test install|update|browser|devices|sudo --releases DIR --out DIR
+usage: python3 packaging/ci/run-vm.py --os debian-12|debian-13|ubuntu-22.04|ubuntu-24.04|ubuntu-26.04 --test install|update|browser|devices|sudo --releases DIR --out DIR
        python3 packaging/ci/run-vm.py --test public --version X.Y.Z --out DIR   (a published release, from the internet)
 
 The GitHub runner boots a pinned Debian/Ubuntu cloud image (digest checked
@@ -29,11 +29,29 @@ IMAGES = {
         'algorithm': 'sha512',
         'digest': 'dc0d7b526a3a9a9265142fe8e903984c03f8d605ac4ba6f14d15d27988a69581fb05fc06cd2a6d79f6eaf68ba9725f2eb38b5ddd64ad166faadad279af776c9e',
     },
+    'debian-13': {
+        'base': 'https://cloudfront.debian.net/cdimage/cloud/trixie/20261116-2664/',
+        'name': 'debian-13-genericcloud-amd64-20261116-2664.qcow2',
+        'algorithm': 'sha512',
+        'digest': '37cb32b320820417eb04b335afcf489bfb4cecce4a957190d09cb2bffbe02b56a1cadd62d78c6ead92aa7839d5ea65e4260f994bbb4b54490df59fdf11ee1d97',
+    },
     'ubuntu-22.04': {
         'base': 'https://cloud-images.ubuntu.com/minimal/releases/jammy/release-20261113/',
         'name': 'ubuntu-22.04-minimal-cloudimg-amd64.img',
         'algorithm': 'sha256',
         'digest': 'dac74360a7d0fa6b848d08134e31c0da0615467ffd712575aae65c825882411b',
+    },
+    'ubuntu-24.04': {
+        'base': 'https://cloud-images.ubuntu.com/minimal/releases/noble/release-20261105/',
+        'name': 'ubuntu-24.04-minimal-cloudimg-amd64.img',
+        'algorithm': 'sha256',
+        'digest': '406630c08b5e545fcc7209854b129d47e3af822db128c9f19336593b5a2d3fe0',
+    },
+    'ubuntu-26.04': {
+        'base': 'https://cloud-images.ubuntu.com/minimal/releases/resolute/release-20261024/',
+        'name': 'ubuntu-26.04-minimal-cloudimg-amd64.img',
+        'algorithm': 'sha256',
+        'digest': '6c083e6bea1573aab619c1dfa8d17bb7e3a8618fbd6cb57fa39d517b20062aa4',
     },
 }
 PORT = 22322

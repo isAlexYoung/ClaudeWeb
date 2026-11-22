@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end check of multi-device login and the CMCP code sign-in on a
-# disposable Debian 12 / Ubuntu 22.04 amd64 machine, as root:
+# disposable Debian 12/13 / Ubuntu 22.04/24.04/26.04 amd64 machine, as root:
 #   bash packaging/test-devices.sh /path/to/claudeweb-X.Y.Z-linux-x64.tar.xz
 set -uo pipefail
 PACKAGE="$1"

@@ -22,6 +22,8 @@ type ComposerModelMenuProps = {
   modelOptions: ProviderModelOption[];
   onSelectModel: (model: string) => void;
   modelsLoading: boolean;
+  /** Prevent changes while the CLI login is missing or still being checked. */
+  disabled?: boolean;
   fastMode?: boolean;
   onToggleFastMode?: () => void;
 };
@@ -47,6 +49,7 @@ function ComposerModelMenu({
   modelOptions,
   onSelectModel,
   modelsLoading,
+  disabled = false,
   fastMode,
   onToggleFastMode,
 }: ComposerModelMenuProps) {
@@ -66,6 +69,10 @@ function ComposerModelMenu({
 
   const morePresence = useSurfacePresence(moreOpen);
   const effortPresence = useSurfacePresence(effortOpen);
+
+  useEffect(() => {
+    if (disabled) setIsOpen(false);
+  }, [disabled]);
 
   useEffect(() => {
     if (!isPresent) { setEffortOpen(false); setMoreOpen(false); }
@@ -121,6 +128,7 @@ function ComposerModelMenu({
         ref={triggerRef}
         type="button"
         className="workspace-composer-select"
+        disabled={disabled}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={isOpen}
@@ -135,17 +143,17 @@ function ComposerModelMenu({
         {fastMode && selected?.supportsFastMode && <span>{t('workspace.modelMenu.fastBadge')}</span>}
       </button>
 
-      {isPresent && anchor && createPortal(
+      {isPresent && !disabled && anchor && createPortal(
         <div
           ref={menuRef}
-          className="workspace-model-panels motion-surface"
+          className="workspace-model-panels motion-surface scrollbar-hide"
           data-stacked={Boolean(anchor && anchor.maxWidth < MODEL_AND_EFFORT_WIDTH)}
           {...presenceProps}
           role="menu"
           aria-label={label}
           style={{ right: anchor.right, bottom: anchor.bottom, maxHeight: anchor.maxHeight, maxWidth: anchor.maxWidth }}
         >
-          <div className="workspace-model-panel">
+          <div className="workspace-model-panel scrollbar-hide">
             <ComposerMenuHeading>{t('workspace.modelMenu.modelHeading')}</ComposerMenuHeading>
             {modelsLoading && !modelOptions.length && (
               <p className="p-3 text-sm text-muted-foreground">{t('composer.loadingModels', { defaultValue: 'Loading models…' })}</p>
@@ -192,12 +200,12 @@ function ComposerModelMenu({
             )}
           </div>
 
-          {morePresence.isPresent && !effortOpen && <div {...morePresence.presenceProps} className="workspace-model-panel motion-surface motion-submenu" role="menu" aria-label={t('workspace.composer.moreModels')}>
+          {morePresence.isPresent && !effortOpen && <div {...morePresence.presenceProps} className="workspace-model-panel scrollbar-hide motion-surface motion-submenu" role="menu" aria-label={t('workspace.composer.moreModels')}>
             {otherModels.map(option => <ComposerMenuItem key={option.value} label={modelLabel(option)} description={modelDescription(option)} isSelected={model === option.value}
               onSelect={() => { onSelectModel(option.value); setIsOpen(false); }} />)}
           </div>}
           {effortPresence.isPresent && !moreOpen && (
-            <div {...effortPresence.presenceProps} className="workspace-model-panel workspace-effort-panel motion-surface motion-submenu" role="menu" aria-label={t('workspace.modelMenu.effort')}>
+            <div {...effortPresence.presenceProps} className="workspace-model-panel scrollbar-hide workspace-effort-panel motion-surface motion-submenu" role="menu" aria-label={t('workspace.modelMenu.effort')}>
               <ComposerMenuHeading>{t('workspace.modelMenu.effortHint')}</ComposerMenuHeading>
               {levels.map((option) => (
                 <ComposerMenuItem

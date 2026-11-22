@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end installer check on disposable Debian 12 / Ubuntu 22.04 amd64 (WSL or VM), as root:
+# End-to-end installer check on disposable Debian 12/13 / Ubuntu 22.04/24.04/26.04 amd64 (WSL or VM), as root:
 #   bash packaging/test-install.sh /path/to/claudeweb-X.Y.Z-linux-x64.tar.xz
 # Installs, signs in, re-runs the installer, exercises `claudeweb`, uninstalls.
 # Prints PASS/FAIL per step and never prints the login password.
@@ -69,6 +69,7 @@ check "answering n changes nothing" "systemctl is-active --quiet claudeweb && gr
 echo y | claudeweb uninstall > /tmp/cw-un-y.out 2>&1
 check "answering y removes the service" "! systemctl is-active --quiet claudeweb && [[ ! -e /etc/systemd/system/claudeweb.service ]]"
 check "program, settings and data are gone" "[[ ! -e /opt/claudeweb && ! -e /etc/claudeweb && ! -e /var/lib/claudeweb && ! -e /usr/local/bin/claudeweb ]]"
+check "managed graphical AppArmor policy is removed" "[[ ! -e /etc/apparmor.d/claudeweb-graphical ]]"
 check "the claudeweb user is gone" "! id claudeweb >/dev/null 2>&1"
 check "projects are kept" "[[ \$(cat /home/claudeweb/projects/demo/file.txt) == keep ]]"
 check "the rest of the home is gone" "[[ ! -e /home/claudeweb/.local ]]"

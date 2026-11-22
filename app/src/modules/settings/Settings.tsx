@@ -11,7 +11,6 @@ import AgentsSettingsTab from '@/modules/settings/tabs/agents-settings/AgentsSet
 import AppearanceSettingsTab from '@/modules/settings/tabs/AppearanceSettingsTab';
 import UsageSettingsTab from '@/modules/settings/tabs/UsageSettingsTab';
 import YourClaudeSettingsTab from '@/modules/settings/tabs/YourClaudeSettingsTab';
-import CredentialsSettingsTab from '@/modules/settings/tabs/api-settings/CredentialsSettingsTab';
 import GitSettingsTab from '@/modules/settings/tabs/git-settings/GitSettingsTab';
 import NotificationsSettingsTab from '@/modules/settings/tabs/NotificationsSettingsTab';
 import TasksSettingsTab from '@/modules/settings/tabs/tasks-settings/TasksSettingsTab';
@@ -270,7 +269,6 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents', onArc
                 />
               )}
 
-              {activeTab === 'api' && <CredentialsSettingsTab />}
 
               {activeTab === 'plugins' && <PluginSettingsTab />}
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end check of signed releases, `claudeweb update` and `claudeweb rollback`
-# on a disposable Debian 12 / Ubuntu 22.04 amd64 machine, as root:
+# on a disposable Debian 12/13 / Ubuntu 22.04/24.04/26.04 amd64 machine, as root:
 #   bash packaging/test-update.sh /path/to/mock
 # MOCK holds 2.0.0, 2.0.1, a 2.0.2 that cannot start, an incompatible 2.0.3, and two
 # signed lists: A/ (2.0.0 stable, 2.0.1 and 2.0.2 test) and B/ (2.0.1 promoted).

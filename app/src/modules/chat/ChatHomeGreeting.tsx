@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/modules/auth';
 import { useWorkspaceProfile } from '@/shared/workspacePreferences';
+import { DEFAULT_WORKSPACE_DISPLAY_NAME } from '@/shared/constants';
 
 // Only these greetings address the user; the rest read as a question or a mood and never take a name.
 const NAMED_GREETINGS = new Set(['happyDay', 'ideas']);
@@ -20,7 +21,7 @@ export function ChatHomeGreeting() {
     if (hour >= 22 || hour < 6) choices.push('lateNight');
     return { date, key: choices[Math.floor(Math.random() * choices.length)] };
   });
-  const name = profile.displayName.trim() || user?.username || '';
+  const name = profile.displayName.trim() || (user ? DEFAULT_WORKSPACE_DISPLAY_NAME : '');
   const weekday = new Intl.DateTimeFormat(i18n.resolvedLanguage || i18n.language, { weekday: 'long' }).format(greeting.date);
   const key = NAMED_GREETINGS.has(greeting.key) && !name ? `${greeting.key}Anonymous` : greeting.key;
 

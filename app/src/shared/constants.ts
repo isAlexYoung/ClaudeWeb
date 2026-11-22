@@ -4,7 +4,6 @@ import {
   Gauge,
   GitBranch,
   Info,
-  KeyRound,
   ListChecks,
   Palette,
   Plug,
@@ -59,7 +58,6 @@ export const SETTINGS_MAIN_TABS: SettingsMainTabMeta[] = [
   { id: 'appearance', label: 'Appearance', keywords: 'appearance theme dark light language', icon: Palette },
   { id: 'usage', label: 'Usage', keywords: 'usage quota limits plan subscription', icon: Gauge },
   { id: 'git', label: 'Git', keywords: 'git github commits', icon: GitBranch },
-  { id: 'api', label: 'API Tokens', keywords: 'api tokens auth keys', icon: KeyRound },
   { id: 'tasks', label: 'Tasks', keywords: 'tasks taskmaster', icon: ListChecks },
   { id: 'notifications', label: 'Notifications', keywords: 'notifications alerts push', icon: Bell },
   { id: 'plugins', label: 'Plugins', keywords: 'plugins extensions integrations', icon: Plug },
@@ -221,6 +219,9 @@ export const PROVIDER_PERMISSION_PREFERENCE_KEYS: Record<LLMProvider, UserPrefer
 export const CHAT_WORKSPACE_PATH = '/home/claudeweb';
 /** Default Code working directory when the user starts without choosing a project folder. */
 export const CODE_WORKSPACE_PATH = '/home/claudeweb/Code';
+
+/** Default display label for the account button, home greeting and profile editor; independent of the server login name. */
+export const DEFAULT_WORKSPACE_DISPLAY_NAME = 'User';
 
 //----------------- UI MOTION ------------
 

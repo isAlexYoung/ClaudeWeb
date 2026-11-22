@@ -87,7 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [debian-12, ubuntu-22.04]
+        os: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
         test: [install, update, browser, devices, sudo]
     steps:
       - uses: actions/checkout@v4

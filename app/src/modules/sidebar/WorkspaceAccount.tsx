@@ -8,13 +8,14 @@ import { LanguageSelector } from '@/modules/i18n';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui';
 import type { SettingsMainTab } from '@/shared/types';
 import { useWorkspaceProfile } from '@/shared/workspacePreferences';
+import { DEFAULT_WORKSPACE_DISPLAY_NAME } from '@/shared/constants';
 
 type AccountDialog = 'language' | 'logout';
 
 /** Used by IntegratedSidebar for the approved four-action account menu: settings, usage (Settings > Usage), language and sign-out. */
 export default function WorkspaceAccount({ onSettings }: { onSettings: (tab?: SettingsMainTab) => void }) {
   const { t } = useTranslation('sidebar');
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   // The name and photo set in Settings > General; a label for this interface only.
   const profile = useWorkspaceProfile();
   // The popover closes before any of its dialogs opens.
@@ -40,7 +41,7 @@ export default function WorkspaceAccount({ onSettings }: { onSettings: (tab?: Se
     };
   }, [open]);
 
-  const name = profile.displayName.trim() || user?.username || t('workspace.account.fallbackName');
+  const name = profile.displayName.trim() || DEFAULT_WORKSPACE_DISPLAY_NAME;
   const openDialog = (next: AccountDialog) => {
     setOpen(false);
     setDialog(next);

@@ -268,6 +268,7 @@
 }
 .workspace-composer-select { display: flex; align-items: center; gap: 8px; color: hsl(var(--foreground)); border-radius: 6px; padding: 3px 4px; min-height: 25px; font-size: 12px; }
 .workspace-composer-select:hover { color: hsl(var(--foreground)); background: var(--workspace-hover); }
+.workspace-composer-select:disabled { color: hsl(var(--muted-foreground)); opacity: .55; cursor: not-allowed; background: transparent; }
 .workspace-model-panels { position: fixed; z-index: 100; display: flex; flex-direction: row-reverse; gap: 8px; align-items: flex-end; }
 .workspace-model-panel { width: 300px; max-width: 100%; min-width: 0; flex-shrink: 0; max-height: inherit; overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior: contain; border: 1px solid var(--workspace-line); border-radius: 14px; padding: 7px; color: hsl(var(--foreground)); background: hsl(var(--popover)); box-shadow: 0 15px 50px #0003; }
 .workspace-model-panels[data-stacked="true"] { flex-direction: column; align-items: stretch; overflow-y: auto; width: 300px; }

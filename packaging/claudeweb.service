@@ -1,8 +1,9 @@
 [Unit]
 Description=ClaudeWeb, a web interface for Claude Code
 Documentation=https://github.com/isAlexYoung/ClaudeWeb
-After=network-online.target
-Wants=network-online.target
+# The server binds loopback and must start even when the provider's network
+# manager never satisfies systemd-networkd-wait-online.
+After=network.target
 
 [Service]
 Type=simple

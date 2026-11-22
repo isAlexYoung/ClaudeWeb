@@ -332,8 +332,12 @@ export function createGraphicalSessionService({ homeDirectory, chromiumPath, app
     browser.on('exit', () => {
       if (session === current && current.state !== 'stopping') void stop(current, 'browser_closed');
     });
-    const visible = await run(PROGRAMS.xdotool, ['search', '--sync', '--onlyvisible', '--class', desktop ? '[Cc]laude' : '[Cc]hromium'], current.env, { timeoutMs: 30_000, signal: current.startupAbort.signal });
-    if (visible.code !== 0) throw new Error('Chromium window did not appear');
+    // Check current visibility repeatedly, including class/visibility changes
+    // after the initial map event. A one-shot --sync event waiter can miss them.
+    await waitFor(async () => (await run(PROGRAMS.xdotool,
+      ['search', '--onlyvisible', '--class', desktop ? '[Cc]laude' : '[Cc]hromium'],
+      current.env, { timeoutMs: 1000, signal: current.startupAbort.signal })).code === 0,
+    30_000, () => browser.exitCode !== null || current.state === 'stopping');
     current.stage = 'browser_visible';
     for (const child of [xvnc, openbox]) {
       child.on('exit', () => {
