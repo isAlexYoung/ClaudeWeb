@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.1.0",
+   "channel": "stable",
+   "published_at": "2026-11-22T08:18:31Z",
+   "notes": "First stable release: Debian 12/13 and Ubuntu 22.04/24.04/26.04 amd64, a new logo, domains, moving from WebDesktop.",
+   "package": {
+    "name": "claudeweb-2.1.0-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.1.0/claudeweb-2.1.0-linux-x64.tar.xz",
+    "bytes": 69012144,
+    "sha256": "3cd93275c0de5a7822f21e32072afd90ab0005a5ef7427221a6c3285515dc636"
+   }
+  },
+  {
    "version": "2.0.3",
    "channel": "test",
    "published_at": "2026-11-22T04:47:19Z",
@@ -50,5 +62,5 @@
    }
   }
  ],
- "generated_at": "2026-11-22T04:47:20Z"
+ "generated_at": "2026-11-22T08:18:32Z"
 }
