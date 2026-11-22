@@ -47,7 +47,7 @@ function SubscriptionOverrideNotice({ override }: SubscriptionOverrideNoticeProp
 }
 
 
-/** Used by General's profile card (and the legacy category panel) for live Claude sign-in rows. */
+/** Used by Account's profile section (and the legacy category panel) for live Claude sign-in rows. */
 export default function AccountContent({ agent, authStatus, onLogin }: AccountContentProps) {
   const { t } = useTranslation('settings');
   const status = authStatus.loading ? t('agents.authStatus.checking')

@@ -12,6 +12,7 @@ vi.mock('@/modules/task-master', () => ({
   useTasksSettings: () => ({ tasksEnabled: false, setTasksEnabled: vi.fn(), isTaskMasterInstalled: false, isCheckingInstallation: false }),
 }));
 vi.mock('@/modules/settings/tabs/tasks-settings/ArchivedSessionsSection', () => ({ default: () => <div data-testid="archive" /> }));
+vi.mock('@/modules/settings/hooks/useClaudeSettingsPermissionRules', () => ({ useClaudeSettingsPermissionRules: () => ({ sources: [], loadFailed: false }) }));
 vi.mock('@/shared/api', () => ({ api: { user: { savePreferences: async () => ({ ok: true }) } } }));
 
 beforeAll(async () => { await i18n.changeLanguage('en'); });
@@ -42,4 +43,14 @@ it('turns the change summary card off and on', () => {
   expect(toggle.getAttribute('aria-checked')).toBe('true');
   fireEvent.click(toggle);
   expect(toggle.getAttribute('aria-checked')).toBe('false');
+});
+
+it('moves the permission mode here while preserving existing saved tool rules', () => {
+  const change = vi.fn();
+  const permissions = { skipPermissions: false, allowedTools: ['Read'], disallowedTools: ['Bash(rm:*)'] };
+  const view = render(<UiPreferencesProvider><TasksSettingsTab claudePermissions={permissions} onClaudePermissionsChange={change} /></UiPreferencesProvider>);
+  fireEvent.click(view.getByRole('switch', { name: /Skip permission prompts/i }));
+  expect(change).toHaveBeenCalledWith({ ...permissions, skipPermissions: true });
+  expect(view.queryByText('Allowed tools')).toBeNull();
+  expect(view.queryByText('Blocked tools')).toBeNull();
 });

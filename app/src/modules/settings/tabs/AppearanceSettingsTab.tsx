@@ -68,7 +68,7 @@ export default function AppearanceSettingsTab({
       </SettingsSection>
 
       <SettingsSection title={t('appearanceSettings.fonts.title')}>
-        <SettingsCard divided>
+        <SettingsCard>
           <SettingsRow
             label={t('appearanceSettings.fonts.ui.label')}
             description={t('appearanceSettings.fonts.ui.description')}
@@ -104,7 +104,7 @@ export default function AppearanceSettingsTab({
       </SettingsSection>
 
       <SettingsSection title={t('appearanceSettings.reading.title')}>
-        <SettingsCard divided>
+        <SettingsCard>
           {([
             ['textSize', ['small', 'medium', 'large']],
             ['sideChatTextSize', ['auto', 'small', 'medium', 'large']],
@@ -161,7 +161,7 @@ export default function AppearanceSettingsTab({
       </SettingsSection>
 
       <SettingsSection title={t('appearanceSettings.codeEditor.title')}>
-        <SettingsCard divided>
+        <SettingsCard>
           <SettingsRow
             label={t('appearanceSettings.codeEditor.wordWrap.label')}
             description={t('appearanceSettings.codeEditor.wordWrap.description')}

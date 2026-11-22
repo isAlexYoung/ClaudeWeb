@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import '@/modules/i18n';
@@ -8,29 +7,24 @@ import NotificationsSettingsTab from '@/modules/settings/tabs/NotificationsSetti
 
 vi.mock('@/modules/auth', () => ({ useAuth: () => ({ user: { username: 'preview' } }) }));
 vi.mock('@/shared/context/UiPreferencesContext', () => ({ useUiPreferences: () => ({ chatMcpEnabled: false }), useSetUiPreference: () => vi.fn() }));
-vi.mock('@/modules/mcp', () => ({ McpServers: ({ children }: { children?: ReactNode }) => <div>MCP server controls{children}</div> }));
-vi.mock('@/modules/skills', () => ({ ProviderSkills: () => <div>Skill controls</div> }));
-vi.mock('@/modules/settings/hooks/useClaudeSettingsPermissionRules', () => ({ useClaudeSettingsPermissionRules: () => ({ sources: [], loadFailed: false }) }));
+vi.mock('@/modules/settings/tabs/LoginDevicesSection', () => ({ default: () => <div>Signed-in devices</div> }));
+vi.mock('@/modules/settings/tabs/agents-settings/ClaudeNameField', () => ({ default: () => <input aria-label="What should Claude call you?" /> }));
 
-describe('General settings continuous page', () => {
-  it('keeps sign-in, tool rules, MCP and skills on one page and preserves permission values when toggled', () => {
-    const login = vi.fn(), permissions = vi.fn();
+describe('Account settings', () => {
+  it('keeps profile, Claude name and sign-in together without unrelated extension or permission settings', () => {
+    const login = vi.fn();
     render(<AgentsSettingsTab
       providerAuthStatus={{ claude: { authenticated: false, loading: false, email: null, method: null, error: 'Claude CLI is not authenticated. Run claude /login', installedVersion: '2.1.325' } }}
-      onProviderLogin={login} claudePermissions={{ skipPermissions: false, allowedTools: ['Read'], disallowedTools: ['Bash(rm:*)'] }}
-      onClaudePermissionsChange={permissions} projects={[]}
+      onProviderLogin={login}
     />);
     expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.queryByText('2.1.325', { exact: false })).toBeNull();
     expect(screen.queryByText('Claude CLI is not authenticated.', { exact: false })).toBeNull();
-    expect(screen.getByText('MCP server controls')).toBeTruthy();
-    expect(screen.getByText('Skill controls')).toBeTruthy();
+    expect(screen.getByLabelText('What should Claude call you?')).toBeTruthy();
+    expect(screen.getByText('Signed-in devices')).toBeTruthy();
+    expect(screen.queryByRole('switch')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /^Login$/ }));
     expect(login).toHaveBeenCalledWith('claude');
-    fireEvent.click(screen.getByRole('switch', { name: /Skip permission prompts/i }));
-    expect(permissions).toHaveBeenLastCalledWith({ skipPermissions: true, allowedTools: ['Read'], disallowedTools: ['Bash(rm:*)'] });
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Read' }));
-    expect(permissions).toHaveBeenLastCalledWith({ skipPermissions: false, allowedTools: [], disallowedTools: ['Bash(rm:*)'] });
   });
 
   it('keeps notification controls functional without decorative icons or checkboxes', async () => {

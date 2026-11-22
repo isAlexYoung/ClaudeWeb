@@ -29,8 +29,7 @@ const SELECT_CLASS = 'w-full touch-manipulation rounded-lg border border-input b
 const BUILT_IN_STYLE_KEYS = new Set(['Explanatory', 'Learning', 'Proactive']);
 
 /**
- * Rendered by Settings for the "claude" tab (Your Claude): the name Claude uses
- * for the user, kept in the user-level CLAUDE.md, and the CLI's output style
+ * Rendered by Settings for the "claude" tab (Your Claude): the CLI's output style
  * and memory switches in the user settings.json. Text fields save on their button or Enter;
  * switches save at once.
  */
@@ -38,7 +37,6 @@ export default function YourClaudeSettingsTab() {
   const { t } = useTranslation('settings');
   const [current, setCurrent] = useState<YourClaude | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [name, setName] = useState('');
   const [directory, setDirectory] = useState('');
   const [saving, setSaving] = useState<Field | null>(null);
   const [saved, setSaved] = useState<Field | null>(null);
@@ -46,7 +44,6 @@ export default function YourClaudeSettingsTab() {
 
   const apply = useCallback((value: YourClaude) => {
     setCurrent(value);
-    setName(value.name);
     setDirectory(value.autoMemoryDirectory ?? '');
   }, []);
 
@@ -76,7 +73,6 @@ export default function YourClaudeSettingsTab() {
   if (!current) return <p className="text-sm text-muted-foreground">{t('yourClaude.loading')}</p>;
 
   const settingsLocked = current.settingsStatus === 'invalid';
-  const nameChanged = name.trim() !== current.name;
   const directoryChanged = directory.trim() !== (current.autoMemoryDirectory ?? '');
   const busy = saving !== null;
   const status = (field: Field) => (saving === field ? t('yourClaude.saving') : saved === field ? t('yourClaude.saved') : null);
@@ -91,29 +87,6 @@ export default function YourClaudeSettingsTab() {
 
   return (
     <div className="space-y-8" data-testid="your-claude-settings">
-      <SettingsSection title={t('yourClaude.profileTitle')}>
-        <SettingsCard className="space-y-2 p-4">
-          <label htmlFor="settings-your-claude-name" className="block text-sm font-medium text-foreground">{t('yourClaude.nameLabel')}</label>
-          <form
-            className="flex items-center gap-2"
-            onSubmit={(event) => { event.preventDefault(); if (nameChanged) void save('name', { name }); }}
-          >
-            <Input
-              id="settings-your-claude-name"
-              value={name}
-              maxLength={60}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t('yourClaude.namePlaceholder')}
-              className="w-full"
-            />
-            <Button type="submit" disabled={busy || !nameChanged}>{t('yourClaude.save')}</Button>
-          </form>
-          <p className="text-xs text-muted-foreground">
-            {status('name') ?? t('yourClaude.nameDescription', { path: current.claudeMdPath })}
-          </p>
-        </SettingsCard>
-      </SettingsSection>
-
       <SettingsSection title={t('yourClaude.responsesTitle')}>
         <SettingsCard>
           <SettingsRow label={t('yourClaude.outputStyleLabel')} description={status('outputStyle') ?? styleDescription}>
@@ -137,7 +110,7 @@ export default function YourClaudeSettingsTab() {
         {settingsLocked && (
           <p className="text-sm text-destructive">{t('yourClaude.settingsInvalid', { path: current.settingsPath })}</p>
         )}
-        <SettingsCard className="divide-y divide-border">
+        <SettingsCard>
           <SettingsRow label={t('yourClaude.autoMemoryLabel')} description={status('autoMemoryEnabled') ?? t('yourClaude.autoMemoryDescription')}>
             <SettingsToggle
               // Unset means on: the CLI only turns auto memory off for an explicit false.

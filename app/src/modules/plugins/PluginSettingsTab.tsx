@@ -96,7 +96,7 @@ function PluginCard({
 
   return (
     <div
-      className="relative flex overflow-hidden rounded-lg border border-border bg-card transition-opacity duration-200"
+      className="relative flex border-b border-border/50 py-1 transition-opacity duration-200"
       style={{
         opacity: plugin.enabled ? 1 : 0.65,
         animationDelay: `${index * 40}ms`,
@@ -191,7 +191,7 @@ function PluginCard({
 
         {/* Confirm uninstall banner */}
         {confirmingUninstall && (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 dark:border-red-800/50 dark:bg-red-950/30">
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/50 py-3 text-destructive">
             <span className="text-sm text-red-600 dark:text-red-400">
               {t('pluginSettings.confirmUninstallMessage', { name: plugin.displayName })}
             </span>
@@ -319,7 +319,7 @@ export default function PluginSettingsTab() {
       </div>
 
       {/* Install from Git — compact */}
-      <div className="flex items-center gap-0 overflow-hidden rounded-lg border border-border bg-card">
+      <div className="flex items-center gap-0 overflow-hidden rounded-lg bg-muted/40">
         <span className="flex-shrink-0 pl-3 pr-1 text-muted-foreground/40">
           <GitBranch className="h-3.5 w-3.5" />
         </span>
@@ -340,7 +340,7 @@ export default function PluginSettingsTab() {
         <button
           onClick={handleInstall}
           disabled={installing || !gitUrl.trim()}
-          className="flex-shrink-0 border-l border-border bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-30"
+          className="flex-shrink-0 bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-30"
         >
           {installing ? (
             <Loader2 className="h-4 w-4 animate-spin" />

@@ -107,7 +107,7 @@
   },
   "mainTabs": {
     "label": "Impostazioni",
-    "agents": "Agenti",
+    "agents": "Account",
     "appearance": "Aspetto",
     "apiTokens": "API e Token",
     "tasks": "Attività",
@@ -529,5 +529,8 @@
     "tab": "scheda",
     "runningStatus": "in esecuzione",
     "customPlugins": "Custom plugins"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

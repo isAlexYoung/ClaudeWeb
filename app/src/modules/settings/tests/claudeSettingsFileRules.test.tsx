@@ -47,13 +47,8 @@ const ruleGroup = (scope: ClaudeSettingsPermissionSource['scope'], key: 'allow' 
 
 const renderClaudePermissions = () => render(
   <PermissionsContent
-    agent="claude"
     skipPermissions={false}
     onSkipPermissionsChange={() => {}}
-    allowedTools={['Bash(make:*)']}
-    onAllowedToolsChange={() => {}}
-    disallowedTools={[]}
-    onDisallowedToolsChange={() => {}}
   />,
 );
 
@@ -83,16 +78,14 @@ describe('Claude permissions: rules from the Claude settings files', () => {
 
     const section = screen.getByTestId('claude-settings-file-rules');
     expect(section.textContent).toContain('Rules from Claude settings files');
-    expect(section.textContent).toContain('on top of the lists above');
-    expect(section.textContent).toContain('an ask rule does not prompt for a tool that Allowed Tools already allows');
-    expect(section.textContent).toContain('edit them in the files');
+    expect(section.textContent).toContain('Claude CLI');
+    expect(section.textContent).toContain('directly in their files');
     expect(section.textContent).toContain('.claude/settings.local.json also apply to chats in that project');
     // The CLI drops a project's shared allow rules until the folder is trusted.
     expect(section.textContent).toContain('ignores allow rules in .claude/settings.json until the folder is trusted');
     // A managed file that does not exist is the normal case and stays hidden.
     expect(screen.queryByTestId('claude-settings-file-managed')).toBeNull();
-    // The UI's own list is still there and unchanged.
-    expect(screen.getByText('Bash(make:*)')).toBeTruthy();
+    expect(screen.queryByText('Allowed Tools')).toBeNull();
   });
 
   it('shows the managed settings file when one exists', async () => {
@@ -144,6 +137,6 @@ describe('Claude permissions: rules from the Claude settings files', () => {
 
     expect(await screen.findByText('Could not load the rules from the Claude settings files.')).toBeTruthy();
     expect(screen.queryByTestId('claude-settings-file-user')).toBeNull();
-    expect(screen.getByText('Allowed Tools')).toBeTruthy();
+    expect(screen.getByRole('switch', { name: /Skip permission prompts/i })).toBeTruthy();
   });
 });

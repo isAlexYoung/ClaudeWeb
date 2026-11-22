@@ -37,7 +37,7 @@ async function toAvatarDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Rendered at the top of the General settings tab: the name and photo the
+ * Rendered at the top of the Account settings tab: the name and photo the
  * bottom-left account button shows. Local to this interface — not the Claude
  * account's profile and not synced with Claude Desktop.
  */
@@ -70,8 +70,8 @@ export default function ProfileSection({ children }: { children?: ReactNode }) {
   };
 
   return (
-      <div className="divide-y divide-border rounded-xl border border-border bg-card/50">
-        <div className="flex items-center justify-between gap-4 p-4">
+      <div className="settings-group divide-y divide-border/50">
+        <div className="flex items-center justify-between gap-4 py-5">
           <div className="min-w-0">
             <div className="text-sm font-medium text-foreground">{t('profile.avatar.label')}</div>
             <div className="mt-0.5 text-xs text-muted-foreground">{t('profile.avatar.hint')}</div>
@@ -108,7 +108,7 @@ export default function ProfileSection({ children }: { children?: ReactNode }) {
           </div>
         </div>
 
-        <label className="flex items-center justify-between gap-4 p-4">
+        <label className="flex items-center justify-between gap-4 py-5">
           <span className="text-sm font-medium text-foreground">{t('profile.name.label')}</span>
           <input
             type="text"
@@ -116,7 +116,7 @@ export default function ProfileSection({ children }: { children?: ReactNode }) {
             maxLength={MAX_DISPLAY_NAME_LENGTH}
             placeholder={DEFAULT_WORKSPACE_DISPLAY_NAME}
             onChange={(event) => writeWorkspaceProfile({ displayName: event.target.value })}
-            className="w-full max-w-[16rem] rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full max-w-64 rounded-lg border-0 bg-muted/40 px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </label>
         {children}

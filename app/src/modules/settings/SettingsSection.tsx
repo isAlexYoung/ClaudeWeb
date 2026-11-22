@@ -9,7 +9,7 @@ type SettingsSectionProps = {
   className?: string;
 };
 
-/** Used by the settings module's general, appearance, git, tasks, notifications and backup tabs to title a block of settings. */
+/** Used by the settings module's account, appearance, tasks, notifications and backup tabs to title a block of settings. */
 export default function SettingsSection({ title, description, children, className }: SettingsSectionProps) {
   return (
     <div className={cn('space-y-3', className)}>
@@ -21,7 +21,7 @@ export default function SettingsSection({ title, description, children, classNam
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         )}
       </div>
-      {children}
+      <div className="divide-y divide-border/50">{children}</div>
     </div>
   );
 }

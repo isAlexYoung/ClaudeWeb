@@ -1,0 +1,38 @@
+/* Content padding in Settings keeps these separators clear of the dialog's vertical edges. */
+.settings-surface .settings-group {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+/* Inputs retain their fill and focus ring; section cards and controls do not need outlines. */
+.settings-surface :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.settings-surface :is(input, select, textarea):focus-visible {
+  outline: 2px solid hsl(var(--primary) / .55);
+  outline-offset: 2px;
+}
+
+.settings-surface .settings-archive-row,
+.settings-surface .settings-archive-note {
+  padding-inline: 0;
+}
+
+.settings-surface .settings-archive-row > button {
+  border-color: transparent;
+}
+
+.settings-surface button {
+  border-color: transparent;
+}
+
+@media (max-width: 639px) {
+  .settings-surface .settings-row input {
+    max-width: 100%;
+  }
+}

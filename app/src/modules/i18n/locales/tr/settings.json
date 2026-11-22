@@ -107,7 +107,7 @@
   },
   "mainTabs": {
     "label": "Ayarlar",
-    "agents": "Ajanlar",
+    "agents": "Hesap",
     "appearance": "Görünüm",
     "apiTokens": "API ve Token'lar",
     "tasks": "Görevler",
@@ -530,5 +530,8 @@
     "tab": "sekme",
     "runningStatus": "çalışıyor",
     "customPlugins": "Custom plugins"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

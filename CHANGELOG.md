@@ -5,6 +5,10 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.1.2 - 2026-11-22 (stable)
+
+- Updated UI layout.
+
 ## 2.1.1 - 2026-11-22 (stable)
 
 ### Changed

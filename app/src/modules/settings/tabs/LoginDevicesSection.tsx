@@ -8,7 +8,7 @@ import { endLoginDevice, loginDetails, useLoginDevices, type LoginDevice } from 
 import { Button } from '@/shared/ui';
 
 /**
- * Rendered by AboutTab: every device signed in to this ClaudeWeb (up to
+ * Rendered by the Account tab: every device signed in to this ClaudeWeb (up to
  * three), with a sign-out for the others.
  */
 export default function LoginDevicesSection() {
@@ -27,7 +27,7 @@ export default function LoginDevicesSection() {
   return (
     <SettingsSection title={t('about.devices.title', { count: list.logins.length, max: list.max })}
       description={t('about.devices.description', { max: list.max })}>
-      <SettingsCard divided>
+      <SettingsCard>
         {list.logins.map((login) => (
           <div key={login.ref} className="flex flex-wrap items-center gap-3 px-4 py-3">
             <MonitorSmartphone className="h-5 w-5 flex-shrink-0 text-muted-foreground" />

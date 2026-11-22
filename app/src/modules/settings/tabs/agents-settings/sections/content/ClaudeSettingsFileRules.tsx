@@ -14,7 +14,7 @@ function SettingsFileCard({ source }: { source: ClaudeSettingsPermissionSource }
   const hasRules = RULE_GROUPS.some(({ key }) => source[key].length > 0);
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3" data-testid={`claude-settings-file-${source.scope}`}>
+    <div className="space-y-2 border-b border-border/50 py-4 last:border-b-0" data-testid={`claude-settings-file-${source.scope}`}>
       <div className="min-w-0">
         <div className="text-sm font-medium text-foreground">{t(`permissions.settingsFiles.sources.${source.scope}`)}</div>
         <div className="break-all font-mono text-xs text-muted-foreground">{source.path}</div>

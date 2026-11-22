@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { useTasksSettings } from '@/modules/task-master';
 import { useSetUiPreference, useUiPreferences } from '@/shared/context/UiPreferencesContext';
+import type { ClaudePermissionsState } from '@/shared/types';
+import PermissionsContent from '@/modules/settings/tabs/agents-settings/sections/content/PermissionsContent';
 import { readUserPreference, writeUserPreference } from '@/shared/userSettings';
 import SettingsCard from '@/modules/settings/SettingsCard';
 import SettingsRow from '@/modules/settings/SettingsRow';
@@ -13,7 +15,7 @@ import ArchivedSessionsSection from '@/modules/settings/tabs/tasks-settings/Arch
 const ARCHIVE_DAY_OPTIONS = [0, 1, 3, 7, 14, 30] as const;
 
 /** Rendered by Settings for the "tasks and sessions" tab: task tracking, conversation suggestions and the session archive. */
-export default function TasksSettingsTab({ onArchiveChanged }: { onArchiveChanged?: () => void }) {
+export default function TasksSettingsTab({ onArchiveChanged, claudePermissions, onClaudePermissionsChange }: { onArchiveChanged?: () => void; claudePermissions?: ClaudePermissionsState; onClaudePermissionsChange?: (value: ClaudePermissionsState) => void }) {
   const { t } = useTranslation('settings');
   const {
     tasksEnabled,
@@ -42,7 +44,7 @@ export default function TasksSettingsTab({ onArchiveChanged }: { onArchiveChange
         ) : (
           <>
             {!isTaskMasterInstalled && (
-              <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 dark:border-orange-800/50 dark:bg-orange-950/30">
+              <div className="border-b border-border/50 py-4 text-orange-800 dark:text-orange-200">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/50">
                     <svg className="h-4 w-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,6 +134,10 @@ export default function TasksSettingsTab({ onArchiveChanged }: { onArchiveChange
           </select>
         </SettingsRow>
       </SettingsSection>
+      {claudePermissions && onClaudePermissionsChange && <PermissionsContent
+        skipPermissions={claudePermissions.skipPermissions}
+        onSkipPermissionsChange={value => onClaudePermissionsChange({ ...claudePermissions, skipPermissions: value })}
+      />}
       <ArchivedSessionsSection onChanged={onArchiveChanged} />
     </div>
   );

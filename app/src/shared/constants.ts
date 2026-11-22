@@ -1,11 +1,13 @@
 import {
   Bell,
-  Bot,
+  ArchiveRestore,
   Gauge,
   Info,
   MessageCircle,
   Palette,
   Plug,
+  Sparkles,
+  User,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 
@@ -49,16 +51,17 @@ type SettingsMainTabMeta = {
 };
 
 /**
- * The ordered list of top-level settings tabs. The settings sidebar renders it directly and
- * the command palette turns each entry into an "open settings" command, so both stay in sync.
+ * The command palette's settings destinations, ordered like the grouped settings sidebar.
  */
 export const SETTINGS_MAIN_TABS: SettingsMainTabMeta[] = [
-  { id: 'agents', label: 'General', keywords: 'general profile name avatar agents claude code mcp skills', icon: Bot },
-  { id: 'appearance', label: 'Appearance', keywords: 'appearance theme dark light language', icon: Palette },
+  { id: 'agents', label: 'Account', keywords: 'account profile name avatar login devices', icon: User },
   { id: 'usage', label: 'Usage', keywords: 'usage quota limits plan subscription', icon: Gauge },
-  { id: 'tasks', label: 'Tasks', keywords: 'tasks taskmaster', icon: MessageCircle },
+  { id: 'appearance', label: 'Appearance', keywords: 'appearance theme dark light language', icon: Palette },
+  { id: 'claude', label: 'Your Claude', keywords: 'claude output style memory', icon: Sparkles },
   { id: 'notifications', label: 'Notifications', keywords: 'notifications alerts push', icon: Bell },
-  { id: 'plugins', label: 'Plugins', keywords: 'plugins extensions integrations', icon: Plug },
+  { id: 'plugins', label: 'Plugins', keywords: 'plugins extensions integrations mcp skills', icon: Plug },
+  { id: 'tasks', label: 'Tasks & sessions', keywords: 'tasks taskmaster sessions permissions archive', icon: MessageCircle },
+  { id: 'backup', label: 'Backup & restore', keywords: 'backup restore import export', icon: ArchiveRestore },
   { id: 'about', label: 'About', keywords: 'about version info', icon: Info },
 ];
 

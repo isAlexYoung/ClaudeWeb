@@ -109,7 +109,7 @@
   },
   "mainTabs": {
     "label": "Ajustes",
-    "agents": "Agentes",
+    "agents": "Cuenta",
     "appearance": "Apariencia",
     "apiTokens": "API y tokens",
     "tasks": "Tareas",
@@ -664,5 +664,8 @@
   },
   "about": {
     "licensed": "Con licencia AGPL-3.0"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

@@ -76,7 +76,7 @@ export default function NotificationsSettingsTab({
         </SettingsCard>
       </SettingsSection>
       <SettingsSection title={t('notifications.sound.title')}>
-        <SettingsCard divided>
+        <SettingsCard>
           <SettingsRow label={t('notifications.sound.title')} description={t('notifications.sound.description')}>
             <SettingsToggle checked={notificationPreferences.channels.sound} ariaLabel={t('notifications.sound.title')}
               onChange={sound => onNotificationPreferencesChange({ ...notificationPreferences, channels: { ...notificationPreferences.channels, sound } })} />
@@ -87,7 +87,7 @@ export default function NotificationsSettingsTab({
         </SettingsCard>
       </SettingsSection>
       <SettingsSection title={t('notifications.events.title')}>
-        <SettingsCard divided>
+        <SettingsCard>
           {(['actionRequired', 'stop', 'error'] as const).map(event => <SettingsRow key={event} label={t(`notifications.events.${event}`)}>
             <SettingsToggle checked={notificationPreferences.events[event]} ariaLabel={t(`notifications.events.${event}`)}
               onChange={value => onNotificationPreferencesChange({ ...notificationPreferences, events: { ...notificationPreferences.events, [event]: value } })} />

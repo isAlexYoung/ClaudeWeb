@@ -400,9 +400,6 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
         <button className="workspace-icon-button" aria-label={t('workspace.collapseSidebar')} onClick={props.onCollapse}>
           <PanelLeftClose size={18} />
         </button>
-        <button className="workspace-icon-button" aria-label={t('workspace.search')} onClick={openSearch}>
-          <Search size={18} />
-        </button>
         <button className="workspace-icon-button" aria-label={t('workspace.refresh')} title={t('workspace.refresh')} aria-busy={props.isRefreshing} disabled={props.isRefreshing} onClick={props.onRefresh}>
           <RefreshCw size={18} className={props.isRefreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />
         </button>
@@ -418,6 +415,10 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
       <button className="workspace-new-chat" onClick={() => experience.openHome(experience.mode)}>
         <SquarePen size={18} />
         {t('workspace.newChat')}
+      </button>
+      <button className="workspace-new-chat" onClick={openSearch}>
+        <Search size={18} />
+        {t('workspace.search')}
       </button>
       <button
         className={`workspace-new-chat workspace-scheduled-entry ${experience.scheduledTasksOpen ? 'selected' : ''}`}

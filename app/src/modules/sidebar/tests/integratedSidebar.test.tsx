@@ -209,7 +209,9 @@ test('Scheduled tasks sits under New chat and marks the conversations a task sta
   const view = renderSidebar();
   const entry = view.getByRole('button', { name: 'Scheduled tasks' });
   const newChat = view.getByRole('button', { name: 'New chat' });
-  assert.equal(newChat.nextElementSibling, entry);
+  const search = view.getByRole('button', { name: /^Search$/ });
+  assert.equal(newChat.nextElementSibling, search);
+  assert.equal(search.nextElementSibling, entry);
   assert.equal(entry.getAttribute('aria-pressed'), 'false');
   fireEvent.click(entry);
   assert.equal(entry.getAttribute('aria-pressed'), 'true');

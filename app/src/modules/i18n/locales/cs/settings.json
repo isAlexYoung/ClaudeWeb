@@ -88,7 +88,7 @@
   },
   "mainTabs": {
     "label": "Nastavení",
-    "agents": "Agenti",
+    "agents": "Účet",
     "appearance": "Vzhled",
     "apiTokens": "API a tokeny",
     "tasks": "Úkoly",
@@ -632,5 +632,8 @@
   },
   "about": {
     "licensed": "Šířeno pod licencí AGPL-3.0"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

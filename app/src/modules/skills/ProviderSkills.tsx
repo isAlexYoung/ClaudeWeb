@@ -655,7 +655,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
         )}
 
         {!isLoading && skills.length === 0 && (
-          <div className="rounded-xl border border-border bg-card/50 px-4 py-6">
+          <div className="border-b border-border/50 py-6">
             <div className="text-sm font-medium text-foreground">{t('skillsPage.emptyTitle')}</div>
             <div className="mt-1 text-sm text-muted-foreground">
               {t('skillsPage.emptyDescription')}
@@ -664,7 +664,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
         )}
 
         {!isLoading && skills.length > 0 && filteredSkills.length === 0 && (
-          <div className="rounded-xl border border-border bg-card/50 px-4 py-6">
+          <div className="border-b border-border/50 py-6">
             <Search className="mx-auto h-6 w-6 text-muted-foreground" />
             <div className="mt-3 text-sm font-medium text-foreground">{t('skillsPage.noMatchTitle')}</div>
             <div className="mt-1 text-sm text-muted-foreground">
@@ -684,7 +684,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
               </span>
             </div>
 
-            <div className="min-w-0 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card/50">
+            <div className="settings-group min-w-0 divide-y divide-border/50">
               {group.skills.map((skill) => (
                 <div
                   key={`${skill.command}:${skill.sourcePath}:${skill.projectPath || 'global'}`}
@@ -712,7 +712,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects }: Pr
                     )}
                   </div>
 
-                  <div className="mt-4 min-w-0 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                  <div className="mt-4 min-w-0 border-t border-border/50 py-3">
                     <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{t('skillsPage.source')}</div>
                     <code className="mt-1 block whitespace-normal break-all text-xs text-foreground">{skill.sourcePath}</code>
                   </div>

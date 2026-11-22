@@ -13,7 +13,8 @@ import UsageSettingsTab from '@/modules/settings/tabs/UsageSettingsTab';
 import YourClaudeSettingsTab from '@/modules/settings/tabs/YourClaudeSettingsTab';
 import NotificationsSettingsTab from '@/modules/settings/tabs/NotificationsSettingsTab';
 import TasksSettingsTab from '@/modules/settings/tabs/tasks-settings/TasksSettingsTab';
-import { PluginSettingsTab } from '@/modules/plugins';
+import PluginsSettingsTab from '@/modules/settings/tabs/PluginsSettingsTab';
+import '@/modules/settings/settings-layout.css';
 import AboutTab from '@/modules/settings/tabs/AboutTab';
 import BackupSettingsTab from '@/modules/settings/tabs/backup-settings/BackupSettingsTab';
 import { useSettingsController } from '@/modules/settings/hooks/useSettingsController';
@@ -220,7 +221,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents', onArc
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-            <div key={activeTab} className="settings-content-enter min-w-0 space-y-6 overflow-x-hidden p-4 pb-safe-area-inset-bottom md:space-y-8 md:p-6">
+            <div key={activeTab} className="settings-content-enter settings-surface min-w-0 space-y-6 overflow-x-hidden p-4 pb-safe-area-inset-bottom md:space-y-8 md:p-6">
               {activeTab === 'appearance' && (
                 <AppearanceSettingsTab
                   projectSortOrder={projectSortOrder}
@@ -242,13 +243,10 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents', onArc
                 <AgentsSettingsTab
                   providerAuthStatus={providerAuthStatus}
                   onProviderLogin={openLoginForProvider}
-                  claudePermissions={claudePermissions}
-                  onClaudePermissionsChange={setClaudePermissions}
-                  projects={projects}
                 />
               )}
 
-              {activeTab === 'tasks' && <TasksSettingsTab onArchiveChanged={onArchiveChanged} />}
+              {activeTab === 'tasks' && <TasksSettingsTab onArchiveChanged={onArchiveChanged} claudePermissions={claudePermissions} onClaudePermissionsChange={setClaudePermissions} />}
 
               {activeTab === 'notifications' && (
                 <NotificationsSettingsTab
@@ -268,7 +266,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents', onArc
               )}
 
 
-              {activeTab === 'plugins' && <PluginSettingsTab />}
+              {activeTab === 'plugins' && <PluginsSettingsTab projects={projects} />}
 
               {activeTab === 'backup' && <BackupSettingsTab />}
 

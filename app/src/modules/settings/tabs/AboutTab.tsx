@@ -2,9 +2,6 @@ import { ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import ClaudeWebUpdateSection from '@/modules/settings/tabs/ClaudeWebUpdateSection';
-import LoginDevicesSection from '@/modules/settings/tabs/LoginDevicesSection';
-
-const UPSTREAM_REPO_URL = 'https://github.com/siteboon/claudecodeui';
 const SOURCE_URL = 'https://github.com/isAlexYoung/ClaudeWeb';
 
 function GitHubIcon({ className }: { className?: string }) {
@@ -17,11 +14,8 @@ function GitHubIcon({ className }: { className?: string }) {
 
 /**
  * Rendered by Settings for the "about" tab: the installed version and its update,
- * the signed-in devices,
- * what this interface is built on,
- * where that project lives, the license, and where ClaudeWeb's own source is.
- * The AGPL asks a modified network service to say it is modified and to offer
- * its source, so the last two lines stay.
+ * plus a direct link to ClaudeWeb's source, license and upstream notices.
+ * Attribution is retained in the repository's LICENSE and NOTICE files.
  */
 export default function AboutTab() {
   const { t } = useTranslation('settings');
@@ -29,31 +23,20 @@ export default function AboutTab() {
   return (
     <div className="space-y-6">
       <ClaudeWebUpdateSection />
-      <LoginDevicesSection />
-      <div className="space-y-3">
+      <div className="space-y-3 border-t border-border/50 pt-5">
         <h3 className="text-base font-semibold text-foreground">{t('about.title')}</h3>
-        <p className="text-sm text-muted-foreground">{t('about.basedOn')}</p>
         <a
-          href={UPSTREAM_REPO_URL}
+          href={SOURCE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+          className="inline-flex items-center gap-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <GitHubIcon className="h-4 w-4" />
-          <span>{t('about.githubLink')}</span>
+          <span>github.com/isAlexYoung/ClaudeWeb</span>
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </div>
 
-      <div className="border-t border-border/50 pt-4">
-        <p className="text-xs text-muted-foreground/60">
-          {t('about.licensed')}
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground/60">
-          {t('about.modifiedVersion')}{' '}
-          <a href={SOURCE_URL} target="_blank" rel="noopener noreferrer" className="underline">{t('about.sourceChanges')}</a>.
-        </p>
-      </div>
     </div>
   );
 }

@@ -114,10 +114,10 @@
   },
   "mainTabs": {
     "label": "設定",
-    "agents": "智慧代理",
+    "agents": "帳戶",
     "appearance": "外觀",
     "usage": "額度",
-    "yourClaude": "關於Claude",
+    "yourClaude": "您的 Claude",
     "apiTokens": "API 和權杖",
     "tasks": "任務與會話",
     "computer": "電腦使用",
@@ -427,7 +427,7 @@
     },
     "settingsFiles": {
       "title": "來自 Claude 設定檔的規則",
-      "description": "Claude CLI 會在上方清單之外一併套用這些規則。拒絕規則無論設定在哪裡都優先，但對於「允許的工具」中已允許的工具，詢問規則不會再要求確認。這裡僅供檢視；請在檔案中編輯。",
+      "description": "以下為 Claude CLI 設定檔中的唯讀權限規則。既有工具權限仍然生效；如需變更檔案中的權限，請直接編輯對應檔案。",
       "sources": {
         "user": "您的設定",
         "managed": "受管理設定（管理員）"
@@ -588,7 +588,6 @@
   "yourClaude": {
     "profileTitle": "個人資料",
     "nameLabel": "Claude 應該怎麼稱呼你？",
-    "nameDescription": "儲存在 Claude 的 CLAUDE.md（{{path}}）中，所有對話、網頁終端和 SSH 工作階段都會從下一則訊息開始使用。",
     "namePlaceholder": "你的稱呼",
     "memoryTitle": "記憶",
     "autoMemoryLabel": "自動記憶",
@@ -630,5 +629,8 @@
         "description": "Claude 直接動手執行，盡量少打斷你，傾向行動而不是先做計畫。"
       }
     }
+  },
+  "profile": {
+    "saveFailed": "儲存失敗，請重試。"
   }
 }

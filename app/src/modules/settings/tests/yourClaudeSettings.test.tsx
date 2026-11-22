@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import { i18n } from '@/modules/i18n';
 import YourClaudeSettingsTab from '@/modules/settings/tabs/YourClaudeSettingsTab';
+import ClaudeNameField from '@/modules/settings/tabs/agents-settings/ClaudeNameField';
 
 /** Settings > Your Claude saves the name and the CLI memory switches through one endpoint. */
 
@@ -40,16 +41,14 @@ beforeEach(() => {
   });
 });
 
-it('shows CLI defaults when nothing is set and saves the name and switches', async () => {
+it('shows CLI defaults and saves switches on Your Claude, keeping the name in Account', async () => {
   render(<YourClaudeSettingsTab />);
   const autoMemory = await screen.findByRole('switch', { name: 'Auto memory' });
   expect(autoMemory.getAttribute('aria-checked')).toBe('true');
   expect(screen.getByRole('switch', { name: 'Tidy memory in the background' }).getAttribute('aria-checked')).toBe('false');
   expect(screen.getByText(/Not set: Claude decides by default/)).toBeTruthy();
 
-  fireEvent.change(screen.getByLabelText('What should Claude call you?'), { target: { value: 'Alex' } });
-  fireEvent.submit(screen.getByLabelText('What should Claude call you?').closest('form')!);
-  await waitFor(() => expect(api.updateYourClaude).toHaveBeenCalledWith({ name: 'Alex' }));
+  expect(screen.queryByLabelText('What should Claude call you?')).toBeNull();
 
   fireEvent.click(autoMemory);
   await waitFor(() => expect(api.updateYourClaude).toHaveBeenLastCalledWith({ autoMemoryEnabled: false }));
@@ -70,12 +69,37 @@ it('an empty memory folder is saved as the default', async () => {
   await waitFor(() => expect(api.updateYourClaude).toHaveBeenCalledWith({ autoMemoryDirectory: null }));
 });
 
-it('locks the memory switches while settings.json is invalid but keeps the name editable', async () => {
+it('locks the memory switches while settings.json is invalid', async () => {
   state.settingsStatus = 'invalid';
   render(<YourClaudeSettingsTab />);
   expect(await screen.findByText(/is not valid JSON/)).toBeTruthy();
   expect((screen.getByRole('switch', { name: 'Auto memory' }) as HTMLButtonElement).disabled).toBe(true);
-  expect((screen.getByLabelText('What should Claude call you?') as HTMLInputElement).disabled).toBe(false);
+});
+
+it('saves the Claude name from Account on blur without writing on every keystroke', async () => {
+  render(<ClaudeNameField />);
+  const input = screen.getByRole('textbox', { name: 'What should Claude call you?' }) as HTMLInputElement;
+  await waitFor(() => expect(input.disabled).toBe(false));
+  api.updateYourClaude.mockClear();
+  fireEvent.change(input, { target: { value: 'Alex' } });
+  expect(api.updateYourClaude).not.toHaveBeenCalled();
+  fireEvent.blur(input);
+  await waitFor(() => expect(api.updateYourClaude).toHaveBeenCalledWith({ name: 'Alex' }));
+  await screen.findByText('Saved');
+  fireEvent.blur(input);
+  expect(api.updateYourClaude).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText(/CLAUDE.md/)).toBeNull();
+});
+
+it('keeps the Account name editable when the separate CLI settings JSON is invalid', async () => {
+  state.settingsStatus = 'invalid';
+  render(<ClaudeNameField />);
+  const input = screen.getByRole('textbox', { name: 'What should Claude call you?' }) as HTMLInputElement;
+  await waitFor(() => expect(input.disabled).toBe(false));
+  input.focus();
+  fireEvent.change(input, { target: { value: 'Alex' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  await waitFor(() => expect(api.updateYourClaude).toHaveBeenLastCalledWith({ name: 'Alex' }));
 });
 
 it('picks an output style from the built-ins and style files, and Default clears it', async () => {

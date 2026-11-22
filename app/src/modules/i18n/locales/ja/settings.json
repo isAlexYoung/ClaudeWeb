@@ -107,7 +107,7 @@
   },
   "mainTabs": {
     "label": "設定",
-    "agents": "エージェント",
+    "agents": "アカウント",
     "appearance": "外観",
     "apiTokens": "API & トークン",
     "tasks": "タスク",
@@ -530,5 +530,8 @@
     "tab": "タブ",
     "runningStatus": "実行中",
     "customPlugins": "Custom plugins"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

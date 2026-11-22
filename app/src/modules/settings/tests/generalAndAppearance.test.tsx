@@ -51,11 +51,11 @@ test('the profile keeps only an image data URL as the avatar and trims the name 
   assert.equal(profile.avatar, null, 'a remote URL is never rendered');
 });
 
-test('desktop and mobile settings open on General without API/token, voice or browser pages', () => {
+test('desktop and mobile settings open on Account without API/token, voice or browser pages', () => {
   render(<SettingsSidebar activeTab="agents" onChange={() => {}} />);
   const labels = screen.getAllByRole('button').map((button) => button.textContent?.trim());
 
-  assert.equal(labels[0], 'General');
+  assert.deepEqual(labels.slice(0, 9), ['Account', 'Usage', 'Appearance', 'Your Claude', 'Notifications', 'Plugins', 'Tasks & sessions', 'Backup & restore', 'About']);
   assert.ok(!labels.includes('Voice'));
   assert.ok(!labels.includes('Browser'));
   assert.ok(!labels.includes('Git'));
@@ -66,14 +66,11 @@ test('desktop and mobile settings open on General without API/token, voice or br
   assert.ok(!SETTINGS_MAIN_TABS.some(tab => /API|Tokens/i.test(tab.label)), 'the command palette must not reopen the removed page');
 });
 
-test('About says what the interface is built on and links to upstream CloudCLI UI, with the license notice', () => {
+test('About keeps the ClaudeWeb repository link without the old descriptive blocks', () => {
   const { container } = render(<AboutTab />);
-  const link = screen.getByRole('link', { name: /CloudCLI UI on GitHub/ });
-
-  assert.equal(link.getAttribute('href'), 'https://github.com/siteboon/claudecodeui');
-  assert.match(container.textContent ?? '', /built on the open-source project CloudCLI UI/);
-  assert.match(container.textContent ?? '', /AGPL-3\.0/);
-  assert.doesNotMatch(container.textContent ?? '', /Discord|Star on GitHub|Pro Features/);
+  const link = screen.getByRole('link', { name: /github.com\/isAlexYoung\/ClaudeWeb/ });
+  assert.equal(link.getAttribute('href'), 'https://github.com/isAlexYoung/ClaudeWeb');
+  assert.doesNotMatch(container.textContent ?? '', /CloudCLI|AGPL-3\.0|Discord|Star on GitHub|Pro Features/);
 });
 
 

@@ -110,7 +110,7 @@ function ExportSection() {
 
   return (
     <SettingsSection title={t('backup.export.title')} description={t('backup.export.description')}>
-      <SettingsCard divided>
+      <SettingsCard>
         <SettingsRow label={t('backup.export.encrypt')} description={t('backup.export.encryptDescription')}>
           <SettingsToggle checked={encrypt} onChange={setEncrypt} ariaLabel={t('backup.export.encrypt')} />
         </SettingsRow>
@@ -143,7 +143,7 @@ function ExportSection() {
               <p className="text-sm text-muted-foreground">{t('backup.export.projectFilesNone')}</p>
             ) : (
               <>
-                <ul className="divide-y divide-border rounded-xl border border-border">
+                <ul className="divide-y divide-border/50">
                   {folders.map((folder) => (
                     <li key={folder.path}>
                       <label className="flex cursor-pointer items-start gap-3 px-4 py-2.5">
@@ -212,7 +212,7 @@ function PreviewPanel({
       {preview.projects.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('backup.import.empty')}</p>
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border">
+        <ul className="divide-y divide-border/50">
           {preview.projects.map((project) => {
             const checked = !excluded.includes(project.id);
             const newSessions = project.sessionCount - project.existingSessionCount;
@@ -307,7 +307,7 @@ function PluginsToReinstall({ plugins }: { plugins: BackupPlugins }) {
     <div className="space-y-2">
       <p className="text-sm font-medium text-foreground">{t('backup.import.plugins')}</p>
       <p className="text-xs text-muted-foreground">{t('backup.import.pluginsHint')}</p>
-      <ul className="divide-y divide-border rounded-xl border border-border">
+      <ul className="divide-y divide-border/50">
         {missing.map((plugin) => {
           const state = states[plugin.name];
           return (
@@ -447,7 +447,7 @@ function ImportSection() {
       <div
         {...getRootProps()}
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-10 text-center transition-colors',
+          'flex cursor-pointer flex-col items-center justify-center gap-2 border-y border-border/50 px-4 py-10 text-center transition-colors',
           isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40',
         )}
       >

@@ -109,7 +109,7 @@
   },
   "mainTabs": {
     "label": "הגדרות",
-    "agents": "סוכנים",
+    "agents": "חשבון",
     "appearance": "מראה",
     "apiTokens": "API וטוקנים",
     "tasks": "משימות",
@@ -649,5 +649,8 @@
   },
   "about": {
     "licensed": "ברישיון AGPL-3.0"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

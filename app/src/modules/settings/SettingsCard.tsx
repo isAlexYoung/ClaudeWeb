@@ -5,16 +5,14 @@ import { cn } from '@/shared/utils';
 type SettingsCardProps = {
   children: ReactNode;
   className?: string;
-  divided?: boolean;
 };
 
-/** Used by the settings module's general, appearance, git, tasks, notifications and backup tabs to group related rows in a card. */
-export default function SettingsCard({ children, className, divided }: SettingsCardProps) {
+/** Used by the settings module's account, appearance, tasks, notifications and backup tabs to group rows with subtle separators. */
+export default function SettingsCard({ children, className }: SettingsCardProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border border-border bg-card/50',
-        divided && 'divide-y divide-border',
+        'settings-group divide-y divide-border/50',
         className,
       )}
     >

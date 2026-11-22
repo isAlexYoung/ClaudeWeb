@@ -108,7 +108,7 @@
   },
   "mainTabs": {
     "label": "Pengaturan",
-    "agents": "Agen",
+    "agents": "Akun",
     "appearance": "Tampilan",
     "apiTokens": "API & Token",
     "tasks": "Tugas",
@@ -647,5 +647,8 @@
   },
   "about": {
     "licensed": "Dilisensikan di bawah AGPL-3.0"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

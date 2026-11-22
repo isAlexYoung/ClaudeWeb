@@ -108,10 +108,10 @@
   },
   "mainTabs": {
     "label": "设置",
-    "agents": "通用",
+    "agents": "账户",
     "appearance": "外观",
     "usage": "额度",
-    "yourClaude": "关于Claude",
+    "yourClaude": "您的 Claude",
     "apiTokens": "API 和令牌",
     "tasks": "任务与会话",
     "notifications": "通知",
@@ -503,7 +503,7 @@
     },
     "settingsFiles": {
       "title": "来自 Claude 设置文件的规则",
-      "description": "Claude CLI 会在上面的列表之外同时应用这些规则。拒绝规则无论设置在哪里都优先，但对于「允许的工具」中已允许的工具，询问规则不会再请求确认。这里仅供查看；请在文件中编辑。",
+      "description": "以下为 Claude CLI 设置文件中的只读权限规则。已有的工具权限仍然生效；如需更改文件中的权限，请直接编辑对应文件。",
       "sources": {
         "user": "您的设置",
         "managed": "托管设置（管理员）"
@@ -820,7 +820,8 @@
     "name": {
       "label": "名称",
       "placeholder": "显示在左下角"
-    }
+    },
+    "saveFailed": "保存失败，请重试。"
   },
   "backup": {
     "export": {
@@ -931,7 +932,6 @@
   "yourClaude": {
     "profileTitle": "个人资料",
     "nameLabel": "Claude 应该怎么称呼你？",
-    "nameDescription": "保存在 Claude 的 CLAUDE.md（{{path}}）中，所有对话、网页终端和 SSH 会话都会从下一条消息开始使用。",
     "namePlaceholder": "你的称呼",
     "memoryTitle": "记忆",
     "autoMemoryLabel": "自动记忆",

@@ -108,7 +108,7 @@
   },
   "mainTabs": {
     "label": "설정",
-    "agents": "에이전트",
+    "agents": "계정",
     "appearance": "외관",
     "apiTokens": "API & 토큰",
     "tasks": "작업",
@@ -545,5 +545,8 @@
     "tab": "탭",
     "runningStatus": "실행 중",
     "customPlugins": "Custom plugins"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

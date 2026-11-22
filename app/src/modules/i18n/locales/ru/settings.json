@@ -107,7 +107,7 @@
   },
   "mainTabs": {
     "label": "Настройки",
-    "agents": "Агенты",
+    "agents": "Аккаунт",
     "appearance": "Внешний вид",
     "apiTokens": "API и токены",
     "tasks": "Задачи",
@@ -530,5 +530,8 @@
     "tab": "вкладка",
     "runningStatus": "запущен",
     "customPlugins": "Custom plugins"
+  },
+  "profile": {
+    "saveFailed": "Could not save. Please try again."
   }
 }

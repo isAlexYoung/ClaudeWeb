@@ -124,7 +124,7 @@ export default function McpServers({ selectedProvider, currentProjects, children
         </div>
       )}
 
-      <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card/50">
+      <div className="settings-group divide-y divide-border/50">
         {children}
         {isLoading && servers.length === 0 && (
           <div className="py-8 text-center text-muted-foreground">{t('mcpServersAdd.loadingServers')}</div>

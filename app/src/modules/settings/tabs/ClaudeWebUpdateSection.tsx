@@ -54,7 +54,7 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
 
   return (
     <SettingsSection title={t('about.update.title')}>
-      <SettingsCard divided>
+      <SettingsCard>
         <SettingsRow
           label={t('about.update.installed')}
           description={installed ? undefined : t('about.update.builtOnServer')}
@@ -97,7 +97,7 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
             </div>
             {next.notes && <p className="whitespace-pre-line text-sm text-muted-foreground">{next.notes}</p>}
             {confirming ? (
-              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/40 p-3">
+              <div className="space-y-3 border-t border-border/50 py-3">
                 <p className="flex items-start gap-2 text-sm text-foreground">
                   <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                   {t('about.update.confirm')}
