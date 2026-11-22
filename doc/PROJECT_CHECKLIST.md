@@ -1,6 +1,6 @@
 # ClaudeWeb 独立版项目清单
 
-日期：2026-11-20。阶段：需求整理，尚未实现产品代码或创建远程仓库。
+初稿：2026-11-20。当前阶段：独立版开发与测试；2026-11-22 补充 ClaudeDesktop 本地实现，并确定五个 Linux 版本的 amd64 适配计划；当前发布目标为 2.0.3 测试版，尚无正式版。
 
 目标是建立独立、开源、可一键安装的 ClaudeWeb，保留现有 ClaudeWeb 全部功能，整合必要的浏览器运行及安装更新能力，取消对 WebDesktop 和 fa-build 的运行依赖。
 
@@ -21,9 +21,10 @@
 - [x] 不额外设置 ClaudeWeb 专属资源配额，尽可能使用 VPS 的可用资源。
 - [x] 网络层全局禁用 IPv6，只保留必要的权限、鉴权和安全机制。
 - [x] 产品界面、命令、环境变量和运行路径统一使用 `claudeweb` 命名，独立维护发布链。
-- [x] Claude Desktop 属于后续目标，目前不实现；未来入口放在右上角“终端”“文件夹”附近。
-- [x] 终端、浏览器及未来 Claude Desktop 优先统一用户，确有兼容性原因时允许分开。
-- [x] 首期面向 Debian 12 amd64 开发与验收，后续扩展支持 Ubuntu 等其他 Linux 发行版。
+- [x] Claude Desktop 首阶段延后；2026-11-22 已按新需求在本地实现右上角入口和固定窗口，纳入 2.0.3 测试版。
+- [x] 终端、浏览器及 Claude Desktop 优先统一用户，确有兼容性原因时允许分开。
+- [x] 适配目标确定为 Debian 12、Debian 13、Ubuntu 22.04 LTS、Ubuntu 24.04 LTS、Ubuntu 26.04 LTS，仅 amd64（x86_64）；逐版本验收后再声明支持。
+- [x] 正式验收使用专用测试 VPS，轮流重装以上五个系统；本地 WSL2 和 CI 用于提前回归，不能代替真实 VPS 验收。
 - [x] 项目目录清晰优雅，分门别类的放置文件，按行业习惯整理。
 - [x] 版本号独立，从 2.0.0 开始；发布 2.0.0 正式版之前的版本都是测试版。
 - [x] 每次发布在代码和发布清单中标明“正式版”或“测试版”。设置 → 关于 只向用户提供正式版；测试版验证无误后可转为正式版。
@@ -83,7 +84,7 @@
 - [x] 浏览器可在无物理显示器的 VPS 工作，不依赖 WebDesktop 网关或桌面界面。
 - [x] 不要求存在旧的 `wdterm`、`wdguest`、`wdsvc`、`wdgui`、WebDesktop 数据库或安装状态。（2026-11-21 清掉了更新接口里的 webdesktop 空字段和 WebDesktop 登录来源；只剩导入旧备份时把 /home/wdguest 换成 /home/claudeweb）
 - [x] 不依赖原私有仓库、Deploy Key、WebDesktop 版本或 fa-build 运行环境。（安装和更新只用公开仓库的 install.sh、签名清单和 GitHub Release）
-- [x] 为未来图形应用扩展留出接口，本阶段不实现或安装 Claude Desktop，不显示不可用占位按钮。（浏览器用的 Xvnc 显示和 Openbox 由应用管理，以后可运行其他图形程序；界面没有 Claude Desktop 占位按钮）
+- [x] 图形运行组件可供浏览器和 Claude Desktop 分别使用；Desktop 入口、安装和显示纳入 2.0.3 测试版，无需 WebDesktop 网关。
 
 ## CMCP 连接
 
@@ -163,10 +164,11 @@
 - [x] Chromium 和 Node.js 随 ClaudeWeb 新版本一起更新；出现严重安全漏洞时单独发布修复版，只为最新正式版提供修复。（写入 doc/RELEASING.md「Bundled components」）
 - [x] 现有 ClaudeWeb 前后端自动测试搬入新仓库并接入 CI，提交和 PR 都要运行。（2026-11-21：.github/workflows/ci.yml，推送到 main 和每个 PR 都运行：Linux 上的类型检查、lint、构建和前后端测试，Debian 12 构建安装包，再在全新 Debian 12 虚拟机里跑安装、更新、浏览器、多设备和 sudo 测试）
 - [x] 发布包附第三方许可证声明：除 CloudCLI 的 AGPL 外，还包括 Playwright Chromium、noVNC、字体及其他打包组件。（`THIRD_PARTY_NOTICES.md` 随发布包一起）
-- [ ] 后续计划：支持 arm64 架构，首期只做 amd64。
-- [ ] 首期完成 Debian 12 amd64 支持；后续增加 Ubuntu 等 Linux 发行版，按发行版和版本分别验收后声明支持。
-- [ ] 将软件包、服务、图形依赖和系统配置差异集中到平台适配层，避免业务功能与 Debian 12 路径或包名绑定。
-- [ ] 建立发行版支持矩阵；Ubuntu 等后续目标的具体版本、架构和测试环境在对应阶段确定。
+- [ ] 完成 Debian 12、Debian 13、Ubuntu 22.04 LTS、Ubuntu 24.04 LTS、Ubuntu 26.04 LTS 的 amd64 适配与真实 VPS 验收。
+- [ ] 将软件包、服务、图形依赖和系统配置差异集中到平台适配层，避免业务功能与 Debian 12 路径或包名绑定。（2026-11-22：Debian 12 / Ubuntu 22.04 的安装与修复已共用 `packaging/platform.sh`；构建改为 Ubuntu 22.04 基线，其他目标待实施；纳入 2.0.3 测试版）
+- [x] 确定五个系统版本、amd64 架构及真实 VPS 轮流重装的测试方式，建立待验收矩阵，见 [LINUX_COMPATIBILITY_PLAN.md](LINUX_COMPATIBILITY_PLAN.md)。此项只表示计划已确定，不代表兼容性已通过。
+- [ ] 完成五个系统的安装、浏览器、ClaudeDesktop、重启、网页更新、失败恢复和数据保留矩阵，按实测结果更新支持声明。
+
 - [x] 发布清单标明正式版或测试版；一键安装和网页更新默认只取正式版，测试版只能用 `--version` 指定安装。
 - [x] 测试版转为正式版时只修改发布标记，不重新构建，安装包和校验值保持不变。（`packaging/release-list.py promote`）
 - [x] 版本清单作为发布文件提供，不依赖 GitHub API（未登录时每小时只能请求 60 次）。（`releases` 分支经 raw.githubusercontent.com 读取）
@@ -175,7 +177,9 @@
 - [x] 新版本启动和健康检查期间不写入数据库，避免更新校验误判用户数据被改动（WebDesktop 3.0.6 的教训）。（更新程序只检查服务能否应答，不比对数据库，启动时的写入不会被误判；迁移只能增加表和列，见 doc/RELEASING.md）
 - [x] 公开仓库 CI 确认托管运行器可运行虚拟机测试，测试构件设置保留期。（GitHub 托管的 Ubuntu 运行器用 KVM 启动固定版本、校验过 SHA-512 的 Debian 12 云镜像；测试包保留 3 天，虚拟机日志保留 7 天）
 
-未来命令形式示意，仓库和脚本尚未创建，当前不可执行：
+2026-11-22，Ubuntu 22.04 第一批适配已完成本地验证，纳入 2.0.3 测试版：精确版本识别、Universe 与 minisign 引导、共同构建基线及更新前兼容检查已实现。独立 Ubuntu 22.04 WSL2 安装 33 项、图形 23 项、更新回滚 37 项通过；平台与输出检查 17 项、前端测试 1162 项通过，类型检查和构建通过；同一构建基线的原生模块在 Debian 12 运行通过。真实 VPS 的重启、账号登录和完整功能验收仍待进行，不能将本地结果记作五系统正式支持。
+
+安装入口已存在；以下默认命令只选择正式版，当前尚无正式版。Ubuntu 22.04 适配从 2.0.3 测试版开始，不能用旧的 2.0.2 包验证：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh)
@@ -260,7 +264,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 - [x] 核对远程仓库账号（2026-11-20）：GitHub 账号 `isAlexYoung` 存在，该账号下尚无 `ClaudeWeb` 仓库。
 - [x] 固定功能基线：ClaudeWeb 1.0.17，源码标签 `claudeweb-src-v1.0.17`，提交 `898dc736`（原私有 WebDesktop 仓库）。
 - [ ] 准备数据样本（项目、聊天、旁聊、记忆、插件配置），用于功能回归和旧数据导入验证。
-- [x] 首期平台 Debian 12 amd64；默认本机端口 3001（与 CMCP“通过 SSH 自建”的默认端口一致）；路径采用下方「命名和目录」表格。
+- [x] 开发基线为 Debian 12 amd64；2026-11-22 已将适配目标明确为上述五个系统的 amd64。默认本机端口 3001（与 CMCP“通过 SSH 自建”的默认端口一致）；路径采用「命名和目录」表格。
 
 ### 独立版本
 
@@ -294,14 +298,19 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 - [ ] 连续启动关闭终端、浏览器和生成任务，检查遗留进程。
 - [ ] 回归中文输入、剪贴板、下载、断线重连和历史恢复。
 - [ ] 检查缓存、日志及 inode 增长和维护行为。
-- [ ] WSL2 开发回归后，在真实 Debian 12 amd64 VPS 验证安装、重启、网络、图形服务和更新。
+- [ ] WSL2 开发回归后，在真实测试 VPS 轮流重装五个目标系统，逐项验证安装、重启、网络、图形服务和更新；按 [Linux 适配计划](LINUX_COMPATIBILITY_PLAN.md) 保存每轮结果。
 
-### 后续 Claude Desktop
+### Claude Desktop（2.0.3 测试版）
 
-- [ ] 单独设计安装、启动、关闭、显示及数据管理。
-- [ ] 入口放在右上角“终端”“文件夹”附近。
-- [ ] 优先共用 `claudeweb` 用户，确需拆分时明确共享权限。
-- [ ] 不重新引入 WebDesktop 桌面界面。
+- [x] 安装官方签名 APT 包；独立显示、进程组、持久配置和密钥环，关闭时清理临时文件与可重建缓存。
+- [x] 星号入口放在右上角终端之前，悬停提示“打开ClaudeDesktop”。
+- [x] 固定窗口提供全屏、最小化、关闭；最小化保留进程，Desktop、终端和浏览器的隐藏会话显示橙点。
+- [x] 共用 `claudeweb` 普通用户，浏览器与 Desktop 使用各自的显示、会话和配置。
+- [x] 不重新引入 WebDesktop 桌面界面。
+- [x] WSL Debian 12 下以普通用户实测画面、登录页、最小化、恢复、全屏、关闭中途启动及缓存/进程回收。
+- [ ] 完成真实账号登录和真实 VPS 回归；当前仅检查到登录页，没有使用用户凭据。
+
+实现及验证方法见 [CLAUDE_DESKTOP.md](CLAUDE_DESKTOP.md)。这些改动纳入 2.0.3 测试版，尚不提升为正式版。
 
 ## 参考实现
 

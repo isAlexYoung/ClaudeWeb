@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ClaudeWeb installer. Run as root on a fresh Debian 12 (amd64) server:
+# ClaudeWeb installer. Run as root on Debian 12 / Ubuntu 22.04 LTS (amd64):
 #   bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh)
 # Options:
 #   --version=X.Y.Z   install that release (default: the latest stable one)
@@ -34,24 +34,189 @@ readonly RELEASE_PUBKEY=RWTd/gMB0+uVjUjFTKV/03UUGdQIoF+X+FIvGW8kdn9eDoqh3M2JMG39
 # Where the signed list lives; overridable for testing with a mirror.
 readonly RELEASES_URL="${CLAUDEWEB_RELEASES_URL:-$DEFAULT_RELEASES_URL}"
 
+# BEGIN GENERATED PLATFORM RULES (packaging/platform.sh)
+# Shared installer/management platform rules. Embedded by sync-platform.py so
+# the public one-line installer never sources another unverified download.
+cw_platform_select() {
+  CW_PLATFORM=""
+  CW_BASE_PACKAGES=(ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq sudo)
+  CW_GUI_PACKAGES=(tigervnc-standalone-server openbox xauth x11-utils xdotool xclip
+    xfonts-base fonts-dejavu-core fonts-noto-cjk dbus dbus-x11 fcitx5
+    fcitx5-chinese-addons fcitx5-frontend-gtk3 fcitx5-frontend-qt5)
+  CW_DESKTOP_PACKAGES=(gnupg gnome-keyring libsecret-1-0)
+  [[ $3 == x86_64 ]] || { echo "only amd64 (x86_64) is supported (found $3)" >&2; return 1; }
+  case "$1:$2" in
+    debian:12) CW_PLATFORM=debian-12; CW_BASE_PACKAGES+=(minisign) ;;
+    ubuntu:22.04) CW_PLATFORM=ubuntu-22.04 ;;
+    *) echo "only Debian 12 and Ubuntu 22.04 LTS are enabled (found ${1:-unknown} ${2:-unknown})" >&2; return 1 ;;
+  esac
+}
+
+cw_platform_detect() {
+  local release_file="${1:-/etc/os-release}" os_id os_version
+  [[ -r $release_file ]] || { echo "cannot read $release_file" >&2; return 1; }
+  # Keep VERSION, ID and other os-release variables out of the caller's scope.
+  os_id="$(. "$release_file"; printf '%s' "${ID:-}")"
+  os_version="$(. "$release_file"; printf '%s' "${VERSION_ID:-}")"
+  cw_platform_select "$os_id" "$os_version" "$(uname -m)"
+}
+
+cw_prepare_apt() {
+  apt-get -o DPkg::Lock::Timeout=180 update -q || return
+  if [[ $CW_PLATFORM == ubuntu-22.04 ]] && ! LC_ALL=C apt-cache policy tigervnc-standalone-server \
+    | awk '$1 == "Candidate:" && $2 != "(none)" { found=1 } END { exit !found }'; then
+    # Respect the server's selected mirrors and signing keys. The distro tool
+    # adds Universe to its configured sources; do not replace sources.list.
+    apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends software-properties-common || return
+    add-apt-repository -y universe || return
+    apt-get -o DPkg::Lock::Timeout=180 update -q || return
+  fi
+}
+
+cw_minisign() {
+  # The root update socket deliberately has a small PATH. Resolve the pinned
+  # Jammy bootstrap without expanding that service's executable search path.
+  if [[ -x /usr/bin/minisign ]]; then /usr/bin/minisign "$@";
+  elif [[ -x /usr/local/bin/minisign ]]; then /usr/local/bin/minisign "$@";
+  else echo 'minisign is missing; repair the ClaudeWeb installation' >&2; return 1; fi
+}
+
+cw_ensure_minisign() (
+  cw_minisign -v >/dev/null 2>&1 && exit 0
+  [[ $CW_PLATFORM == ubuntu-22.04 ]] || { echo 'minisign was not installed by APT' >&2; exit 1; }
+  # Ubuntu 22.04 has no minisign executable in its archive. Pin the upstream
+  # static release and digest here, before trusting any ClaudeWeb release list.
+  local work destination=/usr/local/bin/minisign
+  work="$(mktemp -d)" || exit
+  trap 'rm -rf -- "$work"' EXIT
+  curl -fsSL --retry 3 -o "$work/minisign.tar.gz" \
+    https://github.com/jedisct1/minisign/releases/download/0.12/minisign-0.12-linux.tar.gz || exit
+  printf '%s  %s\n' 9a599b48ba6eb7b1e80f12f36b94ceca7c00b7a5173c95c3efc88d9822957e73 "$work/minisign.tar.gz" \
+    | sha256sum -c --status || { echo 'minisign bootstrap checksum mismatch; nothing was installed' >&2; exit 1; }
+  tar -xzf "$work/minisign.tar.gz" -C "$work" minisign-linux/x86_64/minisign || exit
+  [[ ! -e $destination && ! -L $destination ]] || { echo "refusing to replace $destination" >&2; exit 1; }
+  install -d -m 0755 /usr/local/bin || exit
+  install -m 0755 -o root -g root "$work/minisign-linux/x86_64/minisign" "$destination" || exit
+  "$destination" -v
+)
+
+cw_install_dependencies() {
+  local mode=$1
+  cw_platform_detect || return
+  export DEBIAN_FRONTEND=noninteractive
+  cw_prepare_apt || return
+  case "$mode" in
+    base-gui)
+      apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends "${CW_BASE_PACKAGES[@]}" "${CW_GUI_PACKAGES[@]}" || return
+      cw_ensure_minisign || return ;;
+    gui)
+      apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends "${CW_GUI_PACKAGES[@]}" || return ;;
+    desktop)
+      apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends ca-certificates curl "${CW_GUI_PACKAGES[@]}" "${CW_DESKTOP_PACKAGES[@]}" || return ;;
+    *) echo "unknown dependency group: $mode" >&2; return 1 ;;
+  esac
+}
+
+cw_check_release_platform() {
+  local release=$1
+  jq -e --arg platform "$CW_PLATFORM" '
+    if has("platforms") then
+      (.platforms | type == "array") and (.platforms | index($platform) != null)
+    else
+      .os == "debian-12" and $platform == "debian-12"
+    end' "$release/release.json" >/dev/null \
+    || { echo "this release package does not target $CW_PLATFORM; use a compatible ClaudeWeb package" >&2; return 1; }
+  if [[ -f $release/share/check-runtime.cjs ]]; then
+    "$release/node/bin/node" "$release/share/check-runtime.cjs" "$release/app" || return
+  fi
+}
+# END GENERATED PLATFORM RULES
+
 VERSION=""
 PACKAGE=""
 STAGE="starting"
 WORK=""
 
 REPORTED=0
-say() { printf '%s\n' "$*"; }
-step() { STAGE="$1"; say "==> $1"; }
+LOGGING=0
+STEP_NUMBER=0
+readonly STEP_TOTAL=15
+# After logging starts, normal command output stays in the private log. Only
+# these installer summaries and explicitly interactive output also reach fd 3.
+say() {
+  printf '%s\n' "$*"
+  if (( LOGGING )); then printf '%s\n' "$*" >&3; fi
+}
+step() {
+  STAGE="$1"
+  STEP_NUMBER=$((STEP_NUMBER + 1))
+  say "$(printf '[%02d/%02d] %s' "$STEP_NUMBER" "$STEP_TOTAL" "$STAGE")"
+}
+warn() { say "[!] $*"; }
 fail() { say "" >&2; say "ClaudeWeb installation stopped: $*" >&2; REPORTED=1; exit 1; }
+start_logging() {
+  mkdir -p "$LOG_DIR"
+  chmod 0750 "$LOG_DIR"
+  touch "$INSTALL_LOG"
+  chmod 0600 "$INSTALL_LOG"
+  exec 3>&1
+  exec >>"$INSTALL_LOG" 2>&1
+  LOGGING=1
+}
+# Keep ANSI colors on the interactive terminal; the installation log stays plain text.
+banner_line() {
+  printf '%s\n' "$1"
+  if (( LOGGING )); then
+    if [[ -t 3 && ${TERM:-} != dumb ]]; then
+      printf '\033[38;2;%sm%s\033[0m\n' "$2" "$1" >&3
+    else
+      printf '%s\n' "$1" >&3
+    fi
+  fi
+}
+print_welcome() {
+  local term_columns="${COLUMNS:-80}" terminal_size line_number=0 color
+  if [[ -t 3 ]]; then
+    terminal_size="$(stty size 2>/dev/null <&3 || true)"
+    if [[ $terminal_size =~ ^[0-9]+\ ([0-9]+)$ ]] && (( 10#${BASH_REMATCH[1]} > 0 )); then
+      term_columns="${BASH_REMATCH[1]}"
+    fi
+  fi
+  say ""
+  if [[ $term_columns =~ ^[0-9]+$ ]] && (( 10#$term_columns < 72 )); then
+    say "welcome to"
+    banner_line "CLAUDEWEB" '224;176;157'
+  else
+    say "                            welcome to"
+    say ""
+    while IFS= read -r line; do
+      line_number=$((line_number + 1))
+      color='255;255;255'
+      if (( line_number <= 3 )); then color='224;176;157'; fi
+      banner_line "$line" "$color"
+    done <<'BANNER'
+   ____ _        _    _   _ ____  _______        _______ ____
+  / ___| |      / \  | | | |  _ \| ____\ \      / / ____| __ )
+ | |   | |     / _ \ | | | | | | |  _|  \ \ /\ / /|  _| |  _ \
+ | |___| |___ / ___ \| |_| | |_| | |___  \ V  V / | |___| |_) |
+  \____|_____/_/   \_\\___/|____/|_____|  \_/\_/  |_____|____/
+BANNER
+  fi
+  say ""
+}
 # One exit handler for every way out, including errors `set -e` and `set -u` stop at.
 on_exit() {
   local status=$?
-  [[ -n $WORK ]] && rm -rf "$WORK"
+  if [[ -n $WORK ]]; then rm -rf "$WORK" || true; fi
+  if (( status != 0 && LOGGING )); then
+    printf '\nRecent installation output:\n' >&3
+    tail -n 8 "$INSTALL_LOG" >&3 || true
+  fi
   if (( status != 0 && REPORTED == 0 )); then
     say "" >&2
     say "ClaudeWeb installation failed during: $STAGE (exit $status)." >&2
   fi
-  if (( status != 0 )) && [[ -f $INSTALL_LOG ]]; then
+  if (( status != 0 && LOGGING )); then
     say "Details are in $INSTALL_LOG. Fix the problem and run the installer again; it continues safely." >&2
   fi
 }
@@ -70,26 +235,15 @@ done
 step "Checking this server"
 [[ $EUID -eq 0 ]] || fail "run the installer as root (for example: sudo bash install.sh)"
 [[ "$(ps -p 1 -o comm= 2>/dev/null)" == systemd ]] || fail "systemd is required"
-# Read in a subshell: /etc/os-release defines VERSION, which would replace --version.
-os_id="$(. /etc/os-release && echo "${ID:-}")"
-os_version="$(. /etc/os-release && echo "${VERSION_ID:-}")"
-os_name="$(. /etc/os-release && echo "${PRETTY_NAME:-unknown}")"
-[[ $os_id == debian && $os_version == 12 ]] || fail "only Debian 12 is supported for now (found $os_name)"
-[[ "$(uname -m)" == x86_64 ]] || fail "only amd64 (x86_64) is supported for now (found $(uname -m))"
+cw_platform_detect || fail "this server's platform is not supported"
 cpus="$(nproc)"
 memory_mib="$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo)"
 (( cpus >= MIN_CPUS )) || fail "ClaudeWeb needs at least $MIN_CPUS CPU cores (found $cpus)"
 (( memory_mib >= MIN_MEMORY_MIB )) || fail "ClaudeWeb needs at least 2 GB of memory (found ${memory_mib} MiB)"
 
-mkdir -p "$LOG_DIR"
-chmod 0750 "$LOG_DIR"
-touch "$INSTALL_LOG"
-chmod 0600 "$INSTALL_LOG"
-# Everything goes to the terminal and the log, except the new password, which
-# is written to fd 3 (the terminal only).
-exec 3>&1
-exec > >(tee -a "$INSTALL_LOG") 2>&1
-say "$(date -u +%Y-%m-%dT%H:%M:%SZ) installer started with: $*"
+start_logging
+printf '%s installer started with: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+say "Download and installation details: $INSTALL_LOG"
 
 installed_version=""
 if [[ -f $INSTALL_RECORD && -f $CURRENT/VERSION ]]; then
@@ -103,12 +257,7 @@ fi
 
 # ------------------------------------------------------------------ system
 step "Installing system packages"
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -q
-apt-get install -y -q --no-install-recommends ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq minisign sudo
-# The built-in browser's private display, window manager, clipboard, fonts and Chinese input.
-apt-get install -y -q --no-install-recommends tigervnc-standalone-server openbox xauth x11-utils xdotool xclip \
-  xfonts-base fonts-dejavu-core fonts-noto-cjk dbus dbus-x11 fcitx5 fcitx5-chinese-addons fcitx5-frontend-gtk3 fcitx5-frontend-qt5
+cw_install_dependencies base-gui || fail "system dependencies could not be installed (check the configured APT repositories)"
 
 # ------------------------------------------------------------------ package
 step "Getting the release package"
@@ -120,7 +269,7 @@ if [[ -z $PACKAGE ]]; then
     || fail "cannot download the release list from $RELEASES_URL"
   curl -fsSL --retry 3 -o "$WORK/releases.json.minisig" "$RELEASES_URL/releases.json.minisig" \
     || fail "cannot download the release list signature"
-  minisign -Vq -P "$RELEASE_PUBKEY" -m "$WORK/releases.json" -x "$WORK/releases.json.minisig" \
+  cw_minisign -Vq -P "$RELEASE_PUBKEY" -m "$WORK/releases.json" -x "$WORK/releases.json.minisig" \
     || fail "the release list signature is not valid"
   if [[ -n $VERSION ]]; then
     entry="$(jq -c --arg v "$VERSION" '.releases[] | select(.version == $v)' "$WORK/releases.json")"
@@ -150,6 +299,7 @@ unpacked="$(find "$WORK" -mindepth 1 -maxdepth 1 -type d -name 'claudeweb-*' | h
   || fail "this is not a ClaudeWeb release package"
 package_version="$(cat "$unpacked/VERSION")"
 [[ -z $VERSION || $VERSION == "$package_version" ]] || fail "--version=$VERSION does not match the package ($package_version)"
+cw_check_release_platform "$unpacked" || fail "the release package is incompatible with this server; no installed program or data was replaced"
 if [[ -n $installed_version && $installed_version != "$package_version" ]]; then
   fail "ClaudeWeb $installed_version is installed; update it with: claudeweb update"
 fi
@@ -210,19 +360,22 @@ fi
 
 step "Installing the browser"
 "$CURRENT/bin/claudeweb" install-browser \
-  || say "The built-in browser could not be installed; everything else works. Retry later with: claudeweb install-browser"
+  || warn "The built-in browser could not be installed; everything else works. Retry later with: claudeweb install-browser"
+step "Installing ClaudeDesktop"
+"$CURRENT/bin/claudeweb" install-desktop \
+  || warn "ClaudeDesktop could not be installed; ClaudeWeb works. Retry later with: claudeweb install-desktop"
 
 step "Checking swap"
-"$CURRENT/bin/claudeweb" swap --auto || say "Swap was not added; set it later with: claudeweb swap --size=2G"
+"$CURRENT/bin/claudeweb" swap --auto || warn "Swap was not added; set it later with: claudeweb swap --size=2G"
 
 step "Turning off IPv6"
 # Done only when this session itself is not using IPv6, so the change cannot cut it off.
 client="${SSH_CONNECTION:-}"
 client="${client%% *}"
 if [[ $client == *:* && $client != ::ffff:* ]]; then
-  say "This SSH connection uses IPv6, so IPv6 was left on. Connect over IPv4 and run the installer again to turn it off."
+  warn "This SSH connection uses IPv6, so IPv6 was left on. Connect over IPv4 and run the installer again to turn it off."
 elif ! ip -4 route show default | grep -q .; then
-  say "No IPv4 default route found, so IPv6 was left on."
+  warn "No IPv4 default route found, so IPv6 was left on."
 else
   cat > "$IPV6_SYSCTL" <<'EOF'
 # Written by the ClaudeWeb installer: ClaudeWeb, its terminal and browser use IPv4 only.
@@ -230,7 +383,7 @@ net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 EOF
-  sysctl -q -p "$IPV6_SYSCTL" || say "IPv6 setting saved; it applies after the next reboot."
+  sysctl -q -p "$IPV6_SYSCTL" || warn "IPv6 setting saved; it applies after the next reboot."
 fi
 
 step "Setting the login password"
@@ -276,17 +429,20 @@ if [[ -f $DOMAIN_STATE && "$(jq -r '.phase // empty' "$DOMAIN_STATE")" == ready 
   install -m 0644 "$CURRENT/share/claudeweb-tunnel.service" /etc/systemd/system/claudeweb-tunnel.service
   systemctl daemon-reload
   say "Domain already set up: https://$(jq -r .hostname "$DOMAIN_STATE")"
-elif [[ -r /dev/tty ]] && { : </dev/tty; } 2>/dev/null; then
+elif [[ -t 3 && -r /dev/tty ]] && { : </dev/tty; } 2>/dev/null; then
   # Ctrl+C here only skips this step: the handler keeps the installer going.
   trap 'true' INT
-  "$CURRENT/bin/claudeweb" domain --ask \
-    || say "No domain was set up; ClaudeWeb works without one. Set it up later with: claudeweb domain"
+  # Keep interactive explanations and hidden-input prompts visible. They bypass
+  # the download log, just like the final passwords.
+  "$CURRENT/bin/claudeweb" domain --ask >&3 2>&3 \
+    || warn "No domain was set up; ClaudeWeb works without one. Set it up later with: claudeweb domain"
   trap - INT
 else
   say "No terminal to ask in; set up a domain later with: claudeweb domain"
 fi
 
 # Old release folders are kept for rollback; only the newest few stay.
+step "Finishing installation"
 { ls -1dt "$RELEASES"/*/ 2>/dev/null | tail -n +4 | grep -v "/$package_version/\$" | xargs -r rm -rf; } || true
 
 STAGE="done"
@@ -295,7 +451,6 @@ say ""
 say "ClaudeWeb $package_version is running."
 say ""
 if [[ -n $new_password ]]; then
-  sleep 0.2   # let the log pipe finish the lines above before writing past it
   printf '  Login password:  %s\n' "$new_password" >&3
   echo "  Login password:  (shown on screen only, not saved in this log)" >> "$INSTALL_LOG"
   say "  (show it again with: claudeweb password)"
@@ -323,3 +478,4 @@ else
 fi
 say "Next: sign in to Claude in ClaudeWeb's terminal by running: claude"
 say "Manage ClaudeWeb with: claudeweb help"
+print_welcome

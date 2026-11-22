@@ -249,11 +249,20 @@
     "header": {
       "renameHint": "點擊重新命名",
       "renameLabel": "對話標題",
-      "context": "側邊欄"
+      "context": "側邊欄",
+      "desktop": "開啟ClaudeDesktop"
     },
     "inspector": {
       "changes": "改動",
       "noChanges": "點擊改動彙總卡片裡的檔案，在這裡查看具體改動。"
+    },
+    "desktop": {
+      "title": "ClaudeDesktop",
+      "maximize": "全屏",
+      "restore": "退出全屏",
+      "minimize": "最小化",
+      "close": "关闭ClaudeDesktop",
+      "unavailable": "ClaudeDesktop 尚未安装或图形依赖不完整，请在服务器运行 sudo claudeweb install-desktop。"
     }
   }
 }

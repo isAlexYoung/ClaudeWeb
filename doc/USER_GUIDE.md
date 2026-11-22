@@ -9,13 +9,16 @@ WebDesktop, and common problems. Every `claudeweb` command runs as root;
 
 ## 1. Install
 
-You need a Debian 12 (amd64) server you can reinstall, with at least 2 CPU
+You need a Debian 12 or Ubuntu 22.04 LTS (amd64) server you can reinstall, with at least 2 CPU
 cores and 2 GB of memory.
+
+This describes test release 2.0.3, including the Ubuntu 22.04 adaptation.
+Older Debian-only packages must not be installed on Ubuntu. See the [platform plan](LINUX_COMPATIBILITY_PLAN.md) for acceptance status.
 
 As root (only test releases exist so far, so name the version):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.2
+curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.3
 ```
 
 Signed in as a user with sudo, write `sudo bash` instead of `bash`. The installer:
@@ -25,6 +28,12 @@ Signed in as a user with sudo, write `sudo bash` instead of `bash`. The installe
 - generates the **login password** and the **sudo password** and shows them
   once at the end (later: `claudeweb password`, `claudeweb sudo-password`);
 - finally offers to set up a domain (press Enter to skip; see section 3).
+
+The installer shows 15 numbered stages and ends with a `welcome to`
+/ `CLAUDEWEB` banner. Download and dependency output stays in
+`/var/log/claudeweb/install.log` (root only). A failed stage shows a short error
+excerpt and the log path. Interactive domain prompts and final passwords remain
+visible; passwords are not written to that log.
 
 Running the same command again repairs an installation of that version; it
 never changes the login password or any data.

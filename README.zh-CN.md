@@ -7,15 +7,15 @@ ClaudeWeb 是 [Claude Code](https://docs.claude.com/en/docs/claude-code/overview
 对话、项目、终端、文件面板、定时任务、任务看板和内置浏览器，全部运行在这台服务器上，
 使用官方 Claude CLI。
 
-> **状态：测试版。** ClaudeWeb 2.0.2 已作为测试版发布，用于在真实服务器上验收；
+> **状态：测试版。** ClaudeWeb 2.0.3 已作为测试版发布，用于在真实服务器上验收；
 > 还没有正式版。在一台可以重装的 Debian 12 服务器上试用时，需要指定版本：
 >
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.2
+> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.3
 > ```
 >
 > 以 root 运行。如果用的是有 sudo 权限的普通用户，把 `bash` 换成 `sudo bash`。
-> 已装了较早测试版的服务器用 `claudeweb update --version=2.0.2` 更新（设置 > 关于 只提供正式版）。
+> 已装了较早测试版的服务器用 `claudeweb update --version=2.0.3` 更新（设置 > 关于 只提供正式版）。
 >
 > [使用说明](doc/USER_GUIDE.zh-CN.md)介绍安装、SSH 隧道与域名访问、CMCP 连接、从 WebDesktop 迁移和常见问题。
 
@@ -47,7 +47,7 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 
 计划中的运行要求：
 
-- 先支持 Debian 12（amd64），之后支持 Ubuntu。
+- 2.0.3 测试版面向 Debian 12 和 Ubuntu 22.04 LTS（amd64），仍需进行真实服务器及账号交互验收；其他系统见[适配计划](doc/LINUX_COMPATIBILITY_PLAN.md)。
 - 至少 2 核 CPU、2 GB 内存。安装程序会根据机器配置设置交换空间（swap）。
 - 只在 `127.0.0.1` 上监听 3001 端口。没有域名时通过 SSH 隧道访问；有域名时通过
   Cloudflare Tunnel 访问。手机和平板需要域名。
@@ -99,7 +99,7 @@ npm test             # server tests
 npm run test:client  # browser-side tests
 ```
 
-在测试服务器（Debian 12 amd64，需要 `build-essential`、`python3`、`git`、`curl`、`xz-utils`）上构建并安装：
+在 Ubuntu 22.04 amd64 构建服务器（需要 `build-essential`、`pkg-config`、`python3`、`git`、`curl`、`xz-utils`）上构建；安装验收使用可重装的独立测试环境：
 
 ```bash
 bash packaging/build-release.sh --version=2.0.0

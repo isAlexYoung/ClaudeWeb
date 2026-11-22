@@ -60,6 +60,15 @@ test('the update confirmation says how many running conversations the restart st
   expect(mocks.update).not.toHaveBeenCalled();
 });
 
+test('explains an incompatible package without claiming that a restart or rollback happened', async () => {
+  mocks.status.mockResolvedValue(json(status({}, { state: 'failed', error: 'CLAUDEWEB_PLATFORM_INCOMPATIBLE' })));
+  render(<ClaudeWebUpdateSection reload={vi.fn()} />);
+  const message = (await screen.findByRole('alert')).textContent;
+  expect(message).toContain("This update cannot run on this server's system. The current version is still running and your data was kept.");
+  expect(message).not.toContain('CLAUDEWEB_PLATFORM_INCOMPATIBLE');
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+
 test('updating to a version that is already installed shows up to date, not an error', async () => {
   mocks.status.mockResolvedValue(json(status()));
   mocks.check

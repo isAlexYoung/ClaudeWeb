@@ -67,7 +67,12 @@ export function useClaudeWebUpdate(reload: () => void = () => window.location.re
           target.current = first.status.version ?? null;
           setPhase('updating');
           timer.current = setTimeout(() => void poll(), POLL_MS);
-        } else setPhase('ready');
+        } else {
+          // A rejected package can finish before About opens (or the page reloads).
+          // Keep its explanation visible even though no update is active now.
+          if (first.status.state === 'failed') setError(first.status.error ?? 'CLAUDEWEB_UPDATE_FAILED');
+          setPhase('ready');
+        }
       } catch {
         if (alive.current) setPhase('ready');
       }

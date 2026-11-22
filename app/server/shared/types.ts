@@ -1797,3 +1797,7 @@ export type ProjectMemoryEntry = {
 export type ProjectMemorySnapshot = {
   projectId: string; path: string; version: string; entries: ProjectMemoryEntry[];
 };
+
+//----------------- GRAPHICAL APPLICATION TRANSPORT ------------
+/** Bounded HTTP result shared by graphical-session and its authenticated application routes. */
+export type GraphicalReply = { status: number; headers: Record<string, string>; body: Buffer };

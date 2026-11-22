@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end check of the built-in browser on a disposable Debian 12 machine, as root:
+# End-to-end browser check on disposable Debian 12 / Ubuntu 22.04 amd64, as root:
 #   bash packaging/test-browser.sh /path/to/claudeweb-X.Y.Z-linux-x64.tar.xz
 set -uo pipefail
 PACKAGE="$1"

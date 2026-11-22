@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end installer check on a disposable Debian 12 machine (WSL or VM), as root:
+# End-to-end installer check on disposable Debian 12 / Ubuntu 22.04 amd64 (WSL or VM), as root:
 #   bash packaging/test-install.sh /path/to/claudeweb-X.Y.Z-linux-x64.tar.xz
 # Installs, signs in, re-runs the installer, exercises `claudeweb`, uninstalls.
 # Prints PASS/FAIL per step and never prints the login password.

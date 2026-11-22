@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Asterisk,
   Braces,
   CheckSquare,
   Copy,
@@ -21,6 +22,8 @@ import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceCont
 import type { Project, ProjectSession, TranscriptExportFormat } from '@/shared/types';
 
 type IntegratedWorkspaceHeaderProps = {
+  onDesktop?: () => void;
+  minimizedTools?: { terminal: boolean; browser: boolean; desktop: boolean };
   project: Project | null;
   session: ProjectSession | null;
   mobile: boolean;
@@ -133,14 +136,20 @@ export default function IntegratedWorkspaceHeader(props: IntegratedWorkspaceHead
       </div>
       <div className="workspace-header-tools">
         {notice && <span className="workspace-header-notice" role="status">{notice}</span>}
-        <button className="workspace-icon-button" aria-label={t('workspace.header.terminal')} title={t('workspace.header.terminal')} onClick={() => props.onTool('shell')}>
+        <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.desktop')} title={t('workspace.header.desktop')} onClick={props.onDesktop}>
+          <Asterisk size={19} />
+          {props.minimizedTools?.desktop && <span className="workspace-tool-running-dot" data-testid="desktop-running-dot" />}
+        </button>
+        <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.terminal')} title={t('workspace.header.terminal')} onClick={() => props.onTool('shell')}>
           <TerminalSquare size={19} />
+          {props.minimizedTools?.terminal && <span className="workspace-tool-running-dot" data-testid="terminal-running-dot" />}
         </button>
         <button className="workspace-icon-button" aria-label={t('workspace.header.files')} title={t('workspace.header.files')} onClick={() => props.onTool('files')}>
           <Folder size={19} />
         </button>
-        <button className="workspace-icon-button" aria-label={t('workspace.header.browser')} title={t('workspace.header.browser')} onClick={() => props.onTool('browser')}>
+        <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.browser')} title={t('workspace.header.browser')} onClick={() => props.onTool('browser')}>
           <Globe size={19} />
+          {props.minimizedTools?.browser && <span className="workspace-tool-running-dot" data-testid="browser-running-dot" />}
         </button>
         <div className="workspace-more-anchor" ref={menuRef}>
           <button

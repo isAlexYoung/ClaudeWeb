@@ -45,19 +45,29 @@ jobs:
         run: npm test
 
   package:
-    name: Build test packages on Debian 12
+    name: Build portable test packages on Ubuntu 22.04
     runs-on: ubuntu-24.04
-    # Native modules in the package are built against Debian 12's glibc.
-    container: debian:12
+    # Build native modules on the oldest supported glibc (2.35).
+    container: ubuntu:22.04
     timeout-minutes: 45
     steps:
       - name: Build tools
         run: |
           apt-get update -q
           DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-            git ca-certificates curl xz-utils python3 build-essential jq minisign
+            git ca-certificates curl xz-utils python3 build-essential pkg-config jq
       - uses: actions/checkout@v4
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Installer output checks
+        shell: bash
+        run: |
+          python3 packaging/sync-platform.py --check
+          bash -n install.sh
+          python3 packaging/test-install-output.py
+          . packaging/platform.sh
+          cw_platform_detect
+          cw_ensure_minisign
+          python3 packaging/test-platform.py
       - name: Packages and lists signed with a key made for this run
         run: bash packaging/ci/prep-test-releases.sh test-releases
         env:
@@ -70,13 +80,14 @@ jobs:
           compression-level: 0
 
   vm:
-    name: Fresh Debian 12 VM - ${{ matrix.test }}
+    name: Fresh ${{ matrix.os }} VM - ${{ matrix.test }}
     needs: package
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
+        os: [debian-12, ubuntu-22.04]
         test: [install, update, browser, devices, sudo]
     steps:
       - uses: actions/checkout@v4
@@ -92,12 +103,12 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/claudeweb-ci
-          key: debian-12-genericcloud-amd64-20261018-2635
+          key: claudeweb-vm-${{ matrix.os }}-20261122
       - name: Run the test in the VM
-        run: python3 packaging/ci/run-vm.py --test ${{ matrix.test }} --releases test-releases --out vm-results
+        run: python3 packaging/ci/run-vm.py --os ${{ matrix.os }} --test ${{ matrix.test }} --releases test-releases --out vm-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: vm-${{ matrix.test }}
+          name: vm-${{ matrix.os }}-${{ matrix.test }}
           path: vm-results
           retention-days: 7

@@ -1,10 +1,11 @@
 import express from 'express';
 
-import type { BrowserReply, createBrowserService } from '@/modules/browser/browser.service.js';
+import type { createBrowserService } from '@/modules/browser/browser.service.js';
+import type { GraphicalReply } from '@/shared/types.js';
 
 type BrowserService = ReturnType<typeof createBrowserService>;
 
-function reply(operation: (req: express.Request) => Promise<BrowserReply>) {
+function reply(operation: (req: express.Request) => Promise<GraphicalReply>) {
   return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     try {
       const result = await operation(req);

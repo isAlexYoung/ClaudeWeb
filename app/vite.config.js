@@ -41,11 +41,21 @@ export default defineConfig(({ mode }) => {
       port: parseInt(env.VITE_PORT) || 5173,
       proxy: {
         '/api': `http://${proxyHost}:${serverPort}`,
+        // noVNC is a prebuilt public ES module; keep it out of Vite's import transforms.
+        '/novnc': `http://${proxyHost}:${serverPort}`,
         '/ws': {
           target: `ws://${proxyHost}:${serverPort}`,
           ws: true
         },
         '/shell': {
+          target: `ws://${proxyHost}:${serverPort}`,
+          ws: true
+        },
+        '/browser-ws': {
+          target: `ws://${proxyHost}:${serverPort}`,
+          ws: true
+        },
+        '/claude-desktop-ws': {
           target: `ws://${proxyHost}:${serverPort}`,
           ws: true
         },

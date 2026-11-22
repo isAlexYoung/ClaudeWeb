@@ -19,8 +19,12 @@ rebuilt.
 
 ## Steps
 
-On Debian 12 amd64 with `build-essential`, `python3`, `git`, `curl`,
-`xz-utils` and `minisign`:
+Build on Ubuntu 22.04 amd64 with `build-essential`, `pkg-config`, `python3`,
+`git`, `curl`, and `xz-utils`. Native modules are rebuilt against this glibc
+2.35 baseline and the package declares `debian-12` and `ubuntu-22.04` as its
+target platforms beginning with test release 2.0.3; run the target
+acceptance tests before publishing. Keep the signing key on the maintainer's
+machine, where minisign is installed.
 
 1. Commit everything, then build from that commit:
 
@@ -29,7 +33,7 @@ On Debian 12 amd64 with `build-essential`, `python3`, `git`, `curl`,
    ```
 
    Or start the **Release package** workflow (Actions, on the commit to
-   release) and download its artifact: the same script in a clean Debian 12.
+   release) and download its artifact: the same script in a clean Ubuntu 22.04.
    Check the package against its `.sha256` before uploading it. Signing
    (step 4) always happens on the maintainer's machine.
 
@@ -40,6 +44,13 @@ On Debian 12 amd64 with `build-essential`, `python3`, `git`, `curl`,
    release (`packaging/test-update.sh`). `packaging/test-domain.sh` checks
    `claudeweb domain` on a test install against a local stand-in for the
    Cloudflare API.
+
+   CI builds once on Ubuntu 22.04, then runs the installation, update, browser,
+   device and sudo checks in both Debian 12 and Ubuntu 22.04 VMs. Shared platform
+   rules live in `packaging/platform.sh`; after changing them, run
+   `python3 packaging/sync-platform.py` to refresh both standalone entry points.
+   CI rejects stale embedded copies. A VM check alone does not replace the
+   dedicated VPS acceptance recorded in `doc/LINUX_COMPATIBILITY_PLAN.md`.
 
 3. Create the GitHub Release `vX.Y.Z` (marked as a pre-release while the
    channel is `test`) and upload the package.
@@ -56,8 +67,9 @@ On Debian 12 amd64 with `build-essential`, `python3`, `git`, `curl`,
 
    Commit and push `releases.json` and `releases.json.minisig` together.
    Then start the **Check a published release** workflow with the version:
-   it installs the release in a fresh Debian 12 VM with the README's
-   one-line command, using only what is published.
+   select each supported target OS; it installs the release in that fresh VM
+   with the README's one-line command, using only what is published. The old
+   Debian-only 2.0.2 package cannot be used for Ubuntu acceptance.
 
 5. To make it stable later:
 

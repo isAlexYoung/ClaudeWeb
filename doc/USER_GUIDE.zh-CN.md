@@ -8,12 +8,14 @@ CMCP 连接、从 WebDesktop 迁移，以及常见问题。所有 `claudeweb` �
 
 ## 1. 安装
 
-要求：一台可以重装的 Debian 12（amd64）服务器，至少 2 核 CPU、2 GB 内存。
+要求：一台可以重装的 Debian 12 或 Ubuntu 22.04 LTS（amd64）服务器，至少 2 核 CPU、2 GB 内存。
+
+2.0.3 测试版加入 Ubuntu 22.04 LTS amd64 的安装、依赖与构建适配；旧的 Debian 专用安装包不能用于 Ubuntu。真实 VPS 验收状态见 [Linux 适配计划](LINUX_COMPATIBILITY_PLAN.md)。
 
 以 root 运行（现在只有测试版，需要指定版本）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.2
+curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.3
 ```
 
 用有 sudo 权限的普通用户登录时，把 `bash` 换成 `sudo bash`。安装程序会：
@@ -22,6 +24,10 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 - 生成**登录密码**和 **sudo 密码**，只在结束时显示一次（之后用 `claudeweb password`、
   `claudeweb sudo-password` 查看）；
 - 最后询问是否绑定域名（直接回车跳过，见第 3 节）。
+
+2.0.3 的安装器改为显示 15 个编号阶段，成功结束后打印 `welcome to` / `CLAUDEWEB` 字符横幅。
+下载和依赖安装详情保存到 `/var/log/claudeweb/install.log`（仅 root 可读）；失败时显示简短错误摘要和日志位置。
+域名配置提示和最终密码仍显示在终端，密码不会写入该日志。
 
 再次运行同一条命令会修复同版本的安装，不会改动登录密码和数据。
 

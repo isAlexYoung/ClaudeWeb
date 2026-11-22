@@ -4,6 +4,49 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0,
 the first standalone release; everything published before the 2.0.0 stable
 release is a test release.
 
+## Unreleased
+
+## 2.0.3 - 2026-11-22 (test release)
+
+### Changed
+
+- Installers and repair commands accept Ubuntu 22.04 LTS amd64 as
+  well as Debian 12. Platform dependencies are maintained in one shared source;
+  Ubuntu enables Universe when needed and bootstraps the missing minisign tool
+  from a fixed upstream release with a pinned SHA-256.
+- Release packages build their native modules on Ubuntu 22.04 for a common
+  glibc 2.35 baseline. Installation and updating check the package's declared
+  platforms and load SQLite, bcrypt and a PTY before replacing the running
+  version. Existing Debian-only releases are refused on Ubuntu. Settings shows
+  a localized explanation when an incompatible package leaves the old version
+  running, including after reopening Settings. Redirected installations skip
+  the optional domain prompt instead of waiting for invisible terminal input.
+- Packaging CI includes Debian 12 and Ubuntu 22.04 VM targets. Real Ubuntu VPS
+  acceptance and account sign-in remain separate checks; this is a test release.
+- The one-line installer shows 15 numbered stages instead of streaming package
+  download output. Detailed command output stays in the private installation
+  log; failures show a short error excerpt and its path. Domain prompts and
+  final passwords remain visible, with passwords excluded from the log.
+- Successful installation ends with a `welcome to` / `CLAUDEWEB` ASCII banner,
+  using a compact title on narrow terminals. The large lettering uses the
+  reference pale orange (#E0B09D) on its upper three rows and white on its
+  lower two rows. ANSI colors appear only in an interactive terminal; logs
+  and redirected output stay plain text.
+
+### Added
+
+- ClaudeDesktop opens from the asterisk beside Terminal in a fixed modal with
+  full-screen, minimize and close controls. Minimize keeps the app alive;
+  close ends its private process groups and removes runtime files and
+  regenerable Electron caches, preserving sign-in, configuration and keyrings.
+  Closing during startup cancels the window waiter; normal server shutdown also
+  reclaims its graphical sessions.
+- Minimized terminal, browser and ClaudeDesktop tools show an orange dot on
+  their header icons. Restoring keeps the same running session.
+- `claudeweb install-desktop` installs the official signed APT package and its
+  graphical/keyring dependencies. Fresh installs and updates attempt to install
+  Desktop when absent. No stable release is published.
+
 ## 2.0.2 - 2026-11-21 (test release)
 
 ### Added

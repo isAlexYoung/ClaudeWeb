@@ -886,6 +886,7 @@
         "CLAUDEWEB_UPDATE_RUNNING": "已有更新正在进行。",
         "CLAUDEWEB_START_FAILED_ROLLED_BACK": "新版本没能启动，已自动换回原来的版本，数据保留。",
         "CLAUDEWEB_DOWNLOAD_FAILED": "下载失败，请检查服务器到 GitHub 的网络后重试。",
+        "CLAUDEWEB_PLATFORM_INCOMPATIBLE": "此更新不兼容服务器当前的系统，原版本仍在运行，数据保留。",
         "CLAUDEWEB_CATALOGUE_UNAVAILABLE": "无法获取版本列表，请稍后重试。",
         "CLAUDEWEB_UPDATER_UNAVAILABLE": "ClaudeWeb 更新程序没有响应，请稍后重试。",
         "other": "更新失败（{{code}}）。",

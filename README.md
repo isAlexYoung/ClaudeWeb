@@ -7,17 +7,17 @@ You install it on your own Linux server and use Claude Code from a browser:
 chats, projects, a terminal, a file panel, scheduled tasks, a task board and a
 built-in browser, all running on that server with the official Claude CLI.
 
-> **Status: test release.** ClaudeWeb 2.0.2 is out as a test release for
+> **Status: test release.** ClaudeWeb 2.0.3 is out as a test release for
 > checking on real servers; there is no stable release yet. To try it on a
-> disposable Debian 12 server, name the version:
+> disposable Debian 12 or Ubuntu 22.04 amd64 server, name the version:
 >
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.2
+> curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash -s -- --version=2.0.3
 > ```
 >
 > Run it as root. Signed in as another user with sudo, write `sudo bash`
 > instead of `bash`. A server on an earlier test release updates with
-> `claudeweb update --version=2.0.2` (Settings > About offers stable
+> `claudeweb update --version=2.0.3` (Settings > About offers stable
 > releases only).
 >
 > The [user guide](doc/USER_GUIDE.md) covers installing, the SSH tunnel and
@@ -58,7 +58,9 @@ show it again with `claudeweb password` and replace it with
 
 Planned requirements:
 
-- Debian 12 (amd64) first; Ubuntu later.
+- Test release 2.0.3 targets Debian 12 and Ubuntu 22.04 LTS amd64.
+  It is still under acceptance testing, including real account sign-in. See the
+  [platform plan](doc/LINUX_COMPATIBILITY_PLAN.md) for later targets.
 - At least 2 CPU cores and 2 GB of memory. The installer sizes swap from the
   machine.
 - Port 3001 on `127.0.0.1` only. Without a domain you reach ClaudeWeb through
@@ -133,8 +135,8 @@ npm test             # server tests
 npm run test:client  # browser-side tests
 ```
 
-To build a release package and install it on a test server (Debian 12 amd64,
-with `build-essential`, `python3`, `git`, `curl` and `xz-utils`):
+To build on Ubuntu 22.04 amd64 (with `build-essential`, `pkg-config`, `python3`,
+`git`, `curl` and `xz-utils`) and install on a disposable test server:
 
 ```bash
 bash packaging/build-release.sh --version=2.0.0

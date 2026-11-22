@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+import { DesktopModal } from '@/modules/claude-desktop';
 import { BrowserPanel } from '@/modules/browser-panel';
 import { StandaloneShell } from '@/modules/standalone-shell';
 import type { Project, ProjectSession } from '@/shared/types';
@@ -12,6 +13,9 @@ type TerminalTool = { project: Project; session: ProjectSession | null };
 
 type WorkspaceTools = {
   terminal: TerminalTool | null;
+  desktop: { minimized: boolean } | null;
+  openDesktop: () => void;
+  minimized: { terminal: boolean; browser: boolean; desktop: boolean };
   /** True while the browser panel is open (shown or parked). */
   browser: boolean;
   /** Opens the terminal for this project and conversation, or keeps the one already open. */
@@ -42,10 +46,16 @@ const Context = createContext<WorkspaceTools | null>(null);
  * moving to another chat does not restart it.
  */
 export function WorkspaceToolsProvider({ children }: { children: ReactNode }) {
+  // Live tools survive navigation and minimizing until explicitly closed.
   const [terminal, setTerminal] = useState<TerminalTool | null>(null);
+  // Browser lifetime is independent of its visible inspector.
   const [browser, setBrowser] = useState(false);
+  // Dock attachment determines whether each live tool is minimized.
   const [visible, setVisible] = useState<Record<WorkspaceToolName, boolean>>({ terminal: false, browser: false });
   const parking = useRef<HTMLDivElement>(null);
+  // One desktop modal retains its noVNC connection while hidden.
+  const [desktop, setDesktop] = useState<{ minimized: boolean } | null>(null);
+  // Stable portal surfaces preserve component and connection identities.
   const [surfaces] = useState(() => {
     const surface = () => {
       const element = document.createElement('div');
@@ -75,8 +85,10 @@ export function WorkspaceToolsProvider({ children }: { children: ReactNode }) {
   const openBrowser = useCallback(() => setBrowser(true), []);
   const closeBrowser = useCallback(() => setBrowser(false), []);
 
-  const value = useMemo<WorkspaceTools>(() => ({ terminal, browser, openTerminal, closeTerminal, openBrowser, closeBrowser, attach }),
-    [terminal, browser, openTerminal, closeTerminal, openBrowser, closeBrowser, attach]);
+  const openDesktop = useCallback(() => setDesktop({ minimized: false }), []);
+
+  const value = useMemo<WorkspaceTools>(() => ({ terminal, browser, desktop, openDesktop, minimized: { terminal: Boolean(terminal) && !visible.terminal, browser: browser && !visible.browser, desktop: Boolean(desktop?.minimized) }, openTerminal, closeTerminal, openBrowser, closeBrowser, attach }),
+    [terminal, browser, desktop, openDesktop, visible, openTerminal, closeTerminal, openBrowser, closeBrowser, attach]);
 
   return (
     <Context.Provider value={value}>
@@ -87,6 +99,7 @@ export function WorkspaceToolsProvider({ children }: { children: ReactNode }) {
           isActive={visible.terminal} endSessionOnUnmount />,
         surfaces.terminal,
       )}
+      {desktop && <DesktopModal minimized={desktop.minimized} onMinimize={() => setDesktop({ minimized: true })} onClose={() => setDesktop(null)} />}
       {browser && createPortal(<BrowserPanel visible={visible.browser} />, surfaces.browser)}
     </Context.Provider>
   );

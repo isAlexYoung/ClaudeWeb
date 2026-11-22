@@ -876,6 +876,7 @@
         "CLAUDEWEB_UPDATE_RUNNING": "An update is already running.",
         "CLAUDEWEB_START_FAILED_ROLLED_BACK": "The new version did not start, so the previous version was started again. Your data was kept.",
         "CLAUDEWEB_DOWNLOAD_FAILED": "The download failed. Check the server's connection to GitHub and try again.",
+        "CLAUDEWEB_PLATFORM_INCOMPATIBLE": "This update cannot run on this server's system. The current version is still running and your data was kept.",
         "CLAUDEWEB_CATALOGUE_UNAVAILABLE": "The list of versions could not be loaded. Try again later.",
         "CLAUDEWEB_UPDATER_UNAVAILABLE": "The ClaudeWeb updater did not answer. Try again later.",
         "other": "The update failed ({{code}}).",

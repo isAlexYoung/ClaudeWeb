@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end check of sudo confirmation on a disposable Debian 12 machine, as root:
+# End-to-end sudo check on disposable Debian 12 / Ubuntu 22.04 amd64, as root:
 #   bash packaging/test-sudo.sh /path/to/claudeweb-X.Y.Z-linux-x64.tar.xz
 # Runs Claude's `sudo` shim as the claudeweb user, the way a command in a chat
 # does, and answers through the web API the way the page does.

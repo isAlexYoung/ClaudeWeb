@@ -1,10 +1,10 @@
-"""CI only: run one packaging test in a fresh Debian 12 VM and throw the VM away.
+"""CI only: run one packaging test in a fresh supported VM and throw it away.
 
-usage: python3 packaging/ci/run-vm.py --test install|update|browser|devices|sudo --releases DIR --out DIR
+usage: python3 packaging/ci/run-vm.py --os debian-12|ubuntu-22.04 --test install|update|browser|devices|sudo --releases DIR --out DIR
        python3 packaging/ci/run-vm.py --test public --version X.Y.Z --out DIR   (a published release, from the internet)
 
-The GitHub Ubuntu runner boots the pinned Debian 12 cloud image (checked against
-Debian's published SHA-512) under QEMU, 2 vCPUs and 4 GiB like a small VPS, logs
+The GitHub runner boots a pinned Debian/Ubuntu cloud image (digest checked
+against the publisher's checksum file) under QEMU, 2 vCPUs and 4 GiB, logs
 in with a key made for this run, copies install.sh (the copy that trusts the
 run's test key), packaging/ and the test packages to /root/cw, runs the test as
 root and copies its logs back. The exit code is the test's.
@@ -22,9 +22,20 @@ import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
-IMAGE_BASE = 'https://cloudfront.debian.net/cdimage/cloud/bookworm/20261018-2635/'
-IMAGE = 'debian-12-genericcloud-amd64-20261018-2635.qcow2'
-IMAGE_SHA512 = 'dc0d7b526a3a9a9265142fe8e903984c03f8d605ac4ba6f14d15d27988a69581fb05fc06cd2a6d79f6eaf68ba9725f2eb38b5ddd64ad166faadad279af776c9e'
+IMAGES = {
+    'debian-12': {
+        'base': 'https://cloudfront.debian.net/cdimage/cloud/bookworm/20261018-2635/',
+        'name': 'debian-12-genericcloud-amd64-20261018-2635.qcow2',
+        'algorithm': 'sha512',
+        'digest': 'dc0d7b526a3a9a9265142fe8e903984c03f8d605ac4ba6f14d15d27988a69581fb05fc06cd2a6d79f6eaf68ba9725f2eb38b5ddd64ad166faadad279af776c9e',
+    },
+    'ubuntu-22.04': {
+        'base': 'https://cloud-images.ubuntu.com/minimal/releases/jammy/release-20261113/',
+        'name': 'ubuntu-22.04-minimal-cloudimg-amd64.img',
+        'algorithm': 'sha256',
+        'digest': 'dac74360a7d0fa6b848d08134e31c0da0615467ffd712575aae65c825882411b',
+    },
+}
 PORT = 22322
 TESTS = {
     'install': ('test-install.sh', 'releases/claudeweb-2.0.0-linux-x64.tar.xz', ['claudeweb-2.0.0-linux-x64.tar.xz']),
@@ -42,31 +53,35 @@ def run(args, **kwargs):
     return subprocess.run(args, check=True, **kwargs)
 
 
-def sha512(path):
-    digest = hashlib.sha512()
+def checksum(path, algorithm):
+    digest = hashlib.new(algorithm)
     with open(path, 'rb') as stream:
         for chunk in iter(lambda: stream.read(1 << 20), b''):
             digest.update(chunk)
     return digest.hexdigest()
 
 
-def base_image(cache):
+def base_image(cache, platform):
+    spec = IMAGES[platform]
+    cache = cache / platform
     cache.mkdir(parents=True, exist_ok=True)
-    image = cache / IMAGE
-    if not image.exists() or sha512(image) != IMAGE_SHA512:
-        sums = cache / 'SHA512SUMS'
-        run(['curl', '-fsSL', '--retry', '3', '-o', str(sums), IMAGE_BASE + 'SHA512SUMS'])
-        published = next(line.split()[0] for line in sums.read_text().splitlines() if line.split()[-1].lstrip('*') == IMAGE)
-        if published != IMAGE_SHA512:
-            raise SystemExit('Debian publishes another checksum for the pinned image')
-        run(['curl', '-fsSL', '--retry', '3', '-o', str(image), IMAGE_BASE + IMAGE], timeout=900)
-        if sha512(image) != IMAGE_SHA512:
-            raise SystemExit('Downloaded Debian image does not match its checksum')
+    image = cache / spec['name']
+    if not image.exists() or checksum(image, spec['algorithm']) != spec['digest']:
+        sums_name = spec['algorithm'].upper() + 'SUMS'
+        sums = cache / sums_name
+        run(['curl', '-fsSL', '--retry', '3', '-o', str(sums), spec['base'] + sums_name])
+        published = next(line.split()[0] for line in sums.read_text().splitlines() if line.split()[-1].lstrip('*') == spec['name'])
+        if published != spec['digest']:
+            raise SystemExit('Publisher has another checksum for the pinned image')
+        run(['curl', '-fsSL', '--retry', '3', '-o', str(image), spec['base'] + spec['name']], timeout=900)
+        if checksum(image, spec['algorithm']) != spec['digest']:
+            raise SystemExit('Downloaded image does not match its checksum')
     return image
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--os', choices=sorted(IMAGES), default='debian-12')
     parser.add_argument('--test', choices=sorted(TESTS), required=True)
     parser.add_argument('--releases', type=Path)
     parser.add_argument('--version')
@@ -84,7 +99,7 @@ def main():
         raise SystemExit('--releases is required')
     out = options.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
-    image = base_image(options.cache)
+    image = base_image(options.cache, options.os)
 
     with tempfile.TemporaryDirectory(prefix='claudeweb-vm-') as temp:
         work = Path(temp)

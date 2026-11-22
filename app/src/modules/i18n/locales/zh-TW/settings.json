@@ -1,5 +1,12 @@
 {
   "title": "設定",
+  "about": {
+    "update": {
+      "errors": {
+        "CLAUDEWEB_PLATFORM_INCOMPATIBLE": "此更新不相容於伺服器目前的系統，原版本仍在執行，資料保留。"
+      }
+    }
+  },
   "tabs": {
     "account": "帳戶",
     "permissions": "權限",

@@ -1,6 +1,6 @@
 name: Release package
 
-# Builds a release package from the chosen commit in a clean Debian 12, the
+# Builds a release package from the chosen commit in a clean Ubuntu 22.04, the
 # same way as packaging/build-release.sh on a maintainer's machine, and keeps
 # it as an artifact. Publishing stays with the maintainer: the package is
 # checked, uploaded to the GitHub Release, and added to the signed list with
@@ -26,14 +26,14 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    container: debian:12
+    container: ubuntu:22.04
     timeout-minutes: 45
     steps:
       - name: Build tools
         run: |
           apt-get update -q
           DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-            git ca-certificates curl xz-utils python3 build-essential
+            git ca-certificates curl xz-utils python3 build-essential pkg-config
       - uses: actions/checkout@v4
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: The version is the one in app/package.json

@@ -1,12 +1,18 @@
 name: Check a published release
 
-# Installs a published release in a fresh Debian 12 VM exactly as the README
+# Installs a published release in a fresh selected VM exactly as the README
 # says, from the public install.sh, the signed list and the GitHub Release.
 # Run it after publishing, and again after promoting a release to stable.
 
 on:
   workflow_dispatch:
     inputs:
+      os:
+        description: 'Target OS (old Debian-only releases cannot install on Ubuntu)'
+        required: true
+        default: debian-12
+        type: choice
+        options: [debian-12, ubuntu-22.04]
       version:
         description: 'Published version, for example 2.0.0'
         required: true
@@ -34,15 +40,16 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/claudeweb-ci
-          key: debian-12-genericcloud-amd64-20261018-2635
+          key: claudeweb-vm-${{ inputs.os }}-20261122
       - name: Public one-line install (and update) in a fresh VM
         env:
           VERSION: ${{ inputs.version }}
           FROM: ${{ inputs.from }}
-        run: python3 packaging/ci/run-vm.py --test public --version "$VERSION" ${FROM:+--from "$FROM"} --out vm-results
+          TARGET_OS: ${{ inputs.os }}
+        run: python3 packaging/ci/run-vm.py --os "$TARGET_OS" --test public --version "$VERSION" ${FROM:+--from "$FROM"} --out vm-results
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: public-install-${{ inputs.version }}
+          name: public-install-${{ inputs.os }}-${{ inputs.version }}
           path: vm-results
           retention-days: 7

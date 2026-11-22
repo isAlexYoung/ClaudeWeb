@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # End-to-end check of signed releases, `claudeweb update` and `claudeweb rollback`
-# on a disposable Debian 12 machine, as root:
+# on a disposable Debian 12 / Ubuntu 22.04 amd64 machine, as root:
 #   bash packaging/test-update.sh /path/to/mock
-# MOCK holds the packages (2.0.0, 2.0.1, a 2.0.2 that cannot start) and two
+# MOCK holds 2.0.0, 2.0.1, a 2.0.2 that cannot start, an incompatible 2.0.3, and two
 # signed lists: A/ (2.0.0 stable, 2.0.1 and 2.0.2 test) and B/ (2.0.1 promoted).
 # The lists name packages as file:///root/mock/<name>. The lists themselves are
 # served from /srv: the web request service has ProtectHome and cannot read /root.
@@ -31,6 +31,12 @@ check "signed in" "[[ -n \$token && \$token != null ]]"
 
 echo "== update --check sees no newer stable release"
 check "update --check: up to date" "claudeweb update --check | grep -q 'up to date'"
+
+echo "== a signed package for another platform leaves the running version alone"
+claudeweb update --version=2.0.3 > /tmp/cw-u-platform.out 2>&1
+check "an incompatible signed package is refused" "[[ $? -ne 0 ]] && [[ \$(jq -r .error /run/claudeweb-update/status.json) == CLAUDEWEB_PLATFORM_INCOMPATIBLE ]]"
+check "the old service keeps running after platform refusal" "[[ \$(version) == 2.0.0 ]] && systemctl is-active --quiet claudeweb && token_ok \"\$token\""
+check "the incompatible package was not installed or switched" "[[ ! -e /opt/claudeweb/releases/2.0.3 && ! -e /var/lib/claudeweb-update/state.json ]]"
 
 echo "== update to a test release"
 claudeweb update --version=2.0.1 > /tmp/cw-u1.out 2>&1

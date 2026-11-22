@@ -34,6 +34,7 @@ import { settingsRoutes } from './modules/settings/index.js';
 import { backupDownloadRoutes, backupRoutes } from './modules/backup/index.js';
 import { claudeWebUpdateRoutes } from './modules/claudeweb-update/index.js';
 import { browserRoutes, browserService } from './modules/browser/index.js';
+import { desktopRoutes, desktopService } from './modules/claude-desktop/index.js';
 import { startSudoConfirmation, sudoRoutes } from './modules/sudo/index.js';
 import { startChildOomPriority } from './modules/oom-priority/index.js';
 import { createAgentModule } from './modules/agent/index.js';
@@ -124,6 +125,7 @@ createWebSocketServer(server, {
     },
     getPluginPort,
     browser: browserService,
+    desktop: desktopService,
     sessionAlive: loginSessionAlive,
 });
 
@@ -204,6 +206,7 @@ app.get('/api/claudeweb-update/activity', authenticateToken, (_req: Request, res
 app.use('/api/claudeweb-update', authenticateToken, claudeWebUpdateRoutes);
 // The browser panel: the server's Chromium on this server.
 app.use('/api/browser', authenticateToken, browserRoutes);
+app.use('/api/claude-desktop', authenticateToken, desktopRoutes);
 // Claude's sudo requests waiting for the user, and the answers.
 app.use('/api/sudo', authenticateToken, sudoRoutes);
 
@@ -439,6 +442,7 @@ async function startServer() {
         // Clean up plugin processes on shutdown
         const shutdownRuntimeServices = async () => {
             closeSideChats();
+            await Promise.allSettled([browserService.shutdown(), desktopService.shutdown()]);
             try {
                 await stopAllPlugins();
             } catch (err) {

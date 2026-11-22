@@ -5,6 +5,16 @@ import {
 } from '@/shared/authToken';
 import type { ScheduledTaskInput, UsageDashboardRange } from '@/shared/types';
 
+/** GraphicalPanel uses the authenticated same-origin relay for browser and ClaudeDesktop screens. */
+export function graphicalSocketUrl(application: 'browser' | 'desktop', sid: string, width: number, height: number): string | null {
+  const token = getStoredAuthToken();
+  if (!token) return null;
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = new URL(`/${application === 'desktop' ? 'claude-desktop' : 'browser'}-ws`, `${protocol}//${window.location.host}`);
+  url.search = new URLSearchParams({ sid, w: String(width), h: String(height), token }).toString();
+  return url.toString();
+}
+
 // Headers are a plain record rather than the full `HeadersInit` union so the
 // defaults below can be merged with a caller's headers by spreading.
 export type ApiRequestOptions = Omit<RequestInit, 'headers'> & {
@@ -336,6 +346,17 @@ export const api = {
     writeImage: (sid: string, png: Blob, signal?: AbortSignal) => authenticatedFetch(`/api/browser/image-clipboard${query({ sid, op: 'write' })}`,
       { method: 'POST', body: png, headers: { 'Content-Type': 'image/png' }, signal }),
     end: (sid: string) => post('/api/browser/end', { sid }, { keepalive: true }),
+  },
+  desktop: {
+    available: () => get('/api/claude-desktop/available'),
+    status: (sid: string, signal?: AbortSignal) => get(`/api/claude-desktop/status${query({ sid })}`, { signal }),
+    text: (body: { sid: string; op: string; text?: string }, signal?: AbortSignal) =>
+      post('/api/claude-desktop/text-clipboard', body, { signal }),
+    readImage: (sid: string, signal?: AbortSignal) =>
+      authenticatedFetch(`/api/claude-desktop/image-clipboard${query({ sid, op: 'read' })}`, { method: 'POST', signal }),
+    writeImage: (sid: string, png: Blob, signal?: AbortSignal) => authenticatedFetch(`/api/claude-desktop/image-clipboard${query({ sid, op: 'write' })}`,
+      { method: 'POST', body: png, headers: { 'Content-Type': 'image/png' }, signal }),
+    end: (sid: string) => post('/api/claude-desktop/end', { sid }, { keepalive: true }),
   },
 
   // Claude's sudo requests waiting for the user. The password goes to sudo once and is not kept.

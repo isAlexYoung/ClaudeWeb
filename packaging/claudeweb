@@ -49,6 +49,104 @@ CF_TOKEN=""
 die() { echo "claudeweb: $*" >&2; exit 1; }
 need_root() { [[ $EUID -eq 0 ]] || die "run this as root (for example: sudo claudeweb $1)"; }
 
+# BEGIN GENERATED PLATFORM RULES (packaging/platform.sh)
+# Shared installer/management platform rules. Embedded by sync-platform.py so
+# the public one-line installer never sources another unverified download.
+cw_platform_select() {
+  CW_PLATFORM=""
+  CW_BASE_PACKAGES=(ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq sudo)
+  CW_GUI_PACKAGES=(tigervnc-standalone-server openbox xauth x11-utils xdotool xclip
+    xfonts-base fonts-dejavu-core fonts-noto-cjk dbus dbus-x11 fcitx5
+    fcitx5-chinese-addons fcitx5-frontend-gtk3 fcitx5-frontend-qt5)
+  CW_DESKTOP_PACKAGES=(gnupg gnome-keyring libsecret-1-0)
+  [[ $3 == x86_64 ]] || { echo "only amd64 (x86_64) is supported (found $3)" >&2; return 1; }
+  case "$1:$2" in
+    debian:12) CW_PLATFORM=debian-12; CW_BASE_PACKAGES+=(minisign) ;;
+    ubuntu:22.04) CW_PLATFORM=ubuntu-22.04 ;;
+    *) echo "only Debian 12 and Ubuntu 22.04 LTS are enabled (found ${1:-unknown} ${2:-unknown})" >&2; return 1 ;;
+  esac
+}
+
+cw_platform_detect() {
+  local release_file="${1:-/etc/os-release}" os_id os_version
+  [[ -r $release_file ]] || { echo "cannot read $release_file" >&2; return 1; }
+  # Keep VERSION, ID and other os-release variables out of the caller's scope.
+  os_id="$(. "$release_file"; printf '%s' "${ID:-}")"
+  os_version="$(. "$release_file"; printf '%s' "${VERSION_ID:-}")"
+  cw_platform_select "$os_id" "$os_version" "$(uname -m)"
+}
+
+cw_prepare_apt() {
+  apt-get -o DPkg::Lock::Timeout=180 update -q || return
+  if [[ $CW_PLATFORM == ubuntu-22.04 ]] && ! LC_ALL=C apt-cache policy tigervnc-standalone-server \
+    | awk '$1 == "Candidate:" && $2 != "(none)" { found=1 } END { exit !found }'; then
+    # Respect the server's selected mirrors and signing keys. The distro tool
+    # adds Universe to its configured sources; do not replace sources.list.
+    apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends software-properties-common || return
+    add-apt-repository -y universe || return
+    apt-get -o DPkg::Lock::Timeout=180 update -q || return
+  fi
+}
+
+cw_minisign() {
+  # The root update socket deliberately has a small PATH. Resolve the pinned
+  # Jammy bootstrap without expanding that service's executable search path.
+  if [[ -x /usr/bin/minisign ]]; then /usr/bin/minisign "$@";
+  elif [[ -x /usr/local/bin/minisign ]]; then /usr/local/bin/minisign "$@";
+  else echo 'minisign is missing; repair the ClaudeWeb installation' >&2; return 1; fi
+}
+
+cw_ensure_minisign() (
+  cw_minisign -v >/dev/null 2>&1 && exit 0
+  [[ $CW_PLATFORM == ubuntu-22.04 ]] || { echo 'minisign was not installed by APT' >&2; exit 1; }
+  # Ubuntu 22.04 has no minisign executable in its archive. Pin the upstream
+  # static release and digest here, before trusting any ClaudeWeb release list.
+  local work destination=/usr/local/bin/minisign
+  work="$(mktemp -d)" || exit
+  trap 'rm -rf -- "$work"' EXIT
+  curl -fsSL --retry 3 -o "$work/minisign.tar.gz" \
+    https://github.com/jedisct1/minisign/releases/download/0.12/minisign-0.12-linux.tar.gz || exit
+  printf '%s  %s\n' 9a599b48ba6eb7b1e80f12f36b94ceca7c00b7a5173c95c3efc88d9822957e73 "$work/minisign.tar.gz" \
+    | sha256sum -c --status || { echo 'minisign bootstrap checksum mismatch; nothing was installed' >&2; exit 1; }
+  tar -xzf "$work/minisign.tar.gz" -C "$work" minisign-linux/x86_64/minisign || exit
+  [[ ! -e $destination && ! -L $destination ]] || { echo "refusing to replace $destination" >&2; exit 1; }
+  install -d -m 0755 /usr/local/bin || exit
+  install -m 0755 -o root -g root "$work/minisign-linux/x86_64/minisign" "$destination" || exit
+  "$destination" -v
+)
+
+cw_install_dependencies() {
+  local mode=$1
+  cw_platform_detect || return
+  export DEBIAN_FRONTEND=noninteractive
+  cw_prepare_apt || return
+  case "$mode" in
+    base-gui)
+      apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends "${CW_BASE_PACKAGES[@]}" "${CW_GUI_PACKAGES[@]}" || return
+      cw_ensure_minisign || return ;;
+    gui)
+      apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends "${CW_GUI_PACKAGES[@]}" || return ;;
+    desktop)
+      apt-get -o DPkg::Lock::Timeout=180 install -y -q --no-install-recommends ca-certificates curl "${CW_GUI_PACKAGES[@]}" "${CW_DESKTOP_PACKAGES[@]}" || return ;;
+    *) echo "unknown dependency group: $mode" >&2; return 1 ;;
+  esac
+}
+
+cw_check_release_platform() {
+  local release=$1
+  jq -e --arg platform "$CW_PLATFORM" '
+    if has("platforms") then
+      (.platforms | type == "array") and (.platforms | index($platform) != null)
+    else
+      .os == "debian-12" and $platform == "debian-12"
+    end' "$release/release.json" >/dev/null \
+    || { echo "this release package does not target $CW_PLATFORM; use a compatible ClaudeWeb package" >&2; return 1; }
+  if [[ -f $release/share/check-runtime.cjs ]]; then
+    "$release/node/bin/node" "$release/share/check-runtime.cjs" "$release/app" || return
+  fi
+}
+# END GENERATED PLATFORM RULES
+
 show_help() {
   cat <<'EOF'
 claudeweb - manage ClaudeWeb on this server (run as root)
@@ -59,6 +157,7 @@ Commands:
   help                       Show this list
   status                     Version, service state, address, swap and disk
   logs [--follow]            Recent service log (--follow keeps printing)
+  install-desktop            Install/repair the official ClaudeDesktop graphical application
   doctor                     Diagnostic report for a bug report (no passwords or keys)
   password                   Show the login password
   password --set             Set a new, generated login password; every device signs out
@@ -297,7 +396,7 @@ fetch_release_list() {
   curl -fsSL --retry 3 -m 60 -o "$work/releases.json" "$base/releases.json" \
     && curl -fsSL --retry 3 -m 60 -o "$work/releases.json.minisig" "$base/releases.json.minisig" \
     || { echo "cannot download the release list from $base" >&2; return 1; }
-  minisign -Vq -P "$RELEASE_PUBKEY" -m "$work/releases.json" -x "$work/releases.json.minisig" >/dev/null 2>&1 \
+  cw_minisign -Vq -P "$RELEASE_PUBKEY" -m "$work/releases.json" -x "$work/releases.json.minisig" >/dev/null 2>&1 \
     || { echo "the release list signature is not valid" >&2; return 1; }
   jq -e '.schema == 1 and (.releases | type == "array")' "$work/releases.json" >/dev/null 2>&1 \
     || { echo "the release list is malformed" >&2; return 1; }
@@ -382,6 +481,7 @@ prune_releases() {  # keeps the newest few, and always the current and previous 
 
 cmd_update() {
   need_root update
+  cw_platform_detect || die "this server's platform is not supported"
   local wanted="" check_only=0 argument
   for argument in "$@"; do
     case "$argument" in
@@ -444,16 +544,25 @@ cmd_update() {
     tar -xJf "$work/package.tar.xz" -C "$work"
     [[ "$(cat "$work/claudeweb-$target/VERSION" 2>/dev/null)" == "$target" ]] \
       || update_failed CLAUDEWEB_DOWNLOAD_FAILED "the package does not contain ClaudeWeb $target"
+    cw_check_release_platform "$work/claudeweb-$target" \
+      || update_failed CLAUDEWEB_PLATFORM_INCOMPATIBLE "the new package cannot run on this server; the current version is still running"
     chown -R root:root "$work/claudeweb-$target"
     rm -rf "$RELEASES/$target.partial"
     mv "$work/claudeweb-$target" "$RELEASES/$target.partial"
     mv "$RELEASES/$target.partial" "$RELEASES/$target"
   fi
+  cw_check_release_platform "$RELEASES/$target" \
+    || update_failed CLAUDEWEB_PLATFORM_INCOMPATIBLE "the target package cannot run on this server; the current version is still running"
   # A new release may pin a newer Chromium; without it only the browser panel is missing.
   if [[ -f $RELEASES/$target/share/playwright-version ]] \
     && ! cmp -s "$RELEASES/$target/share/playwright-version" "$CURRENT/share/playwright-version" 2>/dev/null; then
     "$RELEASES/$target/bin/claudeweb" install-browser "$RELEASES/$target" \
       || echo "warning: the browser for $target could not be installed; run: claudeweb install-browser" >&2
+  fi
+
+  if [[ ! -x /usr/bin/claude-desktop ]]; then
+    "$RELEASES/$target/bin/claudeweb" install-desktop \
+      || echo "warning: ClaudeDesktop is unavailable; run: claudeweb install-desktop" >&2
   fi
 
   install -d -m 0700 "$UPDATE_DIR"
@@ -568,6 +677,7 @@ as_service() { (cd "$SERVICE_HOME" && runuser -u "$SERVICE_USER" -- "$@"); }
 
 cmd_install_browser() {
   need_root install-browser
+  cw_install_dependencies gui || die "browser display dependencies could not be installed"
   local release="${1:-$CURRENT}" version node_dir
   [[ -f $release/share/playwright-version ]] || die "this release does not name a Playwright version"
   version="$(tr -d '[:space:]' < "$release/share/playwright-version")"
@@ -579,6 +689,36 @@ cmd_install_browser() {
   as_service env -i PATH="$node_dir:/usr/bin:/bin" HOME="$SERVICE_HOME" LANG=C.UTF-8 \
     "$node_dir/npx" --yes "playwright@$version" install chromium
 }
+
+# Installs the official APT package; no third-party Electron repack and no sandbox bypass.
+cmd_install_desktop() (
+  need_root install-desktop
+  local work key source fingerprint
+  work="$(mktemp -d)"
+  trap 'rm -rf -- "$work"' EXIT
+  cw_install_dependencies desktop || die "ClaudeDesktop dependencies could not be installed"
+  if [[ $(dpkg-query -W -f='${Status}' claude-desktop 2>/dev/null || true) == 'install ok installed' ]]; then
+    echo 'ClaudeDesktop is already installed; its profile and package version were kept.'
+    exit 0
+  fi
+  curl -fsSL --retry 3 -o "$work/key.asc" https://downloads.claude.ai/claude-desktop/key.asc
+  fingerprint="$(gpg --no-options --homedir "$work" --batch --with-colons --show-keys "$work/key.asc" \
+    | awk -F: '$1=="pub" { primary=1; next } primary && $1=="fpr" { print $10; primary=0 }')"
+  [[ $fingerprint == 31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE ]] || die 'ClaudeDesktop signing key does not match'
+  key=/usr/share/keyrings/claude-desktop-archive-keyring.asc
+  source=/etc/apt/sources.list.d/claude-desktop.list
+  [[ ! -L /usr/share/keyrings && ! -L /etc/apt/sources.list.d && ! -L $key && ! -L $source ]] \
+    || die 'ClaudeDesktop APT configuration contains a link; review it first'
+  mkdir -p -m 0755 /usr/share/keyrings /etc/apt/sources.list.d
+  printf 'deb [signed-by=%s] https://downloads.claude.ai/claude-desktop/apt/stable stable main\n' "$key" > "$work/claude.list"
+  [[ ! -e $key ]] || cmp -s "$key" "$work/key.asc" || die 'Existing ClaudeDesktop key differs; nothing was replaced'
+  [[ ! -e $source ]] || cmp -s "$source" "$work/claude.list" || die 'Existing ClaudeDesktop source differs; nothing was replaced'
+  [[ -e $key ]] || install -m 0644 "$work/key.asc" "$key"
+  [[ -e $source ]] || install -m 0644 "$work/claude.list" "$source"
+  apt-get -o DPkg::Lock::Timeout=180 update
+  apt-get -o DPkg::Lock::Timeout=180 install -y --no-install-recommends claude-desktop
+  echo 'ClaudeDesktop is installed. Open it with the asterisk in ClaudeWeb.'
+)
 
 # ------------------------------------------------------------------ domain
 # A domain reaches ClaudeWeb through a Cloudflare Tunnel run by cloudflared on
@@ -960,6 +1100,7 @@ case "$command" in
   rollback) cmd_rollback "$@" ;;
   serve-update) cmd_serve_update "$@" ;;
   install-browser) cmd_install_browser "$@" ;;
+  install-desktop) cmd_install_desktop "$@" ;;
   domain) cmd_domain "$@" ;;
   uninstall) cmd_uninstall "$@" ;;
   *) echo "Unknown command: $command" >&2; echo >&2; show_help >&2; exit 1 ;;

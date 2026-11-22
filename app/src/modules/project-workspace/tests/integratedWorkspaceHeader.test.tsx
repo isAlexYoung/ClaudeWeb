@@ -19,7 +19,7 @@ function RegisterTranscript({ actions }: { actions: TranscriptActions }) {
   return null;
 }
 
-const renderHeader = (actions?: TranscriptActions) => render(
+const renderHeader = (actions?: TranscriptActions, minimizedTools?: { terminal: boolean; browser: boolean; desktop: boolean }) => render(
   <WorkspaceExperienceProvider>
     {actions && <RegisterTranscript actions={actions} />}
     <IntegratedWorkspaceHeader
@@ -31,12 +31,26 @@ const renderHeader = (actions?: TranscriptActions) => render(
       onInspectorToggle={() => {}}
       onTool={() => {}}
       onTasks={() => {}}
+      minimizedTools={minimizedTools}
     />
   </WorkspaceExperienceProvider>,
 );
 
 beforeAll(async () => {
   await i18n.changeLanguage('en');
+});
+
+test('the asterisk precedes Terminal and orange dots reflect only minimized tools', () => {
+  const view = renderHeader(undefined, { desktop: true, terminal: true, browser: true });
+  const desktop = view.getByRole('button', { name: 'Open ClaudeDesktop' });
+  const terminal = view.getByRole('button', { name: 'Terminal' });
+  assert.ok(desktop.compareDocumentPosition(terminal) & Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.equal(desktop.title, 'Open ClaudeDesktop');
+  for (const tool of ['desktop', 'terminal', 'browser']) assert.ok(view.getByTestId(`${tool}-running-dot`));
+  view.unmount();
+  const closed = renderHeader(undefined, { desktop: false, terminal: false, browser: false });
+  for (const tool of ['desktop', 'terminal', 'browser']) assert.equal(closed.queryByTestId(`${tool}-running-dot`), null);
+  closed.unmount();
 });
 
 test('the More menu offers copy and export only while a conversation is open', () => {

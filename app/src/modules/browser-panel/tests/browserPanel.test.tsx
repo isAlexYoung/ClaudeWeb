@@ -7,7 +7,7 @@ import { BrowserPanel } from '@/modules/browser-panel';
 import { bindBrowserClipboard } from '@/modules/browser-panel/browserClipboard';
 
 const browserApi = vi.hoisted(() => ({ available: vi.fn(), status: vi.fn(), end: vi.fn() }));
-vi.mock('@/shared/api', () => ({ api: { browser: browserApi } }));
+vi.mock('@/shared/api', async (importOriginal) => ({ ...await importOriginal<object>(), api: { browser: browserApi } }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
 // Fake elements: jsdom cannot make a trusted event.

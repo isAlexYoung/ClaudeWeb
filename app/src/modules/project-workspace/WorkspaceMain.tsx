@@ -188,6 +188,8 @@ function WorkspaceMain({
       session={selectedSession}
       mobile={isMobile}
       inspectorOpen={inspectorOpen}
+      onDesktop={tools.openDesktop}
+      minimizedTools={tools.minimized}
       onMenu={onMenuClick}
       onInspectorToggle={() => setInspectorOpen((value) => !value)}
       onTool={(tool) => {

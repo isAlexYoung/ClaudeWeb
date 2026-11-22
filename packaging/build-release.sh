@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds a ClaudeWeb release package on Debian 12 amd64:
+# Builds a ClaudeWeb release package on Ubuntu 22.04 amd64 (glibc 2.35 baseline):
 #   claudeweb-<version>-linux-x64.tar.xz and its .sha256
 # The package carries its own Node.js, the built app with production
 # dependencies (native modules compiled for that Node), the `claudeweb`
@@ -28,6 +28,10 @@ done
 # The build changes directory; a relative --out must still mean where it was given.
 OUT="$(realpath -m "$OUT")"
 [[ "$(uname -m)" == x86_64 ]] || { echo "Build on amd64 (x86_64)." >&2; exit 2; }
+# Building native modules on a newer distro can make them unloadable on Jammy.
+build_platform="$(. /etc/os-release; printf '%s-%s' "${ID:-}" "${VERSION_ID:-}")"
+[[ $build_platform == ubuntu-22.04 ]] || { echo "Build release packages on Ubuntu 22.04 amd64 (found $build_platform)." >&2; exit 2; }
+python3 "$REPO_ROOT/packaging/sync-platform.py" --check
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -54,10 +58,13 @@ fi
 git -C "$REPO_ROOT" archive --format=tar HEAD app packaging | tar -x -C "$STAGE"
 mv "$STAGE/packaging" "$WORK/packaging"
 cd "$STAGE/app"
+# Rebuild only the runtime native modules against the baseline's libraries.
+# Other bundled tools retain their supported vendor-provided executables.
 node -e "const f='package.json',p=JSON.parse(require('fs').readFileSync(f));p.version='$VERSION';require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\n')"
 npm ci --no-audit --no-fund --loglevel=error --fetch-retries=5 --fetch-retry-maxtimeout=120000
 VITE_BASE_PATH=/ npm run build --silent
 npm prune --omit=dev --no-audit --no-fund --loglevel=error
+npm rebuild better-sqlite3 node-pty bcrypt --build-from-source --no-audit --no-fund --loglevel=error
 npm ci --prefix tools/taskmaster --omit=dev --omit=optional --no-audit --no-fund --loglevel=error --fetch-retries=5 --fetch-retry-maxtimeout=120000
 node tools/taskmaster/node_modules/task-master-ai/dist/task-master.js --version
 npm ci --prefix bundled-plugins/claude-usage --include=dev --no-audit --no-fund --loglevel=error
@@ -83,14 +90,17 @@ mkdir -p "$STAGE/bin" "$STAGE/share"
 cp "$WORK/packaging/claudeweb" "$STAGE/bin/claudeweb"
 chmod 0755 "$STAGE/bin/claudeweb"
 cp "$WORK/packaging/claudeweb.service" "$WORK/packaging/claudeweb-update.socket" "$WORK/packaging/claudeweb-update@.service" "$WORK/packaging/claudeweb-tunnel.service" \
-  "$WORK/packaging/playwright-version" "$STAGE/share/"
+  "$WORK/packaging/playwright-version" "$WORK/packaging/check-runtime.cjs" "$STAGE/share/"
+node "$STAGE/share/check-runtime.cjs" "$STAGE/app"
 git -C "$REPO_ROOT" archive --format=tar HEAD LICENSE NOTICE THIRD_PARTY_NOTICES.md | tar -x -C "$STAGE"
 source_commit="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 python3 - "$STAGE/release.json" "$VERSION" "$CHANNEL" "$source_commit" "$NODE_VERSION" <<'EOF'
 import json, sys
 path, version, channel, commit, node = sys.argv[1:]
 json.dump({"version": version, "channel": channel, "source_commit": commit,
-           "node": node, "node_abi": "127", "arch": "x64", "os": "debian-12"},
+           "node": node, "node_abi": "127", "arch": "x64", "os": "linux",
+           "build_platform": "ubuntu-22.04", "glibc_min": "2.35",
+           "platforms": ["debian-12", "ubuntu-22.04"]},
           open(path, "w"), indent=1)
 EOF
 echo "$VERSION" > "$STAGE/VERSION"

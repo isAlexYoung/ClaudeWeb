@@ -16,6 +16,8 @@ type WebSocketServerDependencies = {
   getPluginPort: Parameters<typeof handlePluginWsProxy>[2];
   /** The browser panel's picture connection, relayed to the server's browser. */
   browser?: { relay: (ws: WebSocket, url: URL) => void };
+  /** ClaudeDesktop's independent display, authenticated exactly like the browser. */
+  desktop?: { relay: (ws: WebSocket, url: URL) => void };
   /** Whether a login session still counts as signed in; its connections close when not. */
   sessionAlive?: (sessionId: string) => boolean;
 };
@@ -136,6 +138,11 @@ export function createWebSocketServer(
 
     if (pathname === '/browser-ws' && dependencies.browser) {
       dependencies.browser.relay(ws, new URL(url, 'http://localhost'));
+      return;
+    }
+
+    if (pathname === '/claude-desktop-ws' && dependencies.desktop) {
+      dependencies.desktop.relay(ws, new URL(url, 'http://localhost'));
       return;
     }
 
