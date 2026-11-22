@@ -22,11 +22,6 @@ type UserRow = {
 
 type UserPublicRow = Pick<UserRow, 'id' | 'username' | 'created_at' | 'last_login'>;
 
-type UserGitConfig = {
-  git_name: string | null;
-  git_email: string | null;
-};
-
 type CreateUserResult = {
   id: number | bigint;
   username: string;
@@ -110,28 +105,6 @@ export const userDb = {
     if (existing) return existing;
     const created = userDb.createUser('claudeweb', '!');
     return userDb.getUserById(Number(created.id)) as UserPublicRow;
-  },
-
-  /** Stores the user's preferred git name and email. */
-  updateGitConfig(
-    userId: number,
-    gitName: string,
-    gitEmail: string
-  ): void {
-    const db = getConnection();
-    db.prepare('UPDATE users SET git_name = ?, git_email = ? WHERE id = ?').run(
-      gitName,
-      gitEmail,
-      userId
-    );
-  },
-
-  /** Retrieves the user's git identity (name + email). */
-  getGitConfig(userId: number): UserGitConfig | undefined {
-    const db = getConnection();
-    return db
-      .prepare('SELECT git_name, git_email FROM users WHERE id = ?')
-      .get(userId) as UserGitConfig | undefined;
   },
 
   /** Marks onboarding as complete for the given user. */

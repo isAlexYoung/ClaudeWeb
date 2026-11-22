@@ -1,8 +1,8 @@
 /**
- * CloudCLI Plugin API type definitions.
+ * ClaudeWeb Plugin API type definitions.
  *
  * These types describe the API object passed to your plugin's mount() function
- * by the CloudCLI UI host. Copy this file into your own plugin to get full
+ * by the ClaudeWeb host. Copy this file into your own plugin to get full
  * type-safety and editor autocomplete.
  */
 

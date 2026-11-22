@@ -1,18 +1,27 @@
-<p align="center"><img src="app/public/logo-256.png" width="112" alt="ClaudeWeb logo"></p>
+<div align="center">
+
+<img src="app/public/logo-256.png" width="112" height="112" alt="ClaudeWeb logo" />
 
 # ClaudeWeb
 
 ### Use Claude Code on your own server, from a browser
 
-Keep chats, projects, files, a terminal, a browser and ClaudeDesktop in one web interface, running on your Linux server with the official Claude CLI.
+**Keep chats, projects, files, a terminal, a browser and ClaudeDesktop in one web interface, running on your Linux server with the official Claude CLI.**
+
+[![Version](https://img.shields.io/github/v/release/isAlexYoung/ClaudeWeb?color=blue&label=version)](https://github.com/isAlexYoung/ClaudeWeb/releases)
+[![Platform](https://img.shields.io/badge/platform-Linux%20amd64-lightgrey.svg)](#install)
+[![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-green.svg)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/isAlexYoung/ClaudeWeb/total)](https://github.com/isAlexYoung/ClaudeWeb/releases/latest)
 
 English | [中文](README.zh-CN.md) | [Changelog](CHANGELOG.md)
 
 [Install](#install) · [Quick Start](#quick-start) · [Features](#features) · [FAQ](#faq) · [License](#license)
 
+</div>
+
 ## Install
 
-The current stable release is **2.1.0**. Run this as root on the server:
+The current stable release is **2.1.1**. Run this as root on the server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
@@ -22,7 +31,7 @@ If signed in as a user with sudo access, replace `bash` with `sudo bash`. To ins
 
 You need an amd64 (x86_64) server with at least **2 CPU cores and 2 GB RAM**, and your own Claude account or API credentials.
 
-| System | 2.1.0 |
+| System | 2.1.1 |
 | --- | --- |
 | Debian 12 | Supported |
 | Debian 13 | Supported |
@@ -30,7 +39,7 @@ You need an amd64 (x86_64) server with at least **2 CPU cores and 2 GB RAM**, an
 | Ubuntu 24.04 LTS | Supported |
 | Ubuntu 26.04 LTS | Supported |
 
-ARM64 is not supported yet; see the [Linux compatibility plan](doc/LINUX_COMPATIBILITY_PLAN.md).
+ARM64 is not supported.
 
 The installer sets up ClaudeWeb, the official Claude Code CLI, Chromium and ClaudeDesktop, configures swap, and prints the login and sudo passwords at the end. It shows numbered stages and saves download details in `/var/log/claudeweb/install.log`, readable only by root. A failed optional graphical installation can be retried later.
 
@@ -59,6 +68,7 @@ The [user guide](doc/USER_GUIDE.md) covers installation, access, CMCP, migration
 - Server tools: work with files and run commands in the built-in terminal.
 - Built-in browser: use server-side Chromium with Chinese fonts, Pinyin input and clipboard support. Press Shift to switch input modes.
 - ClaudeDesktop: open it from the asterisk next to Terminal; minimize, restore, go fullscreen or close it. An orange dot marks a hidden live tool window.
+- Custom plugins: install your own Git-based plugins, enable or disable them, and remove them. See the [custom-plugin guide](doc/CUSTOM_PLUGINS.md) to write one.
 - Task management: scheduled tasks and a task board in the same interface.
 - Backup and migration: export and restore data, including moving from ClaudeWeb inside WebDesktop. See the [migration guide](doc/USER_GUIDE.md#5-move-from-webdesktop).
 - Personalization: light and dark themes, English and Simplified Chinese.
@@ -96,7 +106,7 @@ Open Settings → About → Check for updates → Update, or run as root:
 claudeweb update
 ```
 
-An older package cannot be used on a system it does not declare. `claudeweb rollback` returns to the previous installed version; see the [release guide](doc/RELEASING.md).
+An older package cannot be used on a system it does not declare. `claudeweb rollback` returns to the previous installed version; see [updates and rollback](doc/USER_GUIDE.md#6-update-and-roll-back).
 
 **What happens when I minimize or close a tool?**
 
@@ -128,7 +138,7 @@ No. ClaudeWeb is an independent open-source project, not made, endorsed or suppo
 
 ## Contributing
 
-The application lives in [`app/`](app). Start with [Contributing](CONTRIBUTING.md); the [project checklist](doc/PROJECT_CHECKLIST.md) tracks remaining work. Report vulnerabilities using [SECURITY.md](SECURITY.md).
+Report problems and suggestions in [Issues](https://github.com/isAlexYoung/ClaudeWeb/issues). See [Contributing](CONTRIBUTING.md) for contributions and [SECURITY.md](SECURITY.md) for vulnerability reports.
 
 ## License
 

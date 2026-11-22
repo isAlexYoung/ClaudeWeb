@@ -109,7 +109,6 @@
     "label": "Ayarlar",
     "agents": "Ajanlar",
     "appearance": "Görünüm",
-    "git": "Git",
     "apiTokens": "API ve Token'lar",
     "tasks": "Görevler",
     "computer": "Bilgisayar Kullanımı",
@@ -241,25 +240,6 @@
   "footerActions": {
     "save": "Ayarları Kaydet",
     "cancel": "İptal"
-  },
-  "git": {
-    "title": "Git Yapılandırması",
-    "description": "Commit'ler için git kimliğini yapılandır. Bu ayarlar git config --global ile genel olarak uygulanacak",
-    "name": {
-      "label": "Git Adı",
-      "help": "Git commit'leri için adın"
-    },
-    "email": {
-      "label": "Git E-postası",
-      "help": "Git commit'leri için e-postan"
-    },
-    "actions": {
-      "save": "Yapılandırmayı Kaydet",
-      "saving": "Kaydediliyor..."
-    },
-    "status": {
-      "success": "Başarıyla kaydedildi"
-    }
   },
   "apiKeys": {
     "title": "API Anahtarları",
@@ -544,26 +524,11 @@
     "installFailed": "Yükleme başarısız",
     "uninstallFailed": "Kaldırma başarısız",
     "toggleFailed": "Açıp kapama başarısız",
-    "starterPluginLabel": "Başlangıç Eklentisi",
-    "starter": "Başlangıç",
-    "docs": "Dokümanlar",
-    "starterPlugin": {
-      "name": "Proje İstatistikleri",
-      "badge": "başlangıç",
-      "description": "Projen için dosya sayıları, kod satırları, dosya türü dağılımı ve son etkinlik.",
-      "install": "Yükle"
-    },
-    "terminalPlugin": {
-      "name": "Terminal",
-      "badge": "resmi",
-      "description": "Arayüzün içinde tam shell erişimiyle entegre terminal.",
-      "install": "Yükle"
-    },
-    "morePlugins": "Daha Fazla",
     "enable": "Etkinleştir",
     "disable": "Devre Dışı Bırak",
     "installAriaLabel": "Eklenti git deposu URL'si",
     "tab": "sekme",
-    "runningStatus": "çalışıyor"
+    "runningStatus": "çalışıyor",
+    "customPlugins": "Custom plugins"
   }
 }

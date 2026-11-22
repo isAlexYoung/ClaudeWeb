@@ -124,6 +124,10 @@
 .workspace-sidebar { height: 100%; width: 100%; min-width: 0; padding: 10px 8px 8px; display: flex; flex-direction: column; background: var(--workspace-sidebar); }
 .workspace-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 7px; color: hsl(var(--foreground)); }
 .workspace-icon-button:hover, .workspace-icon-button:focus-visible, .workspace-row-tools button:hover { background: var(--workspace-hover); color: hsl(var(--foreground)); }
+.workspace-sidebar-brand { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 6px; margin-right: 5px; }
+.workspace-sidebar-brand:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
+.workspace-sidebar-logo { display: block; width: 24px; height: 24px; border-radius: 6px; }
+.workspace-sidebar.collapsed .workspace-sidebar-brand { margin-right: 0; margin-bottom: 3px; }
 .workspace-sidebar-tools { display: flex; align-items: center; gap: 2px; min-height: 36px; margin-bottom: 14px; }
 .workspace-mode-tabs { display: flex; gap: 1px; margin-left: auto; padding: 2px; border-radius: 8px; background: hsl(var(--muted)); }
 .workspace-mode-tabs button { width: 31px; height: 28px; display: grid; place-items: center; border-radius: 6px; color: hsl(var(--muted-foreground)); }

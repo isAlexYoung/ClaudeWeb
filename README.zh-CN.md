@@ -1,18 +1,27 @@
-<p align="center"><img src="app/public/logo-256.png" width="112" alt="ClaudeWeb logo"></p>
+<div align="center">
+
+<img src="app/public/logo-256.png" width="112" height="112" alt="ClaudeWeb logo" />
 
 # ClaudeWeb
 
 ### 在自己的服务器上，用浏览器使用 Claude Code
 
-把对话、项目、文件、终端、浏览器和 ClaudeDesktop 放进同一个网页界面，通过官方 Claude CLI 在你的 Linux 服务器上运行。
+**把对话、项目、文件、终端、浏览器和 ClaudeDesktop 放进同一个网页界面，通过官方 Claude CLI 在你的 Linux 服务器上运行。**
+
+[![Version](https://img.shields.io/github/v/release/isAlexYoung/ClaudeWeb?color=blue&label=version)](https://github.com/isAlexYoung/ClaudeWeb/releases)
+[![Platform](https://img.shields.io/badge/platform-Linux%20amd64-lightgrey.svg)](#安装)
+[![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-green.svg)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/isAlexYoung/ClaudeWeb/total)](https://github.com/isAlexYoung/ClaudeWeb/releases/latest)
 
 [English](README.md) | 中文 | [更新日志](CHANGELOG.md)
 
 [安装](#安装) · [快速开始](#快速开始) · [主要功能](#主要功能) · [常见问题](#常见问题) · [许可证](#许可证)
 
+</div>
+
 ## 安装
 
-当前正式版为 **2.1.0**。在服务器上以 root 运行：
+当前正式版为 **2.1.1**。在服务器上以 root 运行：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
@@ -22,7 +31,7 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 
 需要一台 amd64（x86_64）服务器，至少 **2 核 CPU、2 GB 内存**，以及你自己的 Claude 账号或 API 凭据。
 
-| 系统 | 2.1.0 |
+| 系统 | 2.1.1 |
 | --- | --- |
 | Debian 12 | 支持 |
 | Debian 13 | 支持 |
@@ -30,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 | Ubuntu 24.04 LTS | 支持 |
 | Ubuntu 26.04 LTS | 支持 |
 
-暂不支持 ARM64，详见 [Linux 适配计划](doc/LINUX_COMPATIBILITY_PLAN.md)。
+不支持 ARM64。
 
 安装程序会安装 ClaudeWeb、官方 Claude Code CLI、Chromium 和 ClaudeDesktop，配置交换空间，并在结束时显示登录密码和 sudo 密码。终端按编号显示安装阶段，下载详情保存在仅 root 可读的 `/var/log/claudeweb/install.log`。可选图形组件安装失败时，可以之后单独重试。
 
@@ -59,6 +68,7 @@ ClaudeWeb 只监听 `127.0.0.1:3001`。手机和平板使用[域名访问](#域�
 - 服务器工具：在文件面板中管理文件，在内置终端中执行命令。
 - 内置浏览器：运行在服务器上的 Chromium，带中文字体、拼音输入和剪贴板支持；按 Shift 切换中英文。
 - ClaudeDesktop：点击终端旁的星号打开，支持最小化、恢复、全屏和关闭；隐藏但仍在运行的工具会显示橙色圆点。
+- 自定义插件：从 Git 仓库安装自己的插件，支持启用、停用和删除；编写方法见[自定义插件指南（英文）](doc/CUSTOM_PLUGINS.md)。
 - 任务管理：在同一界面中使用定时任务和任务看板。
 - 备份与迁移：导出和恢复数据，支持从 WebDesktop 内的旧 ClaudeWeb 迁入，详见[迁移说明](doc/USER_GUIDE.zh-CN.md#5-从-webdesktop-迁移)。
 - 个性化设置：明暗主题、简体中文与 English。
@@ -96,7 +106,7 @@ claudeweb domain
 claudeweb update
 ```
 
-旧安装包不能用于它未声明支持的系统。`claudeweb rollback` 可以返回上一个已安装版本，详见[发布与更新说明](doc/RELEASING.md)。
+旧安装包不能用于它未声明支持的系统。`claudeweb rollback` 可以返回上一个已安装版本，详见[更新和回退](doc/USER_GUIDE.zh-CN.md#6-更新和回退)。
 
 **最小化和关闭工具有什么区别？**
 
@@ -128,7 +138,7 @@ claudeweb update
 
 ## 参与开发
 
-应用代码在 [`app/`](app)，开发步骤见[贡献说明](CONTRIBUTING.md)，待完成事项见[项目清单](doc/PROJECT_CHECKLIST.md)。安全问题请按 [SECURITY.md](SECURITY.md) 报告。
+欢迎通过 [Issues](https://github.com/isAlexYoung/ClaudeWeb/issues) 反馈问题或建议。贡献步骤见[贡献说明](CONTRIBUTING.md)，安全问题请按 [SECURITY.md](SECURITY.md) 报告。
 
 ## 许可证
 

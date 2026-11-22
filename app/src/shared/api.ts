@@ -618,9 +618,6 @@ export const api = {
 
   // User endpoints
   user: {
-    gitConfig: () => get('/api/user/git-config'),
-    updateGitConfig: (gitName: string, gitEmail: string) =>
-      post('/api/user/git-config', { gitName, gitEmail }),
     onboardingStatus: () => get('/api/user/onboarding-status'),
     completeOnboarding: () => post('/api/user/complete-onboarding'),
 

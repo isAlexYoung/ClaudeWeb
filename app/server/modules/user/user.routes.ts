@@ -13,23 +13,6 @@ function readUserId(request: express.Request): number {
 export function createUserRouter(service: ReturnType<typeof createUserService>): express.Router {
   const router = express.Router();
 
-  router.get('/git-config', async (req, res, next) => {
-    try {
-      res.json(await service.getGitConfig(readUserId(req)));
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.post('/git-config', async (req, res, next) => {
-    try {
-      const body = req.body as { gitName?: unknown; gitEmail?: unknown };
-      res.json(await service.updateGitConfig(readUserId(req), body.gitName, body.gitEmail));
-    } catch (error) {
-      next(error);
-    }
-  });
-
   router.post('/complete-onboarding', (req, res, next) => {
     try {
       res.json(service.completeOnboarding(readUserId(req)));

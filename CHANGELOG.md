@@ -3,6 +3,26 @@
 All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 2.0.0 to 2.0.3 were test releases and 2.1.0 is the first stable release.
 
+## Unreleased
+
+## 2.1.1 - 2026-11-22 (stable)
+
+### Changed
+
+- Place a smaller 24 px repository logo before the sidebar controls and in the
+  collapsed rail. Clicking it opens the ClaudeWeb repository. Refresh browser
+  icon URLs so older favicons are replaced.
+- Simplify Plugins settings to custom repository installation and installed
+  plugin controls. Add an original custom-plugin guide; remove the catalog and
+  starter-template links. Use Plug and the MessageCircle chat bubble for Plugins
+  and Tasks & sessions.
+- Remove Git settings and its unused identity APIs/adapters. Existing database
+  values and project Git features are retained; identity can be set with Git CLI.
+- Center the bilingual README headers with badges and navigation. Keep public
+  documentation focused on usage; remove development plans and validation logs.
+- Remove stale CloudCLI marketing and plugin-catalog references while keeping
+  upstream attribution, third-party provenance and legacy-backup compatibility.
+
 ## 2.1.0 - 2026-11-22 (stable)
 
 The first stable release, for amd64 servers running Debian 12, Debian 13,

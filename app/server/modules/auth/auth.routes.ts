@@ -76,7 +76,7 @@ export function createAuthRouter(
 
   // CMCP sign-in. The protocol name tells CMCP this is standalone ClaudeWeb;
   // CMCP releases that only know WebDesktop's "cmcp-" protocols treat it as a
-  // CloudCLI with its own login page.
+  // standalone service with its own login page.
   router.get('/cmcp', (_req, res) => {
     res.json({ protocol: 'claudeweb-cmcp', version: 1 });
   });

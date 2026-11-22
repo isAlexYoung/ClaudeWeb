@@ -101,6 +101,12 @@ beforeEach(() => {
   localStorage.clear();
 });
 
+test('an old Git settings link falls back to General', async () => {
+  const { useSettingsController } = await import('@/modules/settings/hooks/useSettingsController');
+  const { result } = renderHook(() => useSettingsController({ isOpen: true, initialTab: 'git' }));
+  await waitFor(() => assert.equal(result.current.activeTab, 'agents'));
+});
+
 afterEach(() => {
   vi.resetModules();
 });

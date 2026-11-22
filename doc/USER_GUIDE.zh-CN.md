@@ -8,10 +8,10 @@ CMCP 连接、从 WebDesktop 迁移，以及常见问题。所有 `claudeweb` �
 
 ## 1. 安装
 
-要求：一台可以重装的 amd64 服务器，系统为 Debian 12、Debian 13、Ubuntu 22.04、Ubuntu 24.04 或 Ubuntu 26.04，
-至少 2 核 CPU、2 GB 内存。详见 [Linux 适配计划](LINUX_COMPATIBILITY_PLAN.md)。
+要求：一台拥有管理权限的 amd64 服务器，系统为 Debian 12、Debian 13、Ubuntu 22.04、Ubuntu 24.04 或 Ubuntu 26.04，
+至少 2 核 CPU、2 GB 内存，不支持 ARM64。
 
-以 root 运行，安装最新正式版（2.1.0）：
+以 root 运行，安装最新正式版（2.1.1）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash

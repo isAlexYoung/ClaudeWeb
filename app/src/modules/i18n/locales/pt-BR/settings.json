@@ -110,7 +110,6 @@
     "label": "Configurações",
     "agents": "Agentes",
     "appearance": "Aparência",
-    "git": "Git",
     "apiTokens": "API & Tokens",
     "tasks": "Tarefas",
     "notifications": "Notificações",
@@ -265,25 +264,6 @@
   "footerActions": {
     "save": "Salvar configurações",
     "cancel": "Cancelar"
-  },
-  "git": {
-    "title": "Configuração do Git",
-    "description": "Configure sua identidade do Git para commits. Estas configurações serão aplicadas globalmente via git config --global",
-    "name": {
-      "label": "Nome do Git",
-      "help": "Seu nome para commits do Git"
-    },
-    "email": {
-      "label": "E-mail do Git",
-      "help": "Seu e-mail para commits do Git"
-    },
-    "actions": {
-      "save": "Salvar configuração",
-      "saving": "Salvando..."
-    },
-    "status": {
-      "success": "Salvo com sucesso"
-    }
   },
   "apiKeys": {
     "title": "Chaves da API",
@@ -589,81 +569,12 @@
     "installFailed": "Instalação falhou",
     "uninstallFailed": "Desinstalação falhou",
     "toggleFailed": "Alternância falhou",
-    "starterPluginLabel": "Plugin inicial",
-    "starter": "Inicial",
-    "docs": "Docs",
-    "sections": {
-      "officialTitle": "Plugins oficiais",
-      "officialDescription": "Mantidos pela equipe do CloudCLI e prontos para instalação direta.",
-      "unofficialTitle": "Outros plugins",
-      "unofficialDescription": "Plugins e integrações não oficiais de outros usuários. Revise o código-fonte antes de instalar."
-    },
-    "starterPlugin": {
-      "name": "Estatísticas do projeto",
-      "badge": "inicial",
-      "description": "Contagem de arquivos, linhas de código, detalhamento por tipo de arquivo e atividade recente do seu projeto.",
-      "install": "Instalar"
-    },
-    "terminalPlugin": {
-      "name": "Terminal",
-      "badge": "oficial",
-      "description": "Terminal integrado com acesso completo ao shell diretamente na interface.",
-      "install": "Instalar"
-    },
-    "scheduledPromptPlugin": {
-      "name": "Prompts agendados",
-      "badge": "não oficial",
-      "description": "Agende prompts de espaço de trabalho, revise histórico de execuções e gerencie tarefas locais recorrentes.",
-      "install": "Instalar"
-    },
-    "prismCloudCLI": {
-      "name": "PRISM CloudCLI",
-      "badge": "não oficial",
-      "description": "Inteligência de sessão para o Claude Code, dentro do CloudCLI. Veja por que suas sessões estão queimando tokens sem sair do navegador.",
-      "install": "Instalar"
-    },
-    "sessionManagerPlugin": {
-      "name": "Sessões",
-      "badge": "não oficial",
-      "description": "Visualize, gerencie e encerre sessões ativas do Claude Code.",
-      "install": "Instalar"
-    },
-    "tokenCostCalculatorPlugin": {
-      "name": "Calculadora de custo de tokens",
-      "badge": "não oficial",
-      "description": "Calcule custos de API a partir de preços de modelos e uso de tokens, com suporte a preços predefinidos de modelos.",
-      "install": "Instalar"
-    },
-    "taskQueuePlugin": {
-      "name": "Fila de tarefas",
-      "badge": "não oficial",
-      "description": "Dashboard de fila de tarefas para visualizar, filtrar e iniciar tarefas de agentes.",
-      "install": "Instalar"
-    },
-    "githubIssuesBoardPlugin": {
-      "name": "Quadro de Issues do GitHub",
-      "badge": "não oficial",
-      "description": "Quadro Kanban para Issues do GitHub com sincronização bidirecional com TaskMaster e auto-instalação da skill CLI /github-task",
-      "install": "Instalar"
-    },
-    "codexUsagePlugin": {
-      "name": "Uso do Codex",
-      "badge": "não oficial",
-      "description": "Acompanhe limites do plano do Codex em tempo real, tempo de reset e atividade de tokens da conta nos últimos 30 dias.",
-      "install": "Instalar"
-    },
-    "agentMonitorPlugin": {
-      "name": "Monitor de agentes",
-      "badge": "não oficial",
-      "description": "Veja subagentes e shells em segundo plano que continuam rodando após o fim de um chat e pare-os.",
-      "install": "Instalar"
-    },
-    "morePlugins": "Mais",
     "enable": "Ativar",
     "disable": "Desativar",
     "installAriaLabel": "URL do repositório git do plugin",
     "tab": "aba",
-    "runningStatus": "em execução"
+    "runningStatus": "em execução",
+    "customPlugins": "Custom plugins"
   },
   "skillsPage": {
     "description": "Gerencie skills do {{provider}} a partir de arquivos locais, pastas completas e locais cientes de projeto.",

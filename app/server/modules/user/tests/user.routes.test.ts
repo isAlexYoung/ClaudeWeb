@@ -21,8 +21,6 @@ async function withUserServer(run: (baseUrl: string, calls: DraftCall[]) => Prom
   };
   const dependencies: UserDependencies = {
     users: {
-      getGitConfig: unexpected,
-      updateGitConfig: unexpected,
       completeOnboarding: unexpected,
       hasCompletedOnboarding: unexpected,
     },
@@ -39,10 +37,6 @@ async function withUserServer(run: (baseUrl: string, calls: DraftCall[]) => Prom
       clearQueuedMessage: (...args) => { calls.push(['clearQueuedMessage', ...args]); },
       deleteDraft: (...args) => { calls.push(['deleteDraft', ...args]); },
     },
-    readSystemGitConfig: unexpected,
-    applyGlobalGitConfig: unexpected,
-    logInfo: () => undefined,
-    logError: () => undefined,
   };
   const service = createUserService(dependencies);
 
@@ -73,6 +67,16 @@ const send = (url: string, method: string, body: unknown) => fetch(url, {
   method,
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(body),
+});
+
+test('removed Git settings routes cannot read or change the global identity', async () => {
+  await withUserServer(async (baseUrl, calls) => {
+    assert.equal((await fetch(`${baseUrl}/api/user/git-config`)).status, 404);
+    assert.equal((await send(`${baseUrl}/api/user/git-config`, 'POST', {
+      gitName: 'Unwanted change', gitEmail: 'unused@example.test',
+    })).status, 404);
+    assert.deepEqual(calls, []);
+  });
 });
 
 test('POST /drafts/queued-message appends the message for the signed-in user', async () => {

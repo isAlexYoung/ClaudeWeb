@@ -1,7 +1,8 @@
-# ClaudeDesktop integration (2.0.3 test release)
+# ClaudeDesktop
 
-ClaudeWeb 2.0.3 includes this integration. It remains a test release;
-real account sign-in and long-running use require separate acceptance.
+Open and manage ClaudeDesktop from the same ClaudeWeb page as your projects.
+ClaudeDesktop uses its own sign-in; signing in to Claude CLI does not sign in
+to the desktop application.
 
 ## Use
 
@@ -27,21 +28,14 @@ the rest of ClaudeWeb from running; an administrator can retry with:
 sudo claudeweb install-desktop
 ```
 
-The installer verifies the official signing key before adding the APT repository,
-creates missing APT configuration directories, and preserves an already installed
-Desktop package. The 2.0.3 installer enables Debian 12 and Ubuntu 22.04
-amd64. Ubuntu 22.04 VPS checks received real Desktop frames and exercised
-minimize, fullscreen, close, cache cleanup and reopening. Real account sign-in
-and long-running acceptance remain pending.
+The installer verifies the official signing key before adding the APT
+repository and creates missing APT configuration directories. It supports the
+same Debian and Ubuntu amd64 systems listed in the project README.
 
-The unreleased Ubuntu 24.04/26.04 adaptation installs a root-managed AppArmor file at
-`/etc/apparmor.d/claudeweb-graphical` for Playwright's cached Chromium. Current official
-Desktop packages create their own `/etc/apparmor.d/claude-desktop` profile. ClaudeWeb
-does not duplicate that executable attachment or remove the official profile.
-The system-wide user namespace restriction remains enabled.
-Repair and updates reload the policy; uninstall removes only the managed file.
-An existing non-managed policy or symlink is refused. These changes are not in
-the published 2.0.3 package.
+On Ubuntu 24.04 and 26.04, ClaudeWeb manages the browser's AppArmor policy at
+`/etc/apparmor.d/claudeweb-graphical`, while the official ClaudeDesktop package
+manages its own profile. Installation and repair preserve the graphical
+sandboxes and reload the needed policy.
 
 ## Profile and cleanup
 
@@ -69,16 +63,4 @@ disk space and inodes; closing does not reset all inode usage to zero.
 Closing during startup also cancels the pending window lookup. Normal server
 shutdown follows the same cleanup path for both graphical tools.
 
-## Verification
-
-Run frontend/backend tests and builds using the application package scripts.
-For an actual graphical lifecycle check after installing the official package,
-run the following as the ordinary service user against a built application:
-
-```sh
-node packaging/test-desktop.mjs /path/to/built/app
-```
-
-The check creates a temporary isolated profile, receives real Desktop and browser
-frames, tests retention/reopen/close, checks cache reclamation and process exit,
-and removes its test profile. It does not sign in or modify the user's profile.
+[Back to ClaudeWeb](../README.md)

@@ -361,6 +361,9 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
   if (props.collapsed) {
     return (
       <aside className="workspace-sidebar collapsed" aria-label={t('workspace.navLabel')}>
+        <a className="workspace-sidebar-brand" href="https://github.com/isAlexYoung/ClaudeWeb" target="_blank" rel="noopener noreferrer" aria-label="ClaudeWeb GitHub">
+          <img className="workspace-sidebar-logo" src={`${import.meta.env.BASE_URL}logo.svg`} width="24" height="24" alt="ClaudeWeb" />
+        </a>
         <button className="workspace-icon-button" aria-label={t('workspace.expandSidebar')} onClick={props.onExpand}>
           <PanelLeftOpen size={19} />
         </button>
@@ -391,6 +394,9 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
   return (
     <aside className="workspace-sidebar" aria-label={t('workspace.navLabel')}>
       <div className="workspace-sidebar-tools">
+        <a className="workspace-sidebar-brand" href="https://github.com/isAlexYoung/ClaudeWeb" target="_blank" rel="noopener noreferrer" aria-label="ClaudeWeb GitHub">
+          <img className="workspace-sidebar-logo" src={`${import.meta.env.BASE_URL}logo.svg`} width="24" height="24" alt="ClaudeWeb" />
+        </a>
         <button className="workspace-icon-button" aria-label={t('workspace.collapseSidebar')} onClick={props.onCollapse}>
           <PanelLeftClose size={18} />
         </button>

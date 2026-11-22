@@ -6,8 +6,7 @@ Chinese.
 ## Before you start
 
 For anything larger than a small fix, open an issue first so we can agree on
-the approach. [`doc/PROJECT_CHECKLIST.md`](doc/PROJECT_CHECKLIST.md) lists
-what is planned for 2.0.0 and the decisions already made.
+the approach. Check existing issues and pull requests before starting.
 
 ## Making a change
 

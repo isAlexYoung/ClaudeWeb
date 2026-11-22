@@ -27,7 +27,7 @@ interface HistoryData {
 const LIVE_POLL_MS = 5 * 60_000;
 const TICK_MS = 60_000;
 
-// ── Theme (follows the CloudCLI host) ───────────────────────────────────
+// ── Theme (follows the ClaudeWeb host) ───────────────────────────────────
 // The plugin is mounted straight into the host page, so host CSS variables
 // and fonts are inherited. Every colour reads the host variable, with a
 // fallback for hosts that do not define it. Variables are HSL triplets.

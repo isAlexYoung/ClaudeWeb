@@ -4,7 +4,7 @@ name: Release package
 # same way as packaging/build-release.sh on a maintainer's machine, and keeps
 # it as an artifact. Publishing stays with the maintainer: the package is
 # checked, uploaded to the GitHub Release, and added to the signed list with
-# the private key, which never comes near CI (doc/RELEASING.md).
+# the private key, which never comes near CI.
 
 on:
   workflow_dispatch:

@@ -109,7 +109,6 @@
     "label": "Einstellungen",
     "agents": "Agenten",
     "appearance": "Darstellung",
-    "git": "Git",
     "apiTokens": "API & Token",
     "tasks": "Aufgaben",
     "notifications": "Benachrichtigungen",
@@ -240,25 +239,6 @@
   "footerActions": {
     "save": "Einstellungen speichern",
     "cancel": "Abbrechen"
-  },
-  "git": {
-    "title": "Git-Konfiguration",
-    "description": "Konfiguriere deine Git-Identität für Commits. Diese Einstellungen werden global über git config --global angewendet",
-    "name": {
-      "label": "Git-Name",
-      "help": "Dein Name für Git-Commits"
-    },
-    "email": {
-      "label": "Git-E-Mail",
-      "help": "Deine E-Mail-Adresse für Git-Commits"
-    },
-    "actions": {
-      "save": "Konfiguration speichern",
-      "saving": "Wird gespeichert..."
-    },
-    "status": {
-      "success": "Erfolgreich gespeichert"
-    }
   },
   "apiKeys": {
     "title": "API-Schlüssel",
@@ -544,19 +524,11 @@
     "uninstallFailed": "Deinstallation fehlgeschlagen",
     "toggleFailed": "Umschalten fehlgeschlagen",
     "buildYourOwn": "Eigenes Plugin erstellen",
-    "starter": "Starter",
-    "docs": "Dokumentation",
-    "starterPlugin": {
-      "name": "Projektstatistiken",
-      "badge": "starter",
-      "description": "Dateianzahl, Codezeilen, Dateityp-Aufschlüsselung und aktuelle Aktivitäten für dein Projekt.",
-      "install": "Installieren"
-    },
-    "morePlugins": "Mehr",
     "enable": "Aktivieren",
     "disable": "Deaktivieren",
     "installAriaLabel": "Git-Repository-URL des Plugins",
     "tab": "Tab",
-    "runningStatus": "läuft"
+    "runningStatus": "läuft",
+    "customPlugins": "Custom plugins"
   }
 }

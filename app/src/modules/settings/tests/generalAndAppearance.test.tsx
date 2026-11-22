@@ -58,6 +58,10 @@ test('desktop and mobile settings open on General without API/token, voice or br
   assert.equal(labels[0], 'General');
   assert.ok(!labels.includes('Voice'));
   assert.ok(!labels.includes('Browser'));
+  assert.ok(!labels.includes('Git'));
+  assert.ok(!SETTINGS_MAIN_TABS.some(tab => tab.label === 'Git'));
+  assert.equal(document.querySelectorAll('svg.lucide-message-circle').length, 2);
+  assert.equal(document.querySelectorAll('svg.lucide-circle').length, 0);
   assert.ok(!labels.some(label => /API|Tokens/i.test(label || '')));
   assert.ok(!SETTINGS_MAIN_TABS.some(tab => /API|Tokens/i.test(tab.label)), 'the command palette must not reopen the removed page');
 });

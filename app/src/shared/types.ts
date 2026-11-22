@@ -1436,7 +1436,7 @@ export type AgentContext = {
 };
 
 /** Identifier of a top-level section in the settings dialog; use it whenever a tab is stored, compared or requested so deep links, the sidebar and the command palette all agree on the same set of names. */
-export type SettingsMainTab = 'agents' | 'appearance' | 'usage' | 'claude' | 'git' | 'tasks' | 'notifications' | 'plugins' | 'backup' | 'about';
+export type SettingsMainTab = 'agents' | 'appearance' | 'usage' | 'claude' | 'tasks' | 'notifications' | 'plugins' | 'backup' | 'about';
 
 //----------------- CLAUDEWEB UPDATE ------------
 /** Progress the root updater writes while it installs a ClaudeWeb version (shown on Settings > About). */

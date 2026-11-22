@@ -114,6 +114,17 @@ beforeEach(() => {
   writeUserPreference('workspaceSessions', { chatSessionIds: ['chat-1'], pinnedSessionIds: [] });
 });
 
+test.each([false, true])('the sidebar logo opens the source repository (collapsed=%s)', (collapsed) => {
+  const view = renderSidebar(createList(), { collapsed });
+  const link = view.getByRole('link', { name: 'ClaudeWeb GitHub' });
+  assert.equal(link.getAttribute('href'), 'https://github.com/isAlexYoung/ClaudeWeb');
+  assert.equal(link.getAttribute('target'), '_blank');
+  assert.equal(link.getAttribute('rel'), 'noopener noreferrer');
+  const logo = within(link).getByRole('img', { name: 'ClaudeWeb' });
+  assert.equal(logo.getAttribute('width'), '24');
+  assert.equal(logo.getAttribute('height'), '24');
+});
+
 test('a conversation row can be renamed and deleted through the existing sidebar flows', () => {
   const list = createList();
   const view = renderSidebar(list);
