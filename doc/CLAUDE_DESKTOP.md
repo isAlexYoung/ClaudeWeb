@@ -30,7 +30,9 @@ sudo claudeweb install-desktop
 The installer verifies the official signing key before adding the APT repository,
 creates missing APT configuration directories, and preserves an already installed
 Desktop package. The 2.0.3 installer enables Debian 12 and Ubuntu 22.04
-amd64; real VPS acceptance for the latter remains pending.
+amd64. Ubuntu 22.04 VPS checks received real Desktop frames and exercised
+minimize, fullscreen, close, cache cleanup and reopening. Real account sign-in
+and long-running acceptance remain pending.
 
 ## Profile and cleanup
 
