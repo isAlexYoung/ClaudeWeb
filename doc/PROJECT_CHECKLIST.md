@@ -165,7 +165,7 @@
 - [x] 现有 ClaudeWeb 前后端自动测试搬入新仓库并接入 CI，提交和 PR 都要运行。（2026-11-21：.github/workflows/ci.yml，推送到 main 和每个 PR 都运行：Linux 上的类型检查、lint、构建和前后端测试，Debian 12 构建安装包，再在全新 Debian 12 虚拟机里跑安装、更新、浏览器、多设备和 sudo 测试）
 - [x] 发布包附第三方许可证声明：除 CloudCLI 的 AGPL 外，还包括 Playwright Chromium、noVNC、字体及其他打包组件。（`THIRD_PARTY_NOTICES.md` 随发布包一起）
 - [ ] 完成 Debian 12、Debian 13、Ubuntu 22.04 LTS、Ubuntu 24.04 LTS、Ubuntu 26.04 LTS 的 amd64 适配与真实 VPS 验收。
-- [ ] 将软件包、服务、图形依赖和系统配置差异集中到平台适配层，避免业务功能与 Debian 12 路径或包名绑定。（2026-11-22：Debian 12 / Ubuntu 22.04 的安装与修复已共用 `packaging/platform.sh`；构建改为 Ubuntu 22.04 基线，其他目标待实施；纳入 2.0.3 测试版）
+- [x] 将软件包、服务、图形依赖和系统配置差异集中到平台适配层，避免业务功能与 Debian 12 路径或包名绑定。（2026-11-22：Debian 12 / Ubuntu 22.04 的安装与修复已共用 `packaging/platform.sh`；构建改为 Ubuntu 22.04 基线，其他目标待实施；纳入 2.0.3 测试版）（packaging/platform.sh 和 sync-platform.py 集中处理各发行版差异）
 - [x] 确定五个系统版本、amd64 架构及真实 VPS 轮流重装的测试方式，建立待验收矩阵，见 [LINUX_COMPATIBILITY_PLAN.md](LINUX_COMPATIBILITY_PLAN.md)。此项只表示计划已确定，不代表兼容性已通过。
 - [ ] 完成五个系统的安装、浏览器、ClaudeDesktop、重启、网页更新、失败恢复和数据保留矩阵，按实测结果更新支持声明。
 
@@ -294,7 +294,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/i
 
 ### 安装更新
 
-- [ ] 发布独立版本，完成默认最新稳定版的一键安装。
+- [x] 发布独立版本，完成默认最新稳定版的一键安装。（2026-11-22 发布第一个正式版 2.1.0（c0fdca3）；不加 --version 的一键安装即安装它）
 - [ ] 设置 → 关于 中完成检查、更新、重连、结果展示和回滚。
 - [ ] 验证既有数据、插件和凭据在更新后保留。
 
