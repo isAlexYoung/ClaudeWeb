@@ -15,7 +15,7 @@
 
 [English](README.md) | 中文 | [更新日志](CHANGELOG.md)
 
-[安装](#安装) · [快速开始](#快速开始) · [主要功能](#主要功能) · [常见问题](#常见问题) · [许可证](#许可证)
+[安装](#安装) · [快速开始](#快速开始) · [主要功能](#主要功能) · [插件](#插件) · [常见问题](#常见问题) · [许可证](#许可证)
 
 </div>
 
@@ -73,6 +73,16 @@ ClaudeWeb 只监听 `127.0.0.1:3001`。手机和平板使用[域名访问](#域�
 - 备份与迁移：导出和恢复数据，支持从 WebDesktop 内的旧 ClaudeWeb 迁入，详见[迁移说明](doc/USER_GUIDE.zh-CN.md#5-从-webdesktop-迁移)。
 - 个性化设置：明暗主题、简体中文与 English。
 - 网页更新：设置 → 关于 → 检查更新 → 更新，自动校验安装包，新版本启动失败时返回原版本；网页只提供正式版。
+
+## 插件
+
+在 **设置 → 插件** 中直接粘贴 Git 仓库链接即可安装：
+
+- **[ClaudeWeb Wallpaper](https://github.com/isAlexYoung/claudeweb-wallpaper)** —— 自定义静态、动图/视频及 Wallpaper Engine（视频类）壁纸插件，支持全窗自适应毛玻璃效果、暖白/浅色/深色主题独立绑定，以及可选登录页壁纸同步。
+
+如需开发自己的插件，请参阅[自定义插件指南](doc/CUSTOM_PLUGINS.md)与独立 [Plugin SDK](doc/plugin-sdk/claudeweb-plugin.d.ts)。
+
+如果您的插件足够优秀，将会被收录在这里 —— 欢迎提交 [Issue](https://github.com/isAlexYoung/ClaudeWeb/issues) 或 Pull Request。
 
 ## 用 CMCP 连接本机
 

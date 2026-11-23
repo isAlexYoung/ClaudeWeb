@@ -15,7 +15,7 @@
 
 English | [中文](README.zh-CN.md) | [Changelog](CHANGELOG.md)
 
-[Install](#install) · [Quick Start](#quick-start) · [Features](#features) · [FAQ](#faq) · [License](#license)
+[Install](#install) · [Quick Start](#quick-start) · [Features](#features) · [Plugins](#plugins) · [FAQ](#faq) · [License](#license)
 
 </div>
 
@@ -73,6 +73,16 @@ The [user guide](doc/USER_GUIDE.md) covers installation, access, CMCP, migration
 - Backup and migration: export and restore data, including moving from ClaudeWeb inside WebDesktop. See the [migration guide](doc/USER_GUIDE.md#5-move-from-webdesktop).
 - Personalization: light and dark themes, English and Simplified Chinese.
 - Web updates: Settings → About → Check for updates → Update, with package verification and automatic return to the previous version if startup fails. The page offers stable releases only.
+
+## Plugins
+
+Install plugins directly from **Settings → Plugins** by pasting a Git repository URL:
+
+- **[ClaudeWeb Wallpaper](https://github.com/isAlexYoung/claudeweb-wallpaper)** — Custom static, animated/video, and Wallpaper Engine (Video) wallpapers with adaptive full-window frosted glassmorphism, per-theme bindings, and optional login-screen sync.
+
+To build your own plugin, see the [custom-plugin guide](doc/CUSTOM_PLUGINS.md) and standalone [Plugin SDK](doc/plugin-sdk/claudeweb-plugin.d.ts).
+
+If your plugin stands out, it will be featured here — feel free to open an [issue](https://github.com/isAlexYoung/ClaudeWeb/issues) or pull request.
 
 ## Connect this computer with CMCP
 
