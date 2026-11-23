@@ -26,6 +26,7 @@ class PlatformTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout.splitlines()[0], key)
                 self.assertEqual('minisign' in result.stdout.splitlines()[1].split(), key != 'ubuntu-22.04')
+                self.assertIn('python3', result.stdout.splitlines()[1].split(), 'the CMCP connector needs Python on every supported platform')
 
     def test_other_versions_derivatives_and_architectures_are_rejected(self):
         for os_id, version, arch in [('ubuntu', '20.04', 'x86_64'), ('ubuntu', '24.10', 'x86_64'),

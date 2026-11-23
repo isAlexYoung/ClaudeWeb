@@ -2,7 +2,7 @@
 # the public one-line installer never sources another unverified download.
 cw_platform_select() {
   CW_PLATFORM=""
-  CW_BASE_PACKAGES=(ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq sudo)
+  CW_BASE_PACKAGES=(ca-certificates curl git tar xz-utils procps util-linux iproute2 less jq sudo python3)
   CW_GUI_PACKAGES=(tigervnc-standalone-server openbox xauth x11-utils xdotool xclip
     xfonts-base fonts-dejavu-core fonts-noto-cjk dbus dbus-x11 fcitx5
     fcitx5-chinese-addons fcitx5-frontend-gtk3 fcitx5-frontend-qt5)
