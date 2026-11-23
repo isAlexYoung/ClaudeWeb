@@ -2,6 +2,14 @@
 
 ClaudeWeb plugins extend the workspace with tabs, full-screen backgrounds (such as wallpapers), floating overlays (such as desktop pets or widgets), custom settings panels, and optional local Node.js backends.
 
+## Developer Kit & Reference Plugin
+
+Third-party repositories do not need to depend on ClaudeWeb's internal source tree:
+
+- **Standalone TypeScript declarations**: [doc/plugin-sdk/claudeweb-plugin.d.ts](plugin-sdk/claudeweb-plugin.d.ts) — copy into your plugin repo (e.g. `types/claudeweb-plugin.d.ts`) for full `PluginHostApi` / `ClaudeWebPluginModule` typing.
+- **Manifest JSON Schema**: [doc/plugin-sdk/manifest.schema.json](plugin-sdk/manifest.schema.json) — add `"$schema": "https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/doc/plugin-sdk/manifest.schema.json"` to `manifest.json` for editor validation and autocomplete.
+- **Complete runnable reference repository**: [isAlexYoung/claudeweb-wallpaper](https://github.com/isAlexYoung/claudeweb-wallpaper) — demonstrates `background` + `settings` slots, zero-dependency prebuilt SHA-256 bundles, Scoped Media Tickets with `Range`/`206` video streaming, `/plugin-ws/:name` live sync, optimistic locking, and login-screen snapshots.
+
 ## Security & Trust Model
 
 ClaudeWeb currently uses a **Trusted Plugin Model**, not an OS or browser sandbox:
@@ -39,12 +47,13 @@ A plugin declares one or more slots in `manifest.json` (`slots: [...]`; v1 `slot
 | `tab` | Workspace main tab (`More → <Plugin>`) | Multi-active; mounted on demand via `mount(container, host)`. |
 | `background` | `#cw-plugin-background-layer` (`z-0`) | **Strictly single-active**. Enabling a second background plugin returns `409 BACKGROUND_SLOT_OCCUPIED` until the user confirms switching. Only the active background plugin receives `host.surface`. |
 | `overlay` | `#cw-plugin-overlay-layer` (`z-[38]`) | Multi-active; deterministic order by `overlayOrder` (then name), below modals and sudo prompts. |
-| `settings` | Host drawer or modal (`PluginSettingsPanel`) | Opened on demand from **Settings → Plugins → Open Panel** via `mountSettings(container, host)`. Drawer mode temporarily hides the Settings backdrop so visual edits (like wallpapers) preview live over the workspace. |
+| `settings` | Host drawer or modal (`PluginSettingsPanel`) | Opened on demand from **Settings → Plugins → Open Panel** via `mountSettings(container, host)`. Drawer mode hides the Settings backdrop so visual edits (like wallpapers) preview live over the workspace. |
 
 ## Manifest v2 (`manifest.json`)
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/doc/plugin-sdk/manifest.schema.json",
   "manifestVersion": 2,
   "minPluginApi": 2,
   "requiredCapabilities": ["slots:background", "slots:settings", "media-ticket"],
@@ -74,28 +83,37 @@ A plugin declares one or more slots in `manifest.json` (`slots: [...]`; v1 `slot
 
 Key rules:
 
-- `minPluginApi` decouples SDK compatibility from ClaudeWeb marketing versions (current host exposes `apiVersion: 2`). Always probe `host.capabilities.has(...)` before calling optional APIs.
+- `minPluginApi` decouples SDK compatibility from ClaudeWeb product versions (current host exposes `apiVersion: 2`). Always probe `host.capabilities.has(...)` before calling optional APIs.
 - Unknown manifest fields are preserved/tolerated so newer plugins degrade gracefully.
-- `build.mode`:
-  - `"prebuilt"`: skips `npm install` and `npm run build` at install/update time when `entry` (and `server`, if declared) already exist and pass `build.integrity` SHA-256 verification. Recommended for fast, reliable zero-runtime-dependency plugins!
-  - `"source"` (default when omitted): runs `npm ci --ignore-scripts` (if `package-lock.json` exists) or `npm install --ignore-scripts`, then `npm run build` if defined.
-- All entry/icon/server paths must be relative without `..` or symlinks escaping the plugin directory.
+- `build.mode` accepts **`"auto"`** or **`"prebuilt"`**:
+  - `"prebuilt"`: skips `npm install` and `npm run build` at install/update time when `entry` (and `server`, if declared) already exist and pass `build.integrity` SHA-256 verification. Add `dist/** -text` to `.gitattributes` so line endings never alter digests across OSes.
+  - `"auto"` (default when omitted): if `package.json` exists, runs `npm ci --ignore-scripts` (when `package-lock.json` is present) or `npm install --ignore-scripts`, then `npm run build` if defined.
+- All `entry` / `icon` / `server` paths must be relative POSIX paths without `..` or symlinks escaping the plugin directory.
 
 ## Frontend Lifecycle Contract
 
-The host fetches `entry` with authentication headers and imports it via a temporary Blob URL (bundle all browser dependencies into `entry`). One module instance is shared per `(pluginName, revision)` across slots, allowing live draft preview between `mountSettings` and `mountLayer`.
+The host fetches `entry` with authentication headers and imports it via a temporary Blob URL (bundle all browser dependencies into `entry`). One live ES module instance is shared per `(pluginName, version, entry, revision)` across all mounted slots.
 
-Export any combination of:
+**Unified activation guarantee**:
+- `activate(host)` is called **exactly once** per live plugin instance before its first slot mounts — regardless of whether the plugin mounts `background` + `overlay` simultaneously, or only `settings` / `tab`.
+- Each slot then mounts independently (`mountLayer`, `mountSettings`, `mount`) with its own slot `AbortSignal`.
+- Refreshing the plugin list does **not** unmount or remount active tabs, settings panels, or layers unless the plugin's version, entry, enabled state, compatibility, or revision actually changes.
+- `deactivate()` is called **exactly once** when the last mounted slot unmounts or when the plugin is disabled, updated, uninstalled, or the user logs out.
 
 ```ts
-export async function activate(host: PluginHostApi): Promise<void> {}
-export async function mountLayer(slot: 'background' | 'overlay', container: HTMLElement, host: PluginHostApi): Promise<void> {}
-export function unmountLayer(slot: 'background' | 'overlay', container: HTMLElement): void {}
-export async function mountSettings(container: HTMLElement, host: PluginHostApi): Promise<void> {}
-export function unmountSettings(container: HTMLElement): void {}
-export async function mount(container: HTMLElement, host: PluginHostApi): Promise<void> {} // slot: "tab" & v1 compat
-export function unmount(container: HTMLElement): void {}
-export function deactivate(): void {}
+import type { ClaudeWebPluginModule, PluginHostApi } from './types/claudeweb-plugin';
+
+export const activate: ClaudeWebPluginModule['activate'] = async (host: PluginHostApi) => {
+  // Runs once per plugin instance: load initial config, open shared WS, etc.
+};
+
+export const mountLayer: ClaudeWebPluginModule['mountLayer'] = async (slot, container, host) => {};
+export const unmountLayer: ClaudeWebPluginModule['unmountLayer'] = (slot, container) => {};
+export const mountSettings: ClaudeWebPluginModule['mountSettings'] = async (container, host) => {};
+export const unmountSettings: ClaudeWebPluginModule['unmountSettings'] = (container) => {};
+export const mount: ClaudeWebPluginModule['mount'] = async (container, host) => {};
+export const unmount: ClaudeWebPluginModule['unmount'] = (container) => {};
+export const deactivate: ClaudeWebPluginModule['deactivate'] = () => {};
 ```
 
 Always observe `host.signal` (`AbortSignal`) in async work so a disable, update, or logout mid-activation cancels cleanly without writing stale DOM.
@@ -105,18 +123,105 @@ Always observe `host.signal` (`AbortSignal`) in async work so a disable, update,
 | Member | Contract |
 | --- | --- |
 | `pluginName`, `hostVersion`, `apiVersion`, `capabilities`, `signal` | Identity, capability set (`ReadonlySet<string>`), and lifecycle `AbortSignal`. |
-| `context`, `onContextChange(cb)` | `{ theme, themeMode ('warm' \| 'light' \| 'dark'), locale, route, project, session, reducedMotion, isMobile }`. |
-| `events.on(type, cb)`, `events.getSnapshot()` | Normalized real-time events: `agent:state` (with `sessionId`, `turnId`, `runId`, `seq`, `state`: `idle \| thinking \| streaming \| tool_use \| waiting_approval \| completed \| cancelled \| error`), `chat:user-sent`, `chat:turn-finished`, `sudo:requested`, `connection:status`. Use `getSnapshot()` on startup and reconnect. |
+| `context`, `onContextChange(cb)` | Live `{ theme, themeMode ('warm' \| 'light' \| 'dark'), locale, route, project, session, reducedMotion, isMobile }`. Updated across **all** slots (including `background` and `overlay`) whenever project, session, route, theme, or locale changes. |
+| `events.on(type, cb)`, `events.getSnapshot()` | Normalized real-time events: `agent:state` (with `sessionId`, `turnId`, `runId`, `seq`, `isFocusedSession`, `state`: `idle \| thinking \| streaming \| tool_use \| waiting_approval \| completed \| cancelled \| error`), `chat:user-sent`, `chat:turn-finished`, `sudo:requested`, `connection:status`. Use `getSnapshot()` on startup and reconnect. |
 | `rpc(method, path, body?)` | Authenticated JSON RPC proxied to the plugin backend. |
 | `rpcRaw(method, path, init?)` | Authenticated streaming binary/multipart RPC (up to 100 MiB) preserving `Range`, `If-Range`, and `Content-Type`. |
 | `media.createUrl(path, ttlMs?)` | Mints a short-lived Scoped Media Ticket URL (`/api/plugins/:name/media/:ticketId`) usable directly in `<img src>` and `<video src>` with full HTTP `Range` / `206` seeking and automatic revocation on logout or plugin disable. |
 | `assets.fetch(relativePath)` | Authenticated fetch for static assets inside the plugin folder. |
 | `ws.connect()` | Authenticated WebSocket connection to `/plugin-ws/:name`. |
 | `style.set(id, css)` / `remove(id)` / `clearAll()` | Host-managed `<style data-cw-plugin="...">` tags, auto-purged on disable/uninstall. |
-| `surface.setWallpaperVars(vars)` / `clear()` | Available **only** to the active `background` plugin. Sets `html[data-cw-wallpaper="chat" \| "workspace"]`, `--cw-surface-opacity`, and `--cw-glass-blur`. |
+| `surface.setWallpaperVars(vars)` / `clear()` | Available **only** to the active `background` plugin. Sets `html[data-cw-wallpaper="chat" \| "workspace"]`, `html[data-cw-wallpaper-tone="dark" \| "light"]`, `--cw-surface-opacity`, and `--cw-glass-blur`. |
 | `storage.get/set/remove` | Namespaced `localStorage` (`cw-plugin:<name>:`). |
 | `publicAppearance.uploadMedia/publish/clear` | Available when `publicAppearance: true`. Publishes a host-verified, non-sensitive login-screen snapshot (`single` or `per-theme` for `warm`/`light`/`dark`) served via `GET /api/public/appearance` (`no-store`) and `GET /api/public/appearance/media/:hash`. |
 | `ui.closePanel()`, `ui.notify(msg, tone?)`, `ui.setPanelDirty?(dirty)` | Panel dismissal, toast notification, and unsaved-draft close guard. |
+
+## Scoped Media Ticket Renewal & Backend `Range` Streaming
+
+Media tickets expire after 10 minutes by default (configurable between 30s and 15m) and are immediately invalidated on logout or plugin disable (`HTTP 401`). For long-lived `<video>` elements, renew tickets before expiry and retry once on playback error:
+
+```js
+async function attachTicketedVideo(video, host, mediaPath) {
+  let ticket = await host.media.createUrl(mediaPath, 10 * 60_000);
+  video.src = ticket.url;
+
+  let retried = false;
+  video.addEventListener('error', async () => {
+    if (retried || host.signal.aborted) return;
+    retried = true;
+    const savedTime = video.currentTime || 0;
+    ticket = await host.media.createUrl(mediaPath, 10 * 60_000);
+    if (!host.signal.aborted && video.isConnected) {
+      video.src = ticket.url;
+      video.currentTime = savedTime;
+      void video.play().catch(() => {});
+    }
+  });
+}
+```
+
+On the plugin backend (`server`), respond to `GET` / `HEAD` with a whitelisted MIME (`image/png`, `image/jpeg`, `image/webp`, `image/avif`, `image/gif`, `video/mp4`, `video/webm`; SVG/HTML are rejected by the host with `415 UNSAFE_MEDIA_TYPE`) and implement HTTP `Range` + `ETag`:
+
+```js
+function serveRangeFile(req, res, filePath, mimeType, etag) {
+  const { size } = fs.statSync(filePath);
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Content-Type', mimeType);
+  res.setHeader('ETag', etag);
+
+  if (req.headers['if-none-match'] === etag) {
+    res.writeHead(304).end();
+    return;
+  }
+
+  const range = req.headers.range;
+  if (typeof range === 'string' && range.startsWith('bytes=')) {
+    const [startRaw, endRaw] = range.slice(6).split('-');
+    const start = startRaw ? Number.parseInt(startRaw, 10) : Math.max(0, size - Number.parseInt(endRaw, 10));
+    const end = endRaw ? Math.min(size - 1, Number.parseInt(endRaw, 10)) : size - 1;
+    if (Number.isNaN(start) || Number.isNaN(end) || start < 0 || start >= size || end < start) {
+      res.writeHead(416, { 'Content-Range': `bytes */${size}` }).end();
+      return;
+    }
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${size}`,
+      'Content-Length': String(end - start + 1),
+    });
+    if (req.method === 'HEAD') return res.end();
+    fs.createReadStream(filePath, { start, end }).pipe(res);
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Length': String(size) });
+  if (req.method === 'HEAD') return res.end();
+  fs.createReadStream(filePath).pipe(res);
+}
+```
+
+## Plugin WebSocket (`/plugin-ws/:name`) Protocol
+
+Calling `host.ws.connect()` opens an authenticated WebSocket to `/plugin-ws/<pluginName>?token=<jwt>`. The ClaudeWeb host verifies the user's JWT session before proxying the raw WebSocket upgrade straight to your plugin backend's HTTP `upgrade` handler on `127.0.0.1:<port>` (so your backend does not need to verify JWTs itself):
+
+```js
+// Plugin backend: handle `upgrade` (e.g. using RFC 6455 or `ws` package)
+server.on('upgrade', (req, socket) => {
+  const key = req.headers['sec-websocket-key'];
+  if (!key) { socket.destroy(); return; }
+  const accept = crypto
+    .createHash('sha1')
+    .update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
+    .digest('base64');
+  socket.write(
+    'HTTP/1.1 101 Switching Protocols\r\n'
+    + 'Upgrade: websocket\r\n'
+    + 'Connection: Upgrade\r\n'
+    + `Sec-WebSocket-Accept: ${accept}\r\n\r\n`,
+  );
+  // Register socket, reply to ping (opcode 0x9) with pong (0xA), and close on 0x8.
+});
+```
+
+Frontend plugins should reconnect with exponential backoff when `ws.onclose` fires and stop reconnecting once `host.signal.aborted` becomes `true`. See [claudeweb-wallpaper/src/server/ws.cjs](https://github.com/isAlexYoung/claudeweb-wallpaper/blob/main/src/server/ws.cjs) for a complete zero-dependency implementation.
 
 ## Local Backend Service (`server`)
 
@@ -125,7 +230,6 @@ Add `"server": "dist/server.cjs"` to `manifest.json`. The backend must listen on
 ```js
 const http = require('node:http');
 const fs = require('node:fs');
-const path = require('node:path');
 
 const dataDir = process.env.PLUGIN_DATA_DIR; // persistent across plugin updates!
 fs.mkdirSync(dataDir, { recursive: true });
@@ -147,27 +251,55 @@ process.on('SIGTERM', () => server.close(() => process.exit(0)));
 ```
 
 - Store user configs and uploaded media under `process.env.PLUGIN_DATA_DIR` (`~/.claude-code-ui/plugin-data/<name>/`) so plugin code updates never overwrite user data.
-- If a plugin backend crashes 3 times within 5 minutes, the host opens a circuit breaker and surfaces a **Restart** button in **Settings → Plugins**.
+- If a plugin backend crashes 3 times within 5 minutes, the host opens a circuit breaker (`503 PLUGIN_CIRCUIT_OPEN`) and surfaces a **Restart** button in **Settings → Plugins**.
+
+## Host Error Codes
+
+| HTTP | Error `code` | Meaning & Handling |
+| --- | --- | --- |
+| `400` | `INVALID_MEDIA_PATH` | Media ticket path contained traversal (`..`), backslash, or scheme. |
+| `401` | `MEDIA_TICKET_INVALID` | Ticket expired, belongs to another plugin, or login session ended. Re-mint with `host.media.createUrl()` if still signed in. |
+| `409` | `BACKGROUND_SLOT_OCCUPIED` | Another background plugin is active (`error.details.activePlugin`). Retry with `{ takeoverBackground: true }` after user confirmation. |
+| `413` | `RPC_BODY_TOO_LARGE` / `PUBLIC_MEDIA_TOO_LARGE` | Binary upload exceeded host limit (100 MiB for `rpcRaw`, 50 MiB for public login media). |
+| `415` | `UNSAFE_MEDIA_TYPE` / `UNSUPPORTED_PUBLIC_MEDIA` | Media MIME or binary magic bytes are not in the safe whitelist (SVG/HTML/scripts are rejected). |
+| `422` | `PLUGIN_INCOMPATIBLE` | Plugin requires a newer `minPluginApi` or unsupported capability in `requiredCapabilities`. |
+| `422` | `PLUGIN_ARTIFACT_MISSING` / `PLUGIN_INTEGRITY_MISMATCH` | Declared `entry`/`server` missing or SHA-256 mismatch against `build.integrity`. |
+| `503` | `PLUGIN_SERVER_UNAVAILABLE` / `PLUGIN_CIRCUIT_OPEN` | Plugin backend is disabled, failed startup, or tripped the 3-in-5-minute crash circuit breaker. |
 
 ## Minimal Overlay Example (Desktop Pet Skeleton)
 
 ```js
 let rootEl = null;
-let unsub = null;
+let unsubEvents = null;
+let unsubCtx = null;
+
+export function activate(_host) {
+  // Runs once for this plugin instance across all slots.
+}
 
 export function mountLayer(slot, container, host) {
   if (slot !== 'overlay') return;
   rootEl = document.createElement('div');
   rootEl.style.cssText = 'position:fixed;right:24px;bottom:24px;pointer-events:auto;padding:8px 12px;border-radius:12px;background:hsl(var(--popover));border:1px solid hsl(var(--border));font-size:12px;';
-  const render = (state) => { rootEl.textContent = `Pet: ${state}`; };
-  render(host.events.getSnapshot().activeRuns[0]?.state ?? 'idle');
-  unsub = host.events.on('agent:state', (ev) => render(ev.state));
+  const render = (state, projectName) => {
+    rootEl.textContent = `Pet (${projectName || 'Home'}): ${state}`;
+  };
+  let lastState = host.events.getSnapshot().activeRuns.find((r) => r.isFocusedSession)?.state ?? 'idle';
+  render(lastState, host.context.project?.name);
+  unsubEvents = host.events.on('agent:state', (ev) => {
+    if (!ev.isFocusedSession) return;
+    lastState = ev.state;
+    render(lastState, host.context.project?.name);
+  });
+  unsubCtx = host.onContextChange((ctx) => render(lastState, ctx.project?.name));
   container.replaceChildren(rootEl);
 }
 
 export function unmountLayer(_slot, container) {
-  unsub?.();
-  unsub = null;
+  unsubEvents?.();
+  unsubCtx?.();
+  unsubEvents = null;
+  unsubCtx = null;
   container.replaceChildren();
 }
 ```

@@ -5,6 +5,14 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.1 - 2026-11-23 (test)
+
+- Redesign wallpaper glassmorphism (`workspace-theme.css`) to a seamless full-window smoked-dark / frosted-light glass aesthetic with adaptive `tone` (`auto` / `dark` / `light`), floating transparent header, frosted composer capsule, and adaptive Markdown/prose typography contrast across Warm, Light, and Dark themes.
+- Unify plugin lifecycle coordination (`createPluginInstanceManager`) so `activate()` runs once per live plugin instance across `background`, `overlay`, `settings`, and `tab` slots and `deactivate()` runs once on final slot teardown, disable, update, uninstall, or logout.
+- Propagate live workspace `route`, `project`, and `session` context plus live `focusedSessionId` (`isFocusedSession`) to global plugins and the normalized event bus.
+- Stabilize `PluginTabContent` and `PluginSettingsPanel` effect dependencies on primitive identity/version/revision keys so refreshing the plugin list never remounts active plugin UIs.
+- Fix `doc/CUSTOM_PLUGINS.md` (`build.mode`: `"auto"` / `"prebuilt"`), add standalone `doc/plugin-sdk/claudeweb-plugin.d.ts` and `doc/plugin-sdk/manifest.schema.json`, and document media ticket renewal, `Range`/`206`, `/plugin-ws/:name`, and host error codes.
+
 ## 2.2.0 - 2026-11-23 (test)
 
 - Introduce Plugin Host v2 (`apiVersion: 2`) supporting `background`, `overlay`, `settings`, and `tab` slots with single-active background arbitration and drawer/modal settings panels.

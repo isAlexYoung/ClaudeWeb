@@ -674,11 +674,71 @@
 /* ─── Plugin Host v2: Background Wallpaper Glassmorphism & Login Appearance ─── */
 /* Only activates when a background plugin explicitly sets html[data-cw-wallpaper],
    keeping default ClaudeWeb visuals pixel-identical when no wallpaper is active. */
-html[data-cw-wallpaper="chat"] .workspace-shell,
-html[data-cw-wallpaper="workspace"] .workspace-shell {
-  background-color: transparent;
+
+/* Adaptive glass tokens: light glass vs dark smoked glass (DSH-style seamless full-bleed UI) */
+html[data-cw-wallpaper="workspace"][data-cw-wallpaper-tone="dark"] .workspace-shell,
+html[data-cw-wallpaper="chat"][data-cw-wallpaper-tone="dark"] .workspace-main {
+  --foreground: 0 0% 96%;
+  --muted-foreground: 220 12% 76%;
+  --background: 222 18% 10%;
+  --card: 222 16% 12%;
+  --card-foreground: 0 0% 96%;
+  --popover: 222 18% 11%;
+  --popover-foreground: 0 0% 96%;
+  --secondary: 222 14% 17%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 222 14% 18%;
+  --accent: 222 14% 22%;
+  --accent-foreground: 0 0% 96%;
+  --border: 220 14% 28%;
+  --input: 220 14% 26%;
+  --workspace-sidebar: #0e1117;
+  --workspace-panel: #10141c;
+  --workspace-bubble: #141923;
+  --workspace-hover: rgba(255, 255, 255, 0.10);
+  --workspace-line: rgba(255, 255, 255, 0.11);
+  --cw-glass-rgb: 14, 17, 24;
+  --cw-glass-border: rgba(255, 255, 255, 0.11);
+  --cw-glass-border-strong: rgba(255, 255, 255, 0.18);
+  --cw-glass-shadow: 0 12px 38px rgba(0, 0, 0, 0.34);
+  --cw-header-fade: rgba(8, 10, 16, 0.38);
+  --cw-text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  color: hsl(var(--foreground));
 }
 
+html[data-cw-wallpaper="workspace"][data-cw-wallpaper-tone="light"] .workspace-shell,
+html[data-cw-wallpaper="chat"][data-cw-wallpaper-tone="light"] .workspace-main {
+  --foreground: 220 15% 15%;
+  --muted-foreground: 220 10% 38%;
+  --background: 0 0% 99%;
+  --card: 0 0% 98%;
+  --card-foreground: 220 15% 15%;
+  --popover: 0 0% 99%;
+  --popover-foreground: 220 15% 15%;
+  --secondary: 220 14% 94%;
+  --secondary-foreground: 220 15% 15%;
+  --muted: 220 14% 94%;
+  --accent: 220 14% 91%;
+  --accent-foreground: 220 15% 15%;
+  --border: 220 12% 84%;
+  --input: 220 12% 84%;
+  --workspace-sidebar: #f6f7f9;
+  --workspace-panel: #f9fafb;
+  --workspace-bubble: #eef0f4;
+  --workspace-hover: rgba(0, 0, 0, 0.06);
+  --workspace-line: rgba(0, 0, 0, 0.09);
+  --cw-glass-rgb: 255, 255, 255;
+  --cw-glass-border: rgba(0, 0, 0, 0.08);
+  --cw-glass-border-strong: rgba(0, 0, 0, 0.14);
+  --cw-glass-shadow: 0 10px 32px rgba(15, 23, 42, 0.10);
+  --cw-header-fade: rgba(255, 255, 255, 0.34);
+  --cw-text-shadow: 0 1px 6px rgba(255, 255, 255, 0.55);
+  color: hsl(var(--foreground));
+}
+
+/* Transparent canvas containers so wallpaper breathes seamlessly across the viewport */
+html[data-cw-wallpaper="chat"] .workspace-shell,
+html[data-cw-wallpaper="workspace"] .workspace-shell,
 html[data-cw-wallpaper="chat"] .workspace-main,
 html[data-cw-wallpaper="chat"] .workspace-chat,
 html[data-cw-wallpaper="workspace"] .workspace-main,
@@ -686,54 +746,155 @@ html[data-cw-wallpaper="workspace"] .workspace-chat {
   background-color: transparent;
 }
 
-html[data-cw-wallpaper="chat"] .workspace-header {
-  background: color-mix(in srgb, hsl(var(--background)) calc(var(--cw-surface-opacity, 0.82) * 100%), transparent);
-  backdrop-filter: blur(var(--cw-glass-blur, 16px));
-  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+/* Seamless floating header: whisper-soft top fade with no harsh solid strip or border */
+html[data-cw-wallpaper="chat"] .workspace-header,
+html[data-cw-wallpaper="workspace"] .workspace-header {
+  background: linear-gradient(to bottom, var(--cw-header-fade, transparent), transparent);
+  border-bottom-color: transparent;
 }
 
+/* Floating frosted-glass composer pill */
 html[data-cw-wallpaper="chat"] .workspace-chat .chat-composer-shell form,
 html[data-cw-wallpaper="workspace"] .workspace-chat .chat-composer-shell form {
-  background: color-mix(in srgb, hsl(var(--muted)) calc(var(--cw-surface-opacity, 0.82) * 100%), transparent);
-  backdrop-filter: blur(var(--cw-glass-blur, 16px));
-  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+  background: rgba(var(--cw-glass-rgb, 14, 17, 24), calc(var(--cw-surface-opacity, 0.36) + 0.06));
+  backdrop-filter: blur(calc(var(--cw-glass-blur, 20px) + 4px)) saturate(1.45);
+  -webkit-backdrop-filter: blur(calc(var(--cw-glass-blur, 20px) + 4px)) saturate(1.45);
+  border-color: var(--cw-glass-border-strong, var(--workspace-line));
+  box-shadow: var(--cw-glass-shadow, 0 12px 36px rgba(0, 0, 0, 0.24));
+}
+
+html[data-cw-wallpaper][data-cw-wallpaper-tone="dark"] .workspace-chat textarea::placeholder {
+  color: rgba(255, 255, 255, 0.56);
+}
+
+html[data-cw-wallpaper][data-cw-wallpaper-tone="light"] .workspace-chat textarea::placeholder {
+  color: rgba(15, 23, 42, 0.48);
+}
+
+/* Crisp readable chat prose, greeting, and translucent glass message bubbles */
+html[data-cw-wallpaper="chat"] .workspace-chat-greeting,
+html[data-cw-wallpaper="workspace"] .workspace-chat-greeting,
+html[data-cw-wallpaper="chat"] .workspace-chat .prose,
+html[data-cw-wallpaper="workspace"] .workspace-chat .prose {
+  text-shadow: var(--cw-text-shadow, none);
+}
+
+/* Adaptive Markdown typography so dark wallpapers stay luminous even on Warm/Light themes,
+   and bright wallpapers stay dark-ink even on Dark themes. */
+html[data-cw-wallpaper][data-cw-wallpaper-tone="dark"] .workspace-chat .prose {
+  --tw-prose-body: #f3f4f6;
+  --tw-prose-headings: #ffffff;
+  --tw-prose-lead: #e5e7eb;
+  --tw-prose-links: #93c5fd;
+  --tw-prose-bold: #ffffff;
+  --tw-prose-counters: rgba(255, 255, 255, 0.72);
+  --tw-prose-bullets: rgba(255, 255, 255, 0.60);
+  --tw-prose-hr: rgba(255, 255, 255, 0.16);
+  --tw-prose-quotes: #f3f4f6;
+  --tw-prose-quote-borders: rgba(255, 255, 255, 0.28);
+  --tw-prose-captions: rgba(255, 255, 255, 0.72);
+  --tw-prose-code: #f9fafb;
+  --tw-prose-pre-code: #e5e7eb;
+  --tw-prose-pre-bg: rgba(10, 12, 18, 0.74);
+  --tw-prose-th-borders: rgba(255, 255, 255, 0.22);
+  --tw-prose-td-borders: rgba(255, 255, 255, 0.12);
+  color: #f3f4f6;
+}
+
+html[data-cw-wallpaper][data-cw-wallpaper-tone="light"] .workspace-chat .prose {
+  --tw-prose-body: #1f2937;
+  --tw-prose-headings: #111827;
+  --tw-prose-lead: #374151;
+  --tw-prose-links: #1d4ed8;
+  --tw-prose-bold: #111827;
+  --tw-prose-counters: #4b5563;
+  --tw-prose-bullets: #6b7280;
+  --tw-prose-hr: rgba(0, 0, 0, 0.12);
+  --tw-prose-quotes: #111827;
+  --tw-prose-quote-borders: rgba(0, 0, 0, 0.18);
+  --tw-prose-captions: #4b5563;
+  --tw-prose-code: #111827;
+  --tw-prose-pre-code: #1f2937;
+  --tw-prose-pre-bg: rgba(255, 255, 255, 0.78);
+  --tw-prose-th-borders: rgba(0, 0, 0, 0.16);
+  --tw-prose-td-borders: rgba(0, 0, 0, 0.09);
+  color: #1f2937;
 }
 
 html[data-cw-wallpaper="chat"] .workspace-chat .workspace-user-bubble,
 html[data-cw-wallpaper="workspace"] .workspace-chat .workspace-user-bubble {
-  background: color-mix(in srgb, var(--workspace-bubble) calc(var(--cw-surface-opacity, 0.85) * 100%), transparent);
-  backdrop-filter: blur(var(--cw-glass-blur, 12px));
-  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 12px));
+  background: rgba(var(--cw-glass-rgb, 14, 17, 24), calc(var(--cw-surface-opacity, 0.36) + 0.14));
+  backdrop-filter: blur(var(--cw-glass-blur, 18px)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 18px)) saturate(1.4);
+  border: 1px solid var(--cw-glass-border, var(--workspace-line));
 }
 
-/* Full workspace glassmorphism: sidebar, header, inspector and cards adopt frosted translucency */
+html[data-cw-wallpaper] .workspace-chat .prose pre,
+html[data-cw-wallpaper] .workspace-chat .prose :not(pre) > code {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html[data-cw-wallpaper][data-cw-wallpaper-tone="dark"] .workspace-chat .prose pre {
+  background: rgba(10, 12, 18, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+}
+
+html[data-cw-wallpaper][data-cw-wallpaper-tone="dark"] .workspace-chat .prose :not(pre) > code {
+  background: rgba(10, 12, 18, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f3f4f6;
+}
+
+html[data-cw-wallpaper][data-cw-wallpaper-tone="light"] .workspace-chat .prose pre {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+html[data-cw-wallpaper][data-cw-wallpaper-tone="light"] .workspace-chat .prose :not(pre) > code {
+  background: rgba(255, 255, 255, 0.70);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  color: #111827;
+}
+
+/* Full workspace frosted glass: seamless sidebar, inspector, and cards */
+html[data-cw-wallpaper="workspace"] .workspace-sidebar-region {
+  border-right-color: var(--cw-glass-border, var(--workspace-line));
+}
+
 html[data-cw-wallpaper="workspace"] .workspace-sidebar {
-  background: color-mix(in srgb, var(--workspace-sidebar) calc(var(--cw-surface-opacity, 0.8) * 100%), transparent);
-  backdrop-filter: blur(var(--cw-glass-blur, 16px));
-  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+  background: rgba(var(--cw-glass-rgb, 14, 17, 24), var(--cw-surface-opacity, 0.36));
+  backdrop-filter: blur(var(--cw-glass-blur, 20px)) saturate(1.45);
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 20px)) saturate(1.45);
 }
 
-html[data-cw-wallpaper="workspace"] .workspace-header {
-  background: color-mix(in srgb, hsl(var(--background)) calc(var(--cw-surface-opacity, 0.78) * 100%), transparent);
-  backdrop-filter: blur(var(--cw-glass-blur, 16px));
-  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+html[data-cw-wallpaper="workspace"] .workspace-nav-row.selected {
+  background: var(--workspace-hover);
+  box-shadow: inset 0 0 0 1px var(--cw-glass-border, transparent);
+}
+
+html[data-cw-wallpaper="workspace"] .workspace-mode-tabs {
+  background: rgba(var(--cw-glass-rgb, 14, 17, 24), calc(var(--cw-surface-opacity, 0.36) * 0.85));
+  border: 1px solid var(--cw-glass-border, var(--workspace-line));
 }
 
 html[data-cw-wallpaper="workspace"] .workspace-inspector {
-  background: color-mix(in srgb, var(--workspace-panel) calc(var(--cw-surface-opacity, 0.82) * 100%), transparent);
-  backdrop-filter: blur(var(--cw-glass-blur, 16px));
-  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+  background: rgba(var(--cw-glass-rgb, 14, 17, 24), calc(var(--cw-surface-opacity, 0.36) + 0.08));
+  backdrop-filter: blur(var(--cw-glass-blur, 20px)) saturate(1.45);
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 20px)) saturate(1.45);
+  border-left-color: var(--cw-glass-border, var(--workspace-line));
 }
 
 html[data-cw-wallpaper="workspace"] .scheduled-task-card,
 html[data-cw-wallpaper="workspace"] .workspace-change-card,
 html[data-cw-wallpaper="workspace"] .workspace-taskmaster-card {
-  background: color-mix(in srgb, var(--workspace-panel) calc(var(--cw-surface-opacity, 0.86) * 100%), transparent);
-  backdrop-filter: blur(var(--cw-glass-blur, 14px));
-  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 14px));
+  background: rgba(var(--cw-glass-rgb, 14, 17, 24), calc(var(--cw-surface-opacity, 0.36) + 0.14));
+  backdrop-filter: blur(var(--cw-glass-blur, 18px)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 18px)) saturate(1.4);
+  border-color: var(--cw-glass-border, var(--workspace-line));
 }
 
-/* Keep code editors, terminals, menus and security prompts crisp and opaque */
+/* Keep code editors, terminals, menus and security prompts crisp and legible */
 html[data-cw-wallpaper] .cm-editor,
 html[data-cw-wallpaper] .xterm {
   background-color: hsl(var(--background));

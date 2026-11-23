@@ -93,6 +93,30 @@ test('manifest v2 validation tolerates unknown future fields and validates slots
     entry: '../escape.js',
   });
   assert.equal(traversal.valid, false);
+
+  const autoBuild = validateManifest({
+    name: 'auto-build',
+    displayName: 'Auto Build',
+    entry: 'dist/index.js',
+    build: { mode: 'auto' },
+  });
+  assert.equal(autoBuild.valid, true);
+
+  const prebuiltMode = validateManifest({
+    name: 'prebuilt-build',
+    displayName: 'Prebuilt Build',
+    entry: 'dist/index.js',
+    build: { mode: 'prebuilt' },
+  });
+  assert.equal(prebuiltMode.valid, true);
+
+  const invalidSourceMode = validateManifest({
+    name: 'invalid-source-mode',
+    displayName: 'Invalid Source Mode',
+    entry: 'dist/index.js',
+    build: { mode: 'source' },
+  });
+  assert.equal(invalidSourceMode.valid, false);
 });
 
 test('compatibility checks enforce minPluginApi and requiredCapabilities', () => {

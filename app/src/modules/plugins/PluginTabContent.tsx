@@ -3,13 +3,9 @@ import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@/shared/context/ThemeContext';
 import { usePlugins } from '@/modules/plugins/context/PluginsContext';
-import {
-  buildPluginHostContext,
-  createPluginHostApi,
-  createPluginStyleManager,
-  loadPluginModule,
-} from '@/modules/plugins/pluginRuntime';
-import type { ClaudeWebPluginModule, PluginHostContext, Project, ProjectSession, ThemeMode } from '@/shared/types';
+import { buildPluginHostContext } from '@/modules/plugins/pluginRuntime';
+import type { AcquiredPluginSlot } from '@/modules/plugins/pluginRuntime';
+import type { PluginHostContext, Project, ProjectSession, ThemeMode } from '@/shared/types';
 
 type PluginTabContentProps = {
   pluginName: string;
@@ -57,16 +53,35 @@ export default function PluginTabContent({
   const containerRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { isDarkMode, themeMode } = useTheme();
-  const { plugins, hostInfo, safeMode, pluginRevisions, eventBus, notifyPlugin } = usePlugins();
+  const {
+    plugins,
+    hostInfo,
+    safeMode,
+    pluginRevisions,
+    eventBus,
+    instanceManager,
+    notifyPlugin,
+  } = usePlugins();
 
-  // Stable refs so effects don't need context values in their dep arrays
+  // Stable refs so effects don't need context values or list-refreshed plugin object identities in dep arrays.
   const contextRef = useRef<PluginHostContext>(
     buildContext(isDarkMode, themeMode, i18n.language, selectedProject, selectedSession),
   );
   const contextCallbacksRef = useRef<Set<(ctx: PluginHostContext) => void>>(new Set());
-  const moduleRef = useRef<ClaudeWebPluginModule | null>(null);
 
-  const plugin = plugins.find((p) => p.name === pluginName);
+  const plugin = plugins.find((p) => p.name === pluginName) ?? null;
+  const pluginRef = useRef(plugin);
+  const hostInfoRef = useRef(hostInfo);
+  useEffect(() => {
+    pluginRef.current = plugin;
+    hostInfoRef.current = hostInfo;
+  }, [hostInfo, plugin]);
+
+  const pluginVersion = plugin?.version ?? null;
+  const pluginEntry = plugin?.entry ?? 'index.js';
+  const pluginEnabled = Boolean(plugin?.enabled);
+  const pluginCompatible = plugin?.compatible !== false;
+  const pluginIncompatReason = plugin?.incompatibilityReason ?? null;
   const revision = pluginRevisions[pluginName] ?? 0;
 
   const getContext = useMemo(() => () => contextRef.current, []);
@@ -90,14 +105,12 @@ export default function PluginTabContent({
     }
   }, [i18n.language, isDarkMode, selectedProject, selectedSession, themeMode]);
 
-  const hostInfoRef = useRef(hostInfo);
-  hostInfoRef.current = hostInfo;
-
   useEffect(() => {
     // Drop any previous plugin's error before this load attempt starts, so a
     // stale overlay never covers a different (or successfully loaded) plugin.
     setLoadError(null);
-    if (!containerRef.current || !plugin?.enabled) return;
+    const currentPlugin = pluginRef.current;
+    if (!containerRef.current || !currentPlugin || !pluginEnabled) return;
 
     if (safeMode) {
       setLoadError(
@@ -108,9 +121,9 @@ export default function PluginTabContent({
       return;
     }
 
-    if (plugin.compatible === false) {
+    if (!pluginCompatible) {
       setLoadError(
-        plugin.incompatibilityReason
+        pluginIncompatReason
         || t('settings:pluginSettings.incompatible', { defaultValue: 'Incompatible with this ClaudeWeb version.' }),
       );
       return;
@@ -118,38 +131,38 @@ export default function PluginTabContent({
 
     let active = true;
     const container = containerRef.current;
-    const entryFile = plugin.entry ?? 'index.js';
     const contextCallbacks = contextCallbacksRef.current;
-    const controller = new AbortController();
-    const styleManager = createPluginStyleManager(`${pluginName}:tab`);
+    let acquired: AcquiredPluginSlot | null = null;
+    let didMount = false;
 
     (async () => {
       try {
-        const mod = await loadPluginModule(pluginName, entryFile, revision);
-        if (!active || !containerRef.current || controller.signal.aborted) return;
-
-        moduleRef.current = mod;
-
-        const pluginHostApi = createPluginHostApi({
-          plugin,
+        const handle = await instanceManager.acquireSlot({
+          plugin: currentPlugin,
           hostInfo: hostInfoRef.current,
-          signal: controller.signal,
+          revision,
+          slotId: `tab:${pluginName}`,
           getContext,
           subscribeContext,
           eventBus,
-          styleManager,
           allowSurface: false,
           onNotify: notifyPlugin,
         });
-
-        await mod.mount?.(container, pluginHostApi);
-        if (!active) {
-          try { mod.unmount?.(container); } catch { /* ignore */ }
-          moduleRef.current = null;
+        if (!active || !containerRef.current || handle.slotSignal.aborted) {
+          handle.release();
           return;
         }
+        acquired = handle;
+
+        await handle.mod.mount?.(container, handle.hostApi);
+        didMount = true;
+        if (!active) {
+          try { handle.mod.unmount?.(container); } catch { /* ignore */ }
+          handle.release();
+          acquired = null;
+        }
       } catch (err) {
-        if (!active || controller.signal.aborted) return;
+        if (!active) return;
         console.error(`[Plugin:${pluginName}] Failed to load:`, err);
         setLoadError(err instanceof Error ? err.message : String(err));
       }
@@ -157,19 +170,27 @@ export default function PluginTabContent({
 
     return () => {
       active = false;
-      controller.abort();
-      try { moduleRef.current?.unmount?.(container); } catch { /* ignore */ }
+      if (acquired) {
+        if (didMount) {
+          try { acquired.mod.unmount?.(container); } catch { /* ignore */ }
+        }
+        acquired.release();
+        acquired = null;
+      }
       container.innerHTML = '';
-      styleManager.clearAll();
       contextCallbacks.clear();
-      moduleRef.current = null;
     };
   }, [
     eventBus,
     getContext,
+    instanceManager,
     notifyPlugin,
-    plugin,
+    pluginCompatible,
+    pluginEnabled,
+    pluginEntry,
+    pluginIncompatReason,
     pluginName,
+    pluginVersion,
     revision,
     safeMode,
     subscribeContext,

@@ -1422,6 +1422,8 @@ export type PluginWallpaperSurfaceVars = {
   scope: 'none' | 'chat' | 'workspace';
   surfaceOpacity: number;
   glassBlurPx: number;
+  /** Optional adaptive glass tone: 'dark' forces luminous light text + smoked dark glass; 'light' uses bright frosted glass + dark text; 'auto' follows ClaudeWeb's current theme. */
+  tone?: 'auto' | 'dark' | 'light';
 };
 
 export type PluginHostApi = {

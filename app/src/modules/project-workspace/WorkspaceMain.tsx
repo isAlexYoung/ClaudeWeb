@@ -5,7 +5,7 @@ import { ChatInterface } from '@/modules/chat';
 import { FileTree } from '@/modules/file-tree';
 import { StandaloneShell } from '@/modules/standalone-shell';
 import { GitPanel } from '@/modules/git-panel';
-import { PluginTabContent } from '@/modules/plugins';
+import { PluginTabContent, useOptionalPlugins } from '@/modules/plugins';
 import { usePaletteOps, usePaletteOpsRegister } from '@/modules/command-palette';
 import { TaskMasterPanel, useTaskMasterProjectSync, useTasksSettings } from '@/modules/task-master';
 import type { AppTab, DirectoryRevealRequest, Project, ProjectSession, SessionEstablishedContext, SessionNavigationOptions, SettingsMainTab, TurnChanges } from '@/shared/types';
@@ -74,6 +74,32 @@ function WorkspaceMain({
   const isCodeHome = experience.home && experience.mode === 'project';
   const tools = useWorkspaceTools();
   const paletteOps = usePaletteOps();
+  const pluginsCtx = useOptionalPlugins();
+
+  // Keep global plugins (overlay/background/settings) synchronized with the live active project, session, and route.
+  const setPluginWorkspaceContext = pluginsCtx?.setWorkspaceContext;
+  useEffect(() => {
+    setPluginWorkspaceContext?.({
+      route: experience.scheduledTasksOpen ? 'scheduled-tasks' : 'workspace',
+      project: selectedProject
+        ? {
+            name: selectedProject.projectId,
+            path: selectedProject.fullPath || selectedProject.path || '',
+          }
+        : null,
+      session: selectedSession
+        ? {
+            id: selectedSession.id,
+            title: selectedSession.title || selectedSession.name || selectedSession.id,
+          }
+        : null,
+    });
+  }, [
+    experience.scheduledTasksOpen,
+    selectedProject,
+    selectedSession,
+    setPluginWorkspaceContext,
+  ]);
   // New Chat starts closed; opening a saved conversation keeps the desktop dock behavior.
   const [inspectorOpen, setInspectorOpen] = useState(() => !experience.home && matchMedia('(min-width: 1100px)').matches);
   // Shell and files return to the same live Context/Connectors view.

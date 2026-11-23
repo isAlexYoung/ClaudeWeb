@@ -8,15 +8,11 @@ import { usePlugins } from '@/modules/plugins/context/PluginsContext';
 import {
   applyWallpaperSurfaceVars,
   buildPluginHostContext,
-  createPluginHostApi,
-  createPluginStyleManager,
-  evictPluginModuleCache,
   getPluginSlots,
-  loadPluginModule,
   markPluginBootInFlight,
-  purgePluginStyles,
 } from '@/modules/plugins/pluginRuntime';
-import type { ClaudeWebPluginModule, Plugin, PluginHostContext } from '@/shared/types';
+import type { AcquiredPluginSlot } from '@/modules/plugins/pluginRuntime';
+import type { Plugin, PluginHostContext } from '@/shared/types';
 
 const ACTIVATION_TIMEOUT_MS = 10_000;
 
@@ -61,28 +57,29 @@ function MountedPluginSlot({
   const {
     hostInfo,
     eventBus,
+    instanceManager,
     notifyPlugin,
     setPluginRuntimeState,
   } = usePlugins();
 
   const hostInfoRef = useRef(hostInfo);
-  hostInfoRef.current = hostInfo;
   const pluginRef = useRef(plugin);
-  pluginRef.current = plugin;
+  useEffect(() => {
+    hostInfoRef.current = hostInfo;
+    pluginRef.current = plugin;
+  }, [hostInfo, plugin]);
+
+  const pluginName = plugin.name;
+  const pluginVersion = plugin.version;
+  const pluginEntry = plugin.entry || 'index.js';
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const currentPlugin = pluginRef.current;
-    const pluginName = currentPlugin.name;
-    const entryFile = currentPlugin.entry || 'index.js';
-    const controller = new AbortController();
-    const styleManager = createPluginStyleManager(pluginName);
-
     let disposed = false;
-    let activatedModule: ClaudeWebPluginModule | null = null;
-    let didActivate = false;
+    let acquired: AcquiredPluginSlot | null = null;
     let didMountLayer = false;
 
     if (slot === 'background') {
@@ -94,62 +91,65 @@ function MountedPluginSlot({
 
     (async () => {
       try {
-        const mod = await withTimeout(
-          loadPluginModule(pluginName, entryFile, revision),
-          ACTIVATION_TIMEOUT_MS,
-          `Loading ${pluginName}`,
-        );
-        if (disposed || controller.signal.aborted) return;
-
-        activatedModule = mod;
-        const hostApi = createPluginHostApi({
+        const handle = await instanceManager.acquireSlot({
           plugin: currentPlugin,
           hostInfo: hostInfoRef.current,
-          signal: controller.signal,
+          revision,
+          slotId: `layer:${slot}`,
           getContext,
           subscribeContext,
           eventBus,
-          styleManager,
           allowSurface: slot === 'background',
+          timeoutMs: ACTIVATION_TIMEOUT_MS,
           onNotify: notifyPlugin,
         });
-
-        if (typeof mod.activate === 'function') {
-          await withTimeout(
-            Promise.resolve(mod.activate(hostApi)),
-            ACTIVATION_TIMEOUT_MS,
-            `Activating ${pluginName}`,
-          );
-          didActivate = true;
+        if (disposed || handle.slotSignal.aborted) {
+          handle.release();
+          return;
         }
-        if (disposed || controller.signal.aborted) return;
+        acquired = handle;
 
-        if (typeof mod.mountLayer === 'function') {
+        if (typeof handle.mod.mountLayer === 'function') {
           await withTimeout(
-            Promise.resolve(mod.mountLayer(slot, container, hostApi)),
+            Promise.resolve(handle.mod.mountLayer(slot, container, handle.hostApi)),
             ACTIVATION_TIMEOUT_MS,
             `Mounting ${pluginName} (${slot})`,
           );
           didMountLayer = true;
-        } else if (typeof mod.mount === 'function') {
+        } else if (typeof handle.mod.mount === 'function') {
           await withTimeout(
-            Promise.resolve(mod.mount(container, hostApi)),
+            Promise.resolve(handle.mod.mount(container, handle.hostApi)),
             ACTIVATION_TIMEOUT_MS,
             `Mounting ${pluginName}`,
           );
           didMountLayer = true;
         }
 
-        if (disposed || controller.signal.aborted) return;
+        if (disposed || handle.slotSignal.aborted) {
+          if (didMountLayer) {
+            try {
+              if (typeof handle.mod.unmountLayer === 'function') {
+                handle.mod.unmountLayer(slot, container);
+              } else {
+                handle.mod.unmount?.(container);
+              }
+            } catch (err) {
+              console.error(`[Plugin:${pluginName}] unmountLayer(${slot}) after abort failed:`, err);
+            }
+          }
+          container.innerHTML = '';
+          handle.release();
+          acquired = null;
+          return;
+        }
 
         markPluginBootInFlight(pluginName, false);
         setPluginRuntimeState(pluginName, { status: 'active', error: null, bootBlocked: false });
       } catch (err) {
         markPluginBootInFlight(pluginName, false);
-        if (disposed || controller.signal.aborted) return;
+        if (disposed) return;
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[Plugin:${pluginName}] Failed in ${slot} slot:`, err);
-        styleManager.clearAll();
         if (slot === 'background') {
           onBackgroundUnmount(pluginName);
         }
@@ -159,33 +159,25 @@ function MountedPluginSlot({
 
     return () => {
       disposed = true;
-      controller.abort();
       markPluginBootInFlight(pluginName, false);
 
-      if (activatedModule) {
+      if (acquired) {
         if (didMountLayer) {
           try {
-            if (typeof activatedModule.unmountLayer === 'function') {
-              activatedModule.unmountLayer(slot, container);
+            if (typeof acquired.mod.unmountLayer === 'function') {
+              acquired.mod.unmountLayer(slot, container);
             } else {
-              activatedModule.unmount?.(container);
+              acquired.mod.unmount?.(container);
             }
           } catch (err) {
             console.error(`[Plugin:${pluginName}] unmountLayer(${slot}) failed:`, err);
           }
         }
-        if (didActivate) {
-          try {
-            activatedModule.deactivate?.();
-          } catch (err) {
-            console.error(`[Plugin:${pluginName}] deactivate() failed:`, err);
-          }
-        }
+        acquired.release();
+        acquired = null;
       }
 
       container.innerHTML = '';
-      styleManager.clearAll();
-      purgePluginStyles(pluginName);
 
       if (slot === 'background') {
         onBackgroundUnmount(pluginName);
@@ -194,11 +186,13 @@ function MountedPluginSlot({
   }, [
     eventBus,
     getContext,
+    instanceManager,
     notifyPlugin,
     onBackgroundMount,
     onBackgroundUnmount,
-    plugin.entry,
-    plugin.name,
+    pluginEntry,
+    pluginName,
+    pluginVersion,
     revision,
     setPluginRuntimeState,
     slot,
@@ -230,15 +224,25 @@ export default function GlobalPluginsRunner() {
     exitSafeMode,
     bootBlockedPlugins,
     pluginRevisions,
+    workspaceContext,
     toast,
     eventBus,
+    instanceManager,
     refreshPlugins,
     setPluginRuntimeState,
   } = usePlugins();
 
   const contextRef = useRef<PluginHostContext>(
-    buildPluginHostContext({ isDarkMode, themeMode, locale: i18n.language }),
+    buildPluginHostContext({
+      isDarkMode,
+      themeMode,
+      locale: i18n.language,
+      route: workspaceContext.route,
+      project: workspaceContext.project,
+      session: workspaceContext.session,
+    }),
   );
+  const focusedSessionIdRef = useRef<string | null>(workspaceContext.session?.id ?? null);
   const contextListenersRef = useRef(new Set<(ctx: PluginHostContext) => void>());
   const activeBackgroundOwnerRef = useRef<string | null>(null);
 
@@ -262,26 +266,34 @@ export default function GlobalPluginsRunner() {
   useEffect(() => () => {
     activeBackgroundOwnerRef.current = null;
     applyWallpaperSurfaceVars(null);
-    evictPluginModuleCache();
+    instanceManager.deactivateAll();
     eventBus.clear();
-  }, [eventBus]);
+  }, [eventBus, instanceManager]);
 
-  // Broadcast theme and locale changes to every active global plugin.
+  // Broadcast theme, locale, route, project, and session changes to every active global plugin.
   useEffect(() => {
-    const nextCtx = buildPluginHostContext({ isDarkMode, themeMode, locale: i18n.language });
+    focusedSessionIdRef.current = workspaceContext.session?.id ?? null;
+    const nextCtx = buildPluginHostContext({
+      isDarkMode,
+      themeMode,
+      locale: i18n.language,
+      route: workspaceContext.route,
+      project: workspaceContext.project,
+      session: workspaceContext.session,
+    });
     contextRef.current = nextCtx;
     for (const listener of contextListenersRef.current) {
       try { listener(nextCtx); } catch { /* isolate plugin callback errors */ }
     }
-  }, [i18n.language, isDarkMode, themeMode]);
+  }, [i18n.language, isDarkMode, themeMode, workspaceContext]);
 
-  // Bridge WebSocket frames and connection status into the normalized PluginEventBus.
+  // Bridge WebSocket frames and connection status into the normalized PluginEventBus with live focusedSessionId.
   useEffect(() => {
     eventBus.setConnectionStatus(connectionStatus);
   }, [connectionStatus, eventBus]);
 
   useEffect(() => subscribe((frame) => {
-    eventBus.ingestServerEvent(frame, null);
+    eventBus.ingestServerEvent(frame, focusedSessionIdRef.current);
   }), [eventBus, subscribe]);
 
   // Surface boot-blocked plugins in runtimeStates so Settings > Plugins can show a clear Retry action.
@@ -361,7 +373,7 @@ export default function GlobalPluginsRunner() {
       >
         {activeBackgroundPlugin && (
           <MountedPluginSlot
-            key={`${activeBackgroundPlugin.name}:${pluginRevisions[activeBackgroundPlugin.name] ?? 0}`}
+            key={`${activeBackgroundPlugin.name}:${activeBackgroundPlugin.version}:${pluginRevisions[activeBackgroundPlugin.name] ?? 0}`}
             plugin={activeBackgroundPlugin}
             slot="background"
             revision={pluginRevisions[activeBackgroundPlugin.name] ?? 0}
@@ -380,7 +392,7 @@ export default function GlobalPluginsRunner() {
       >
         {activeOverlayPlugins.map((plugin) => (
           <MountedPluginSlot
-            key={`${plugin.name}:${pluginRevisions[plugin.name] ?? 0}`}
+            key={`${plugin.name}:${plugin.version}:${pluginRevisions[plugin.name] ?? 0}`}
             plugin={plugin}
             slot="overlay"
             revision={pluginRevisions[plugin.name] ?? 0}

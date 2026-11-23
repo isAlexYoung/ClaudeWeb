@@ -7,13 +7,12 @@ import {
   clearBootBlockedPlugin,
   clearPluginSafeMode,
   createPluginEventBus,
-  evictPluginModuleCache,
-  purgePluginStyles,
+  createPluginInstanceManager,
   readBootBlockedPlugins,
   readPluginSafeMode,
 } from '@/modules/plugins/pluginRuntime';
-import type { PluginEventBus } from '@/modules/plugins/pluginRuntime';
-import type { Plugin, PluginHostInfo, PluginRuntimeState } from '@/shared/types';
+import type { PluginEventBus, PluginInstanceManager } from '@/modules/plugins/pluginRuntime';
+import type { Plugin, PluginHostContext, PluginHostInfo, PluginRuntimeState } from '@/shared/types';
 
 export type TogglePluginResult = {
   success: boolean;
@@ -28,6 +27,18 @@ export type PluginToast = {
   tone: 'info' | 'success' | 'error';
 };
 
+export type PluginWorkspaceSnapshot = {
+  route: PluginHostContext['route'];
+  project: PluginHostContext['project'];
+  session: PluginHostContext['session'];
+};
+
+const EMPTY_WORKSPACE_SNAPSHOT: PluginWorkspaceSnapshot = {
+  route: 'workspace',
+  project: null,
+  session: null,
+};
+
 type PluginsContextValue = {
   plugins: Plugin[];
   hostInfo: PluginHostInfo;
@@ -40,6 +51,8 @@ type PluginsContextValue = {
   runtimeStates: Record<string, PluginRuntimeState>;
   setPluginRuntimeState: (name: string, state: PluginRuntimeState | null) => void;
   pluginRevisions: Record<string, number>;
+  workspaceContext: PluginWorkspaceSnapshot;
+  setWorkspaceContext: (next: PluginWorkspaceSnapshot) => void;
   openPanelPlugin: string | null;
   openPluginPanel: (name: string) => void;
   closePluginPanel: (force?: boolean) => void;
@@ -51,6 +64,7 @@ type PluginsContextValue = {
   toast: PluginToast | null;
   notifyPlugin: (message: string, tone?: 'info' | 'success' | 'error') => void;
   eventBus: PluginEventBus;
+  instanceManager: PluginInstanceManager;
   refreshPlugins: () => Promise<void>;
   installPlugin: (url: string) => Promise<{ success: boolean; error?: string }>;
   uninstallPlugin: (name: string, options?: { removeData?: boolean }) => Promise<{ success: boolean; error?: string }>;
@@ -74,7 +88,7 @@ export function usePlugins() {
   return context;
 }
 
-/** Optional hook for shared shells (like Settings) that may be tested without PluginsProvider. */
+/** Optional hook for shared shells (like Settings or WorkspaceMain) that may be tested without PluginsProvider. */
 export function useOptionalPlugins() {
   return useContext(PluginsContext);
 }
@@ -89,6 +103,7 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
   const [bootBlockedPlugins, setBootBlockedPlugins] = useState<Set<string>>(() => readBootBlockedPlugins());
   const [runtimeStates, setRuntimeStates] = useState<Record<string, PluginRuntimeState>>({});
   const [pluginRevisions, setPluginRevisions] = useState<Record<string, number>>({});
+  const [workspaceContext, setWorkspaceContextState] = useState<PluginWorkspaceSnapshot>(EMPTY_WORKSPACE_SNAPSHOT);
   const [openPanelPlugin, setOpenPanelPlugin] = useState<string | null>(null);
   const [panelDirty, setPanelDirtyState] = useState(false);
   const [panelClosePromptOpen, setPanelClosePromptOpen] = useState(false);
@@ -97,13 +112,30 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
   const panelDirtyRef = useRef(false);
   const toastTimerRef = useRef<number | null>(null);
   const eventBus = useMemo(() => createPluginEventBus(), []);
+  const instanceManager = useMemo(() => createPluginInstanceManager(), []);
 
   useEffect(() => () => {
     if (toastTimerRef.current !== null) {
       window.clearTimeout(toastTimerRef.current);
     }
+    instanceManager.deactivateAll();
     eventBus.clear();
-  }, [eventBus]);
+  }, [eventBus, instanceManager]);
+
+  const setWorkspaceContext = useCallback((next: PluginWorkspaceSnapshot) => {
+    setWorkspaceContextState((prev) => {
+      if (
+        prev.route === next.route
+        && prev.project?.name === next.project?.name
+        && prev.project?.path === next.project?.path
+        && prev.session?.id === next.session?.id
+        && prev.session?.title === next.session?.title
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
 
   const setPanelDirty = useCallback((dirty: boolean) => {
     panelDirtyRef.current = dirty;
@@ -257,8 +289,7 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
       const res = await api.plugins.uninstall(name, options);
       const data = await res.json();
       if (res.ok) {
-        evictPluginModuleCache(name);
-        purgePluginStyles(name);
+        instanceManager.forceDeactivate(name);
         clearBootBlockedPlugin(name);
         setPluginRuntimeState(name, null);
         await refreshPlugins();
@@ -268,7 +299,7 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Uninstall failed' };
     }
-  }, [closePluginPanel, openPanelPlugin, refreshPlugins, setPluginRuntimeState]);
+  }, [closePluginPanel, instanceManager, openPanelPlugin, refreshPlugins, setPluginRuntimeState]);
 
   const updatePlugin = useCallback(async (name: string) => {
     try {
@@ -279,7 +310,7 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
       const res = await api.plugins.update(name);
       const data = await res.json();
       if (res.ok) {
-        evictPluginModuleCache(name);
+        instanceManager.forceDeactivate(name);
         clearBootBlockedPlugin(name);
         setBootBlockedPlugins((prev) => {
           if (!prev.has(name)) return prev;
@@ -295,13 +326,14 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Update failed' };
     }
-  }, [bumpPluginRevision, closePluginPanel, openPanelPlugin, refreshPlugins]);
+  }, [bumpPluginRevision, closePluginPanel, instanceManager, openPanelPlugin, refreshPlugins]);
 
   const restartPlugin = useCallback(async (name: string) => {
     try {
       const res = await api.plugins.restart(name);
       const data = await res.json();
       if (res.ok) {
+        instanceManager.forceDeactivate(name);
         clearBootBlocked(name);
         await refreshPlugins();
         return { success: true };
@@ -310,7 +342,7 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Restart failed' };
     }
-  }, [clearBootBlocked, refreshPlugins]);
+  }, [clearBootBlocked, instanceManager, refreshPlugins]);
 
   const togglePlugin = useCallback(async (
     name: string,
@@ -343,15 +375,14 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
         return { success: false, error: errorMessage, code, activeBackgroundPlugin };
       }
       if (!enabled) {
-        evictPluginModuleCache(name);
-        purgePluginStyles(name);
+        instanceManager.forceDeactivate(name);
       }
       await refreshPlugins();
       return { success: true, error: null };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Toggle failed' };
     }
-  }, [closePluginPanel, openPanelPlugin, refreshPlugins]);
+  }, [closePluginPanel, instanceManager, openPanelPlugin, refreshPlugins]);
 
   const setActiveBackground = useCallback(async (name: string | null) => {
     try {
@@ -385,6 +416,8 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
       runtimeStates,
       setPluginRuntimeState,
       pluginRevisions,
+      workspaceContext,
+      setWorkspaceContext,
       openPanelPlugin,
       openPluginPanel,
       closePluginPanel,
@@ -396,6 +429,7 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
       toast,
       notifyPlugin,
       eventBus,
+      instanceManager,
       refreshPlugins,
       installPlugin,
       uninstallPlugin,
@@ -414,6 +448,7 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
       exitSafeMode,
       hostInfo,
       installPlugin,
+      instanceManager,
       loading,
       notifyPlugin,
       openPanelPlugin,
@@ -430,10 +465,12 @@ export function PluginsProvider({ children }: { children: ReactNode }) {
       setActiveBackground,
       setPanelDirty,
       setPluginRuntimeState,
+      setWorkspaceContext,
       toast,
       togglePlugin,
       uninstallPlugin,
       updatePlugin,
+      workspaceContext,
     ],
   );
 

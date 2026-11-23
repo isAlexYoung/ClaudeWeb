@@ -16,7 +16,7 @@ import type {
 } from '@/shared/types';
 
 export const DEFAULT_HOST_INFO: PluginHostInfo = {
-  version: '2.2.0',
+  version: '2.2.1',
   apiVersion: 2,
   capabilities: [
     'slots:tab',
@@ -134,13 +134,21 @@ export function applyWallpaperSurfaceVars(vars: PluginWallpaperSurfaceVars | nul
   const root = document.documentElement;
   if (!vars || vars.scope === 'none') {
     delete root.dataset.cwWallpaper;
+    delete root.dataset.cwWallpaperTone;
     root.style.removeProperty('--cw-surface-opacity');
     root.style.removeProperty('--cw-glass-blur');
     return;
   }
-  const opacity = Math.min(1, Math.max(0.25, Number.isFinite(vars.surfaceOpacity) ? vars.surfaceOpacity : 0.8));
-  const blur = Math.min(40, Math.max(0, Number.isFinite(vars.glassBlurPx) ? vars.glassBlurPx : 16));
+  const opacity = Math.min(0.95, Math.max(0.06, Number.isFinite(vars.surfaceOpacity) ? vars.surfaceOpacity : 0.36));
+  const blur = Math.min(40, Math.max(0, Number.isFinite(vars.glassBlurPx) ? vars.glassBlurPx : 20));
+  const resolvedTone: 'dark' | 'light' =
+    vars.tone === 'dark' || vars.tone === 'light'
+      ? vars.tone
+      : root.dataset.theme === 'dark' || root.classList.contains('dark')
+        ? 'dark'
+        : 'light';
   root.dataset.cwWallpaper = vars.scope;
+  root.dataset.cwWallpaperTone = resolvedTone;
   root.style.setProperty('--cw-surface-opacity', String(opacity));
   root.style.setProperty('--cw-glass-blur', `${blur}px`);
 }
@@ -681,4 +689,251 @@ export function createPluginHostApi(options: CreateHostApiOptions): PluginHostAp
   };
 
   return hostApi;
+}
+
+export type AcquirePluginSlotParams = {
+  plugin: Plugin;
+  hostInfo: PluginHostInfo;
+  revision: number;
+  slotId: string;
+  getContext: () => PluginHostContext;
+  subscribeContext: (cb: (ctx: PluginHostContext) => void) => () => void;
+  eventBus: PluginEventBus;
+  allowSurface: boolean;
+  timeoutMs?: number;
+  onClosePanel?: () => void;
+  onNotify?: (message: string, tone?: 'info' | 'success' | 'error') => void;
+  onPanelDirtyChange?: (dirty: boolean) => void;
+};
+
+export type AcquiredPluginSlot = {
+  mod: ClaudeWebPluginModule;
+  hostApi: PluginHostApi;
+  slotSignal: AbortSignal;
+  release: () => void;
+};
+
+type ActivePluginInstance = {
+  instanceKey: string;
+  pluginName: string;
+  controller: AbortController;
+  styleManager: ReturnType<typeof createPluginStyleManager>;
+  slots: Set<string>;
+  activationPromise: Promise<ClaudeWebPluginModule> | null;
+  activated: boolean;
+  mod: ClaudeWebPluginModule | null;
+};
+
+function withLifecycleTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`));
+    }, ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+export type PluginInstanceManager = {
+  acquireSlot: (params: AcquirePluginSlotParams) => Promise<AcquiredPluginSlot>;
+  forceDeactivate: (pluginName: string) => void;
+  deactivateAll: () => void;
+};
+
+/**
+ * Coordinates plugin lifecycle across all slots (`background`, `overlay`, `settings`, `tab`):
+ * guarantees `activate()` executes once per live plugin instance (even if multiple slots mount
+ * simultaneously or only `settings`/`tab` is mounted) and `deactivate()` runs once when the
+ * final slot unmounts or the plugin is disabled/updated/uninstalled/logged out.
+ */
+export function createPluginInstanceManager(): PluginInstanceManager {
+  const instances = new Map<string, ActivePluginInstance>();
+
+  function teardownInstance(instance: ActivePluginInstance): void {
+    if (instances.get(instance.pluginName) === instance) {
+      instances.delete(instance.pluginName);
+    }
+    instance.controller.abort();
+    if (instance.activated && instance.mod) {
+      instance.activated = false;
+      try {
+        instance.mod.deactivate?.();
+      } catch (err) {
+        console.error(`[Plugin:${instance.pluginName}] deactivate() failed:`, err);
+      }
+    }
+    instance.styleManager.clearAll();
+    purgePluginStyles(instance.pluginName);
+  }
+
+  return {
+    async acquireSlot(params: AcquirePluginSlotParams): Promise<AcquiredPluginSlot> {
+      const {
+        plugin,
+        hostInfo,
+        revision,
+        slotId,
+        getContext,
+        subscribeContext,
+        eventBus,
+        allowSurface,
+        timeoutMs = 10_000,
+        onClosePanel,
+        onNotify,
+        onPanelDirtyChange,
+      } = params;
+
+      const entryFile = plugin.entry || 'index.js';
+      const instanceKey = `${plugin.name}::${plugin.version}::${entryFile}::${revision}`;
+
+      let instance = instances.get(plugin.name);
+      if (instance && instance.instanceKey !== instanceKey) {
+        teardownInstance(instance);
+        instance = undefined;
+      }
+
+      if (!instance) {
+        instance = {
+          instanceKey,
+          pluginName: plugin.name,
+          controller: new AbortController(),
+          styleManager: createPluginStyleManager(plugin.name),
+          slots: new Set<string>(),
+          activationPromise: null,
+          activated: false,
+          mod: null,
+        };
+        instances.set(plugin.name, instance);
+      }
+
+      const currentInstance = instance;
+      currentInstance.slots.add(slotId);
+
+      const slotController = new AbortController();
+      const onPluginAbort = () => slotController.abort();
+      if (currentInstance.controller.signal.aborted) {
+        slotController.abort();
+      } else {
+        currentInstance.controller.signal.addEventListener('abort', onPluginAbort, { once: true });
+      }
+
+      let released = false;
+      const release = () => {
+        if (released) return;
+        released = true;
+        currentInstance.controller.signal.removeEventListener('abort', onPluginAbort);
+        slotController.abort();
+        currentInstance.slots.delete(slotId);
+        if (currentInstance.slots.size === 0) {
+          teardownInstance(currentInstance);
+        }
+      };
+
+      try {
+        if (!currentInstance.activationPromise) {
+          const allowActivationSurface = allowSurface || (
+            getPluginSlots(plugin).includes('background')
+            && (!hostInfo.activeBackgroundPlugin || hostInfo.activeBackgroundPlugin === plugin.name)
+          );
+          const activationHostApi = createPluginHostApi({
+            plugin,
+            hostInfo,
+            signal: currentInstance.controller.signal,
+            getContext,
+            subscribeContext,
+            eventBus,
+            styleManager: currentInstance.styleManager,
+            allowSurface: allowActivationSurface,
+            onClosePanel,
+            onNotify,
+            onPanelDirtyChange,
+          });
+
+          currentInstance.activationPromise = (async () => {
+            const mod = await withLifecycleTimeout(
+              loadPluginModule(plugin.name, entryFile, revision),
+              timeoutMs,
+              `Loading ${plugin.name}`,
+            );
+            if (currentInstance.controller.signal.aborted) {
+              return mod;
+            }
+            currentInstance.mod = mod;
+            if (typeof mod.activate === 'function') {
+              await withLifecycleTimeout(
+                Promise.resolve(mod.activate(activationHostApi)),
+                timeoutMs,
+                `Activating ${plugin.name}`,
+              );
+              if (currentInstance.controller.signal.aborted) {
+                try {
+                  mod.deactivate?.();
+                } catch (err) {
+                  console.error(`[Plugin:${plugin.name}] deactivate() after abort failed:`, err);
+                }
+                return mod;
+              }
+              currentInstance.activated = true;
+            }
+            return mod;
+          })().catch((err) => {
+            if (instances.get(plugin.name) === currentInstance) {
+              currentInstance.activationPromise = null;
+            }
+            throw err;
+          });
+        }
+
+        const mod = await currentInstance.activationPromise;
+        const slotHostApi = createPluginHostApi({
+          plugin,
+          hostInfo,
+          signal: slotController.signal,
+          getContext,
+          subscribeContext,
+          eventBus,
+          styleManager: currentInstance.styleManager,
+          allowSurface,
+          onClosePanel,
+          onNotify,
+          onPanelDirtyChange,
+        });
+
+        return {
+          mod,
+          hostApi: slotHostApi,
+          slotSignal: slotController.signal,
+          release,
+        };
+      } catch (err) {
+        release();
+        throw err;
+      }
+    },
+
+    forceDeactivate(pluginName: string) {
+      const instance = instances.get(pluginName);
+      if (instance) {
+        teardownInstance(instance);
+      } else {
+        purgePluginStyles(pluginName);
+      }
+      evictPluginModuleCache(pluginName);
+    },
+
+    deactivateAll() {
+      for (const instance of [...instances.values()]) {
+        teardownInstance(instance);
+      }
+      evictPluginModuleCache();
+    },
+  };
 }

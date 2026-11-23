@@ -91,14 +91,21 @@ describe('Plugin Host v2 frontend runtime & UI', () => {
     expect(bus.getSnapshot().activeRuns).toHaveLength(0);
   });
 
-  it('applies & clears wallpaper surface vars and managed styles cleanly', () => {
-    applyWallpaperSurfaceVars({ scope: 'workspace', surfaceOpacity: 0.78, glassBlurPx: 18 });
+  it('applies & clears wallpaper surface vars (including adaptive tone) and managed styles cleanly', () => {
+    applyWallpaperSurfaceVars({ scope: 'workspace', surfaceOpacity: 0.36, glassBlurPx: 20, tone: 'dark' });
     expect(document.documentElement.dataset.cwWallpaper).toBe('workspace');
-    expect(document.documentElement.style.getPropertyValue('--cw-surface-opacity')).toBe('0.78');
-    expect(document.documentElement.style.getPropertyValue('--cw-glass-blur')).toBe('18px');
+    expect(document.documentElement.dataset.cwWallpaperTone).toBe('dark');
+    expect(document.documentElement.style.getPropertyValue('--cw-surface-opacity')).toBe('0.36');
+    expect(document.documentElement.style.getPropertyValue('--cw-glass-blur')).toBe('20px');
+
+    applyWallpaperSurfaceVars({ scope: 'chat', surfaceOpacity: 0.28, glassBlurPx: 16, tone: 'auto' });
+    expect(document.documentElement.dataset.cwWallpaper).toBe('chat');
+    // warm theme resolves auto tone to 'light'
+    expect(document.documentElement.dataset.cwWallpaperTone).toBe('light');
 
     applyWallpaperSurfaceVars(null);
     expect(document.documentElement.dataset.cwWallpaper).toBeUndefined();
+    expect(document.documentElement.dataset.cwWallpaperTone).toBeUndefined();
 
     const styles = createPluginStyleManager('demo-plugin');
     styles.set('main', '.demo { color: red; }');

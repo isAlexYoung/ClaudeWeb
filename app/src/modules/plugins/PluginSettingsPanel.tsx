@@ -7,12 +7,10 @@ import { usePlugins } from '@/modules/plugins/context/PluginsContext';
 import PluginIcon from '@/modules/plugins/PluginIcon';
 import {
   buildPluginHostContext,
-  createPluginHostApi,
-  createPluginStyleManager,
   getPluginSlots,
-  loadPluginModule,
 } from '@/modules/plugins/pluginRuntime';
-import type { ClaudeWebPluginModule, PluginHostContext } from '@/shared/types';
+import type { AcquiredPluginSlot } from '@/modules/plugins/pluginRuntime';
+import type { PluginHostContext } from '@/shared/types';
 
 /**
  * Host drawer / modal container for plugins declaring the `settings` slot.
@@ -26,6 +24,7 @@ export default function PluginSettingsPanel() {
     plugins,
     hostInfo,
     pluginRevisions,
+    workspaceContext,
     openPanelPlugin,
     closePluginPanel,
     setPanelDirty,
@@ -33,6 +32,7 @@ export default function PluginSettingsPanel() {
     cancelPanelClosePrompt,
     confirmDiscardAndClosePanel,
     eventBus,
+    instanceManager,
     notifyPlugin,
   } = usePlugins();
 
@@ -46,7 +46,14 @@ export default function PluginSettingsPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const contextRef = useRef<PluginHostContext>(
-    buildPluginHostContext({ isDarkMode, themeMode, locale: i18n.language, route: 'settings' }),
+    buildPluginHostContext({
+      isDarkMode,
+      themeMode,
+      locale: i18n.language,
+      route: 'settings',
+      project: workspaceContext.project,
+      session: workspaceContext.session,
+    }),
   );
   const contextListenersRef = useRef(new Set<(ctx: PluginHostContext) => void>());
 
@@ -62,12 +69,19 @@ export default function PluginSettingsPanel() {
   );
 
   useEffect(() => {
-    const nextCtx = buildPluginHostContext({ isDarkMode, themeMode, locale: i18n.language, route: 'settings' });
+    const nextCtx = buildPluginHostContext({
+      isDarkMode,
+      themeMode,
+      locale: i18n.language,
+      route: 'settings',
+      project: workspaceContext.project,
+      session: workspaceContext.session,
+    });
     contextRef.current = nextCtx;
     for (const listener of contextListenersRef.current) {
       try { listener(nextCtx); } catch { /* isolate plugin errors */ }
     }
-  }, [i18n.language, isDarkMode, themeMode]);
+  }, [i18n.language, isDarkMode, themeMode, workspaceContext]);
 
   // Escape closes this panel (respecting dirty-draft confirmation) before Settings sees it.
   useEffect(() => {
@@ -86,18 +100,31 @@ export default function PluginSettingsPanel() {
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [cancelPanelClosePrompt, closePluginPanel, panelClosePromptOpen, plugin]);
 
-  const revision = plugin ? (pluginRevisions[plugin.name] ?? 0) : 0;
+  // Keep refs current so refreshing the plugin list (new object identity, same version/entry)
+  // never tears down or interrupts an actively open settings panel.
+  const pluginRef = useRef(plugin);
   const hostInfoRef = useRef(hostInfo);
-  hostInfoRef.current = hostInfo;
+  useEffect(() => {
+    pluginRef.current = plugin;
+    hostInfoRef.current = hostInfo;
+  }, [hostInfo, plugin]);
+
+  const pluginName = plugin?.name ?? null;
+  const pluginVersion = plugin?.version ?? null;
+  const pluginEntry = plugin?.entry ?? 'index.js';
+  const pluginEnabled = Boolean(plugin?.enabled);
+  const pluginCompatible = plugin?.compatible !== false;
+  const pluginPublicAppearance = Boolean(plugin?.publicAppearance);
+  const activeBackgroundPlugin = hostInfo.activeBackgroundPlugin;
+  const revision = pluginName ? (pluginRevisions[pluginName] ?? 0) : 0;
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!plugin || !container) return;
+    const currentPlugin = pluginRef.current;
+    if (!pluginName || !currentPlugin || !pluginEnabled || !pluginCompatible || !container) return;
 
-    const controller = new AbortController();
-    const styleManager = createPluginStyleManager(`${plugin.name}:settings`);
     let disposed = false;
-    let loadedMod: ClaudeWebPluginModule | null = null;
+    let acquired: AcquiredPluginSlot | null = null;
     let didMount = false;
 
     setLoading(true);
@@ -106,33 +133,34 @@ export default function PluginSettingsPanel() {
 
     (async () => {
       try {
-        const mod = await loadPluginModule(plugin.name, plugin.entry || 'index.js', revision);
-        if (disposed || controller.signal.aborted) return;
-        loadedMod = mod;
-
         const isActiveBackground =
-          getPluginSlots(plugin).includes('background')
-          && (!hostInfoRef.current.activeBackgroundPlugin || hostInfoRef.current.activeBackgroundPlugin === plugin.name);
+          getPluginSlots(currentPlugin).includes('background')
+          && (!activeBackgroundPlugin || activeBackgroundPlugin === pluginName);
 
-        const hostApi = createPluginHostApi({
-          plugin,
+        const handle = await instanceManager.acquireSlot({
+          plugin: currentPlugin,
           hostInfo: hostInfoRef.current,
-          signal: controller.signal,
+          revision,
+          slotId: 'settings',
           getContext,
           subscribeContext,
           eventBus,
-          styleManager,
           allowSurface: isActiveBackground,
           onClosePanel: () => closePluginPanel(true),
           onNotify: notifyPlugin,
           onPanelDirtyChange: setPanelDirty,
         });
+        if (disposed || handle.slotSignal.aborted) {
+          handle.release();
+          return;
+        }
+        acquired = handle;
 
-        if (typeof mod.mountSettings === 'function') {
-          await mod.mountSettings(container, hostApi);
+        if (typeof handle.mod.mountSettings === 'function') {
+          await handle.mod.mountSettings(container, handle.hostApi);
           didMount = true;
-        } else if (typeof mod.mount === 'function') {
-          await mod.mount(container, hostApi);
+        } else if (typeof handle.mod.mount === 'function') {
+          await handle.mod.mount(container, handle.hostApi);
           didMount = true;
         } else {
           throw new Error(
@@ -142,12 +170,28 @@ export default function PluginSettingsPanel() {
           );
         }
 
-        if (!disposed) {
-          setLoading(false);
+        if (disposed || handle.slotSignal.aborted) {
+          if (didMount) {
+            try {
+              if (typeof handle.mod.unmountSettings === 'function') {
+                handle.mod.unmountSettings(container);
+              } else {
+                handle.mod.unmount?.(container);
+              }
+            } catch (err) {
+              console.error(`[Plugin:${pluginName}] unmountSettings() after abort failed:`, err);
+            }
+          }
+          container.innerHTML = '';
+          handle.release();
+          acquired = null;
+          return;
         }
+
+        setLoading(false);
       } catch (err) {
-        if (disposed || controller.signal.aborted) return;
-        console.error(`[Plugin:${plugin.name}] Failed to open settings panel:`, err);
+        if (disposed) return;
+        console.error(`[Plugin:${pluginName}] Failed to open settings panel:`, err);
         setError(err instanceof Error ? err.message : String(err));
         setLoading(false);
       }
@@ -155,28 +199,37 @@ export default function PluginSettingsPanel() {
 
     return () => {
       disposed = true;
-      controller.abort();
-      if (loadedMod && didMount) {
-        try {
-          if (typeof loadedMod.unmountSettings === 'function') {
-            loadedMod.unmountSettings(container);
-          } else {
-            loadedMod.unmount?.(container);
+      if (acquired) {
+        if (didMount) {
+          try {
+            if (typeof acquired.mod.unmountSettings === 'function') {
+              acquired.mod.unmountSettings(container);
+            } else {
+              acquired.mod.unmount?.(container);
+            }
+          } catch (err) {
+            console.error(`[Plugin:${pluginName}] unmountSettings() failed:`, err);
           }
-        } catch (err) {
-          console.error(`[Plugin:${plugin.name}] unmountSettings() failed:`, err);
         }
+        acquired.release();
+        acquired = null;
       }
       container.innerHTML = '';
-      styleManager.clearAll();
       setPanelDirty(false);
     };
   }, [
+    activeBackgroundPlugin,
     closePluginPanel,
     eventBus,
     getContext,
+    instanceManager,
     notifyPlugin,
-    plugin,
+    pluginCompatible,
+    pluginEnabled,
+    pluginEntry,
+    pluginName,
+    pluginPublicAppearance,
+    pluginVersion,
     revision,
     setPanelDirty,
     subscribeContext,
