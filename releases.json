@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.2.1",
+   "channel": "test",
+   "published_at": "2026-11-23T12:34:55Z",
+   "notes": "Test release: DSH-style full-window wallpaper glassmorphism, unified plugin activate()/deactivate() lifecycle, live workspace project/session context, stable plugin UIs on refresh, and standalone Plugin Host v2 SDK.",
+   "package": {
+    "name": "claudeweb-2.2.1-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.2.1/claudeweb-2.2.1-linux-x64.tar.xz",
+    "bytes": 69066004,
+    "sha256": "f2aedbb5a705188ccebf7cd56d70ec2e091243ac80addb2b083d8aac29f5a0b7"
+   }
+  },
+  {
    "version": "2.2.0",
    "channel": "test",
    "published_at": "2026-11-23T11:47:15Z",
@@ -86,5 +98,5 @@
    }
   }
  ],
- "generated_at": "2026-11-23T11:47:15Z"
+ "generated_at": "2026-11-23T12:34:55Z"
 }
