@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.2.0",
+   "channel": "test",
+   "published_at": "2026-11-23T11:47:15Z",
+   "notes": "Plugin Host v2 test release: multi-slot plugin host (background/overlay/settings), workspace glassmorphism, login-screen appearance snapshots, scoped media tickets, and Safe Mode recovery.",
+   "package": {
+    "name": "claudeweb-2.2.0-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.2.0/claudeweb-2.2.0-linux-x64.tar.xz",
+    "bytes": 69074012,
+    "sha256": "27c806d7e2df2747b9de6f14d2ad05b44f23355a28e8723e1ff9f7f34f655c05"
+   }
+  },
+  {
    "version": "2.1.5",
    "channel": "stable",
    "published_at": "2026-11-23T09:39:00Z",
@@ -74,5 +86,5 @@
    }
   }
  ],
- "generated_at": "2026-11-23T09:39:01Z"
+ "generated_at": "2026-11-23T11:47:15Z"
 }
