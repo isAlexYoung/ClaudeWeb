@@ -16,7 +16,7 @@ import type {
 } from '@/shared/types';
 
 export const DEFAULT_HOST_INFO: PluginHostInfo = {
-  version: '2.1.5',
+  version: '2.2.0',
   apiVersion: 2,
   capabilities: [
     'slots:tab',

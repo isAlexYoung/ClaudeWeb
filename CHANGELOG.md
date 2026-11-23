@@ -5,6 +5,13 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.0 - 2026-11-23 (test)
+
+- Introduce Plugin Host v2 (`apiVersion: 2`) supporting `background`, `overlay`, `settings`, and `tab` slots with single-active background arbitration and drawer/modal settings panels.
+- Add short-lived session-bound Scoped Media Tickets (`Range`/`206` streaming with safe MIME sniffing), streaming binary `rpcRaw`, persistent `PLUGIN_DATA_DIR`, prebuilt SHA-256 artifact verification, and atomic temp-directory Git updates.
+- Add host-verified public login-screen appearance snapshots (`/api/public/appearance`, `no-store`, `single` and `per-theme` warm/light/dark slots) and workspace glassmorphism CSS surface variables.
+- Add normalized plugin event bus (`turnId`/`runId`/`getSnapshot`), browser Safe Mode (`?safe-plugins=1`), Boot Crash Guard, backend crash circuit breaker, and `claudeweb plugins --disable-all` CLI recovery command.
+
 ## 2.1.5 - 2026-11-23 (stable)
 
 - Connect PC MCP tools directly through a ClaudeWeb URL with CMCP 4.24.2, without a separate SSH connection.
