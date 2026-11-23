@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.2.2",
+   "channel": "stable",
+   "published_at": "2026-11-23T13:06:24Z",
+   "notes": "Plugin Host v2 (multi-slot background/overlay/settings/tab, unified activate()/deactivate() lifecycle, live workspace project/session context, Scoped Media Tickets with Range/206 streaming, Safe Mode & Boot Crash Guard), seamless full-window adaptive wallpaper glassmorphism, public login-screen appearance snapshots, and standalone plugin SDK.",
+   "package": {
+    "name": "claudeweb-2.2.2-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.2.2/claudeweb-2.2.2-linux-x64.tar.xz",
+    "bytes": 69069912,
+    "sha256": "2c201a6543c70f3cfb308216075de99f5a6c1c1ace4bdca9c8b7e7d7476c8333"
+   }
+  },
+  {
    "version": "2.2.1",
    "channel": "test",
    "published_at": "2026-11-23T12:34:55Z",
@@ -98,5 +110,5 @@
    }
   }
  ],
- "generated_at": "2026-11-23T12:34:55Z"
+ "generated_at": "2026-11-23T13:06:24Z"
 }
