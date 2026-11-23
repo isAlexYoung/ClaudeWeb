@@ -670,3 +670,86 @@
   .project-files-time, .project-files-size, .project-files-type { font-size: 12px; order: 2; }
   .project-files-time { margin-left: 26px; }
 }
+
+/* ─── Plugin Host v2: Background Wallpaper Glassmorphism & Login Appearance ─── */
+/* Only activates when a background plugin explicitly sets html[data-cw-wallpaper],
+   keeping default ClaudeWeb visuals pixel-identical when no wallpaper is active. */
+html[data-cw-wallpaper="chat"] .workspace-shell,
+html[data-cw-wallpaper="workspace"] .workspace-shell {
+  background-color: transparent;
+}
+
+html[data-cw-wallpaper="chat"] .workspace-main,
+html[data-cw-wallpaper="chat"] .workspace-chat,
+html[data-cw-wallpaper="workspace"] .workspace-main,
+html[data-cw-wallpaper="workspace"] .workspace-chat {
+  background-color: transparent;
+}
+
+html[data-cw-wallpaper="chat"] .workspace-header {
+  background: color-mix(in srgb, hsl(var(--background)) calc(var(--cw-surface-opacity, 0.82) * 100%), transparent);
+  backdrop-filter: blur(var(--cw-glass-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+}
+
+html[data-cw-wallpaper="chat"] .workspace-chat .chat-composer-shell form,
+html[data-cw-wallpaper="workspace"] .workspace-chat .chat-composer-shell form {
+  background: color-mix(in srgb, hsl(var(--muted)) calc(var(--cw-surface-opacity, 0.82) * 100%), transparent);
+  backdrop-filter: blur(var(--cw-glass-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+}
+
+html[data-cw-wallpaper="chat"] .workspace-chat .workspace-user-bubble,
+html[data-cw-wallpaper="workspace"] .workspace-chat .workspace-user-bubble {
+  background: color-mix(in srgb, var(--workspace-bubble) calc(var(--cw-surface-opacity, 0.85) * 100%), transparent);
+  backdrop-filter: blur(var(--cw-glass-blur, 12px));
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 12px));
+}
+
+/* Full workspace glassmorphism: sidebar, header, inspector and cards adopt frosted translucency */
+html[data-cw-wallpaper="workspace"] .workspace-sidebar {
+  background: color-mix(in srgb, var(--workspace-sidebar) calc(var(--cw-surface-opacity, 0.8) * 100%), transparent);
+  backdrop-filter: blur(var(--cw-glass-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+}
+
+html[data-cw-wallpaper="workspace"] .workspace-header {
+  background: color-mix(in srgb, hsl(var(--background)) calc(var(--cw-surface-opacity, 0.78) * 100%), transparent);
+  backdrop-filter: blur(var(--cw-glass-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+}
+
+html[data-cw-wallpaper="workspace"] .workspace-inspector {
+  background: color-mix(in srgb, var(--workspace-panel) calc(var(--cw-surface-opacity, 0.82) * 100%), transparent);
+  backdrop-filter: blur(var(--cw-glass-blur, 16px));
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 16px));
+}
+
+html[data-cw-wallpaper="workspace"] .scheduled-task-card,
+html[data-cw-wallpaper="workspace"] .workspace-change-card,
+html[data-cw-wallpaper="workspace"] .workspace-taskmaster-card {
+  background: color-mix(in srgb, var(--workspace-panel) calc(var(--cw-surface-opacity, 0.86) * 100%), transparent);
+  backdrop-filter: blur(var(--cw-glass-blur, 14px));
+  -webkit-backdrop-filter: blur(var(--cw-glass-blur, 14px));
+}
+
+/* Keep code editors, terminals, menus and security prompts crisp and opaque */
+html[data-cw-wallpaper] .cm-editor,
+html[data-cw-wallpaper] .xterm {
+  background-color: hsl(var(--background));
+}
+
+/* Public login screen wallpaper contract */
+html[data-cw-login-wallpaper="1"] .cw-login-shell {
+  background-color: transparent;
+}
+
+html[data-cw-login-wallpaper="1"] .cw-login-ambient {
+  opacity: 0;
+}
+
+html[data-cw-login-wallpaper="1"] .cw-login-card {
+  background-color: color-mix(in srgb, hsl(var(--card)) calc(var(--cw-login-card-opacity, 0.9) * 100%), transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}

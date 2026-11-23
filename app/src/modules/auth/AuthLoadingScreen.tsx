@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { PublicLoginAppearance } from '@/modules/plugins';
 import { CLAUDEWEB_WORDMARK_FONT_FAMILY } from '@/shared/constants';
 
 const loadingDotAnimationDelays = ['0s', '0.15s', '0.3s'];
@@ -8,12 +9,13 @@ const loadingDotAnimationDelays = ['0s', '0.15s', '0.3s'];
 export default function AuthLoadingScreen() {
   const { t } = useTranslation('auth');
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
-      <div aria-hidden className="pointer-events-none absolute inset-0">
+    <div className="cw-login-shell relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
+      <PublicLoginAppearance />
+      <div aria-hidden className="cw-login-ambient pointer-events-none absolute inset-0">
         <div className="absolute -top-40 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
       </div>
 
-      <div className="relative text-center" role="status" aria-live="polite">
+      <div className="relative z-[1] text-center" role="status" aria-live="polite">
         <h1
           className="mb-4 text-2xl font-bold tracking-tight text-foreground"
           style={{ fontFamily: CLAUDEWEB_WORDMARK_FONT_FAMILY }}

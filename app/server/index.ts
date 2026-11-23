@@ -43,7 +43,9 @@ import notificationRoutes from './modules/notifications/notifications.routes.js'
 import { userRoutes } from './modules/user/index.js';
 import {
     getPluginPort,
+    pluginMediaRoutes,
     pluginsRoutes,
+    publicAppearanceRoutes,
     startEnabledPluginServers,
     stopAllPlugins,
 } from './modules/plugins/index.js';
@@ -215,6 +217,12 @@ app.use('/api/notifications', authenticateToken, notificationRoutes);
 // User API Routes (protected)
 app.use('/api/user', authenticateToken, userRoutes);
 
+// Public login-screen appearance snapshot (strictly non-sensitive visual state + whitelisted media)
+app.use('/api/public/appearance', publicAppearanceRoutes);
+
+// Ticket-authenticated plugin media streaming (Range/Seek for <video>/<img>; no JWT in URLs)
+app.use('/api/plugins', pluginMediaRoutes);
+
 // Plugins API Routes (protected)
 app.use('/api/plugins', authenticateToken, pluginsRoutes);
 
@@ -226,8 +234,14 @@ app.use('/api/scheduled-tasks', authenticateToken, scheduledTasksRoutes);
 // Agent API Routes (uses API key authentication)
 app.use('/api/agent', agentRoutes);
 
-// Serve public files (like api-docs.html)
-app.use(express.static(path.join(APP_ROOT, 'public')));
+// Serve public files (like api-docs.html and theme-init.js)
+app.use(express.static(path.join(APP_ROOT, 'public'), {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('theme-init.js')) {
+            res.setHeader('Cache-Control', 'no-cache');
+        }
+    }
+}));
 
 // Static files served after API routes
 // Add cache control: HTML files should not be cached, but assets can be cached

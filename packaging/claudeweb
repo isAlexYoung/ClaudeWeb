@@ -237,6 +237,8 @@ Commands:
   domain --status            Show the domain and whether its tunnel runs
   domain --remove            Delete the tunnel and its DNS record in Cloudflare
   domain --remove --local    Only stop and forget the tunnel on this server
+  plugins --disable-all      Disable all third-party plugins, clear login appearance,
+                             and restart ClaudeWeb (recovery escape hatch)
   uninstall                  Remove ClaudeWeb; keeps /home/claudeweb/projects
   uninstall --delete-projects
                              Remove ClaudeWeb and the project folders too
@@ -1099,6 +1101,57 @@ cmd_domain() {
   esac
 }
 
+# ------------------------------------------------------------------ plugins
+cmd_plugins() {
+  need_root plugins
+  [[ ${1:-} == --disable-all && $# -eq 1 ]] || die "usage: claudeweb plugins --disable-all"
+  id -u "$SERVICE_USER" >/dev/null 2>&1 || die "ClaudeWeb is not installed"
+
+  local ui_dir="$SERVICE_HOME/.claude-code-ui"
+  local plugins_cfg="$ui_dir/plugins.json"
+  local public_state="$ui_dir/public-appearance/state.json"
+
+  if [[ -f $plugins_cfg ]]; then
+    local tmp
+    tmp="$(mktemp "$ui_dir/plugins.json.XXXXXX")"
+    if jq '
+      to_entries
+      | map(
+          if .key == "_host" then
+            .value = ((.value // {}) | .activeBackgroundPlugin = null)
+          elif .key == "claude-usage" then
+            .
+          elif (.value | type) == "object" then
+            .value.enabled = false
+          else
+            .
+          end
+        )
+      | from_entries
+    ' "$plugins_cfg" > "$tmp"; then
+      chown "$SERVICE_USER:$SERVICE_USER" "$tmp"
+      chmod 0644 "$tmp"
+      mv -f "$tmp" "$plugins_cfg"
+      echo "Disabled all third-party plugins in $plugins_cfg."
+    else
+      rm -f "$tmp"
+      die "could not update $plugins_cfg (invalid JSON)"
+    fi
+  else
+    echo "No plugin config found at $plugins_cfg."
+  fi
+
+  if [[ -f $public_state ]]; then
+    rm -f "$public_state"
+    echo "Cleared login screen appearance state at $public_state."
+  fi
+
+  if systemctl list-unit-files "$SERVICE" >/dev/null 2>&1; then
+    systemctl restart "$SERVICE"
+    echo "Restarted $SERVICE."
+  fi
+}
+
 # ------------------------------------------------------------------ uninstall
 cmd_uninstall() {
   need_root uninstall
@@ -1170,6 +1223,7 @@ case "$command" in
   install-browser) cmd_install_browser "$@" ;;
   install-desktop) cmd_install_desktop "$@" ;;
   domain) cmd_domain "$@" ;;
+  plugins) cmd_plugins "$@" ;;
   uninstall) cmd_uninstall "$@" ;;
   *) echo "Unknown command: $command" >&2; echo >&2; show_help >&2; exit 1 ;;
 esac

@@ -1259,7 +1259,52 @@ type McpImportMode = 'form' | 'json';
 
 //----------------- PLUGINS ------------
 
-/** An installed ClaudeWeb plugin's manifest and runtime status (entry point, slot, permissions, enabled and server-running flags); always import this type explicitly from `@/shared/types`, because `Plugin` is also a DOM global and an unimported reference silently resolves to that instead. */
+/** Supported UI placement slots for ClaudeWeb plugins. */
+export type PluginSlot = 'tab' | 'background' | 'overlay' | 'settings';
+
+/** Optional configuration for a plugin's custom panel opened from Settings > Plugins. */
+export type PluginPanelConfig = {
+  title?: string;
+  mode: 'drawer' | 'modal';
+  width: number;
+};
+
+/** Host metadata returned alongside installed plugins for capability probing. */
+export type PluginHostInfo = {
+  version: string;
+  apiVersion: number;
+  capabilities: string[];
+  activeBackgroundPlugin: string | null;
+};
+
+/** Non-sensitive visual settings for one theme slot on the login screen. */
+export type PublicAppearanceSlot = {
+  mediaType: 'none' | 'gradient' | 'image' | 'video';
+  cssGradient?: string;
+  mediaHash?: string;
+  mediaMime?: string;
+  posterHash?: string;
+  posterMime?: string;
+  fit: 'cover' | 'contain' | 'center';
+  positionX: number;
+  positionY: number;
+  blurPx: number;
+  scrimOpacity: number;
+  scrimMode: 'auto' | 'light' | 'dark';
+  cardOpacity: number;
+  videoPlaybackRate?: number;
+};
+
+/** Public login-screen appearance snapshot served by GET /api/public/appearance. */
+export type PublicAppearanceState = {
+  schema: 1;
+  enabled: boolean;
+  revision: string;
+  mode: 'single' | 'per-theme';
+  slots: Partial<Record<'default' | 'warm' | 'light' | 'dark', PublicAppearanceSlot>>;
+};
+
+/** An installed ClaudeWeb plugin's manifest and runtime status (entry point, slots, permissions, enabled and server-running flags); always import this type explicitly from `@/shared/types`, because `Plugin` is also a DOM global and an unimported reference silently resolves to that instead. */
 export type Plugin = {
   name: string;
   displayName: string;
@@ -1268,14 +1313,185 @@ export type Plugin = {
   author: string;
   icon: string;
   type: 'react' | 'module';
-  slot: 'tab';
+  slot: PluginSlot;
+  slots?: PluginSlot[];
+  manifestVersion?: number;
+  minPluginApi?: number;
+  requiredCapabilities?: string[];
+  panel?: PluginPanelConfig | null;
+  publicAppearance?: boolean;
+  compatible?: boolean;
+  incompatibilityReason?: string | null;
+  activeBackground?: boolean;
+  overlayOrder?: number | null;
   entry: string;
   server: string | null;
   permissions: string[];
   enabled: boolean;
   serverRunning: boolean;
+  serverError?: string | null;
+  serverCircuitOpen?: boolean;
   dirName: string;
+  bundled?: boolean;
   repoUrl: string | null;
+};
+
+/** Lifecycle state of a frontend plugin module managed by GlobalPluginsRunner. */
+export type PluginRuntimeState = {
+  status: 'idle' | 'loading' | 'active' | 'deactivating' | 'failed';
+  error: string | null;
+  bootBlocked?: boolean;
+};
+
+/** Normalized per-session run state exposed to plugins via host.events. */
+export type PluginAgentRunState =
+  | 'idle'
+  | 'thinking'
+  | 'streaming'
+  | 'tool_use'
+  | 'waiting_approval'
+  | 'completed'
+  | 'cancelled'
+  | 'error';
+
+export type PluginAgentRunSnapshot = {
+  sessionId: string;
+  turnId: string;
+  runId: string;
+  state: PluginAgentRunState;
+  toolName?: string;
+  isFocusedSession: boolean;
+  updatedAt: number;
+};
+
+export type PluginHostEvent =
+  | {
+      type: 'agent:state';
+      seq: number;
+      timestamp: number;
+      sessionId: string;
+      turnId: string;
+      runId: string;
+      state: PluginAgentRunState;
+      toolName?: string;
+      isFocusedSession: boolean;
+    }
+  | {
+      type: 'chat:user-sent';
+      seq: number;
+      timestamp: number;
+      sessionId: string;
+      turnId: string;
+    }
+  | {
+      type: 'chat:turn-finished';
+      seq: number;
+      timestamp: number;
+      sessionId: string;
+      turnId: string;
+      runId: string;
+      outcome: 'completed' | 'cancelled' | 'error';
+    }
+  | {
+      type: 'sudo:requested';
+      seq: number;
+      timestamp: number;
+      active: boolean;
+      requestId?: string;
+    }
+  | {
+      type: 'connection:status';
+      seq: number;
+      timestamp: number;
+      status: 'connecting' | 'connected' | 'disconnected';
+      reconnected?: boolean;
+    };
+
+export type PluginHostContext = {
+  theme: 'dark' | 'light';
+  themeMode: 'warm' | 'light' | 'dark';
+  locale: string;
+  route: 'workspace' | 'scheduled-tasks' | 'settings';
+  project: { name: string; path: string } | null;
+  session: { id: string; title: string } | null;
+  reducedMotion: boolean;
+  isMobile: boolean;
+};
+
+export type PluginWallpaperSurfaceVars = {
+  scope: 'none' | 'chat' | 'workspace';
+  surfaceOpacity: number;
+  glassBlurPx: number;
+};
+
+export type PluginHostApi = {
+  readonly pluginName: string;
+  readonly hostVersion: string;
+  readonly apiVersion: number;
+  readonly capabilities: ReadonlySet<string>;
+  readonly signal: AbortSignal;
+  readonly context: PluginHostContext;
+  onContextChange: (cb: (ctx: PluginHostContext) => void) => () => void;
+  events: {
+    on: <T extends PluginHostEvent['type']>(
+      type: T,
+      cb: (event: Extract<PluginHostEvent, { type: T }>) => void,
+    ) => () => void;
+    getSnapshot: () => {
+      connection: 'connecting' | 'connected' | 'disconnected';
+      activeRuns: PluginAgentRunSnapshot[];
+    };
+  };
+  rpc: <T = unknown>(method: string, path: string, body?: unknown) => Promise<T>;
+  rpcRaw: (
+    method: string,
+    path: string,
+    init?: { body?: BodyInit | null; headers?: Record<string, string>; signal?: AbortSignal },
+  ) => Promise<Response>;
+  media: {
+    createUrl: (path: string, ttlMs?: number) => Promise<{ url: string; expiresAt: number }>;
+  };
+  assets: {
+    fetch: (relativePath: string) => Promise<Response>;
+  };
+  ws: {
+    connect: () => WebSocket;
+  };
+  style: {
+    set: (id: string, cssText: string) => void;
+    remove: (id: string) => void;
+    clearAll: () => void;
+  };
+  surface?: {
+    setWallpaperVars: (vars: PluginWallpaperSurfaceVars) => void;
+    clear: () => void;
+  };
+  storage: {
+    get: <T = unknown>(key: string) => T | null;
+    set: (key: string, value: unknown) => void;
+    remove: (key: string) => void;
+  };
+  publicAppearance?: {
+    uploadMedia: (data: Blob | ArrayBuffer | Uint8Array, contentType?: string) => Promise<{ hash: string; mimeType: string; bytes: number }>;
+    publish: (payload: Omit<PublicAppearanceState, 'schema' | 'revision'>) => Promise<{ appearance: PublicAppearanceState }>;
+    clear: () => Promise<void>;
+  };
+  ui: {
+    closePanel: () => void;
+    notify: (message: string, tone?: 'info' | 'success' | 'error') => void;
+    setPanelDirty?: (dirty: boolean) => void;
+  };
+};
+
+export type ClaudeWebPluginModule = {
+  activate?: (host: PluginHostApi) => void | Promise<void>;
+  deactivate?: () => void | Promise<void>;
+  mountLayer?: (slot: 'background' | 'overlay', container: HTMLElement, host: PluginHostApi) => void | Promise<void>;
+  unmountLayer?: (slot: 'background' | 'overlay', container: HTMLElement) => void | Promise<void>;
+  mountSettings?: (container: HTMLElement, host: PluginHostApi) => void | Promise<void>;
+  unmountSettings?: (container: HTMLElement) => void | Promise<void>;
+  mount?: (container: HTMLElement, host: PluginHostApi) => void | Promise<void>;
+  unmount?: (container: HTMLElement) => void | Promise<void>;
 };
 
 // ---------------------------

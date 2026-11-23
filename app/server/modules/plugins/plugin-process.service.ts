@@ -1,26 +1,77 @@
 // @ts-nocheck -- subprocess records are narrowed at the Plugins composition boundary.
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // cross-spawn: drop-in spawn with Windows .cmd/PATHEXT resolution.
 import spawn from 'cross-spawn';
 
-import { scanPlugins, getPluginsConfig, getPluginDir } from './plugin-registry.service.js';
+import { findApplicationRoot, getModuleDirectory } from '@/shared/utils.js';
+
+import { PLUGIN_API_VERSION } from './plugin-contract.js';
+import { ensurePluginDataDir, getPluginDir, getPluginsConfig, scanPlugins } from './plugin-registry.service.js';
 
 // Map<pluginName, { process, port }>
 const runningPlugins = new Map();
 // Map<pluginName, Promise<port>> — in-flight start operations
 const startingPlugins = new Map();
+// Map<pluginName, { crashes: number[], lastError: string | null, circuitOpenUntil: number | null }>
+const pluginHealth = new Map();
+
+const CRASH_WINDOW_MS = 5 * 60_000;
+const CRASH_THRESHOLD = 3;
+const CIRCUIT_OPEN_MS = 5 * 60_000;
+
+const HOST_VERSION = (() => {
+  try {
+    const root = findApplicationRoot(getModuleDirectory(import.meta.url));
+    return JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8')).version || '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+})();
+
+function getHealthRecord(name) {
+  let rec = pluginHealth.get(name);
+  if (!rec) {
+    rec = { crashes: [], lastError: null, circuitOpenUntil: null };
+    pluginHealth.set(name, rec);
+  }
+  return rec;
+}
+
+function recordFailure(name, message) {
+  const rec = getHealthRecord(name);
+  const now = Date.now();
+  rec.crashes = rec.crashes.filter((t) => now - t < CRASH_WINDOW_MS);
+  rec.crashes.push(now);
+  rec.lastError = message;
+  if (rec.crashes.length >= CRASH_THRESHOLD) {
+    rec.circuitOpenUntil = now + CIRCUIT_OPEN_MS;
+  }
+}
+
+export function resetPluginCircuit(name) {
+  pluginHealth.delete(name);
+}
+
+export function getPluginProcessState(name) {
+  const running = runningPlugins.has(name);
+  const rec = pluginHealth.get(name);
+  const now = Date.now();
+  const circuitOpen = Boolean(rec?.circuitOpenUntil && rec.circuitOpenUntil > now);
+  return {
+    running,
+    lastError: rec?.lastError ?? null,
+    circuitOpen,
+  };
+}
 
 /**
  * Build the environment handed to a plugin server subprocess.
  *
  * Intentionally minimal: only non-secret essentials, never the host's full
- * environment. On Windows a handful of system variables are required for any
- * child to bootstrap (Node itself, and any Python or CLI a plugin shells out
- * to). Without APPDATA a `pip install --user` tool cannot locate its
- * site-packages and fails to import; SystemRoot, PATHEXT and TEMP are needed to
- * resolve system DLLs, executable extensions and a temp directory. None of
- * these carry secrets, so the ones that are set get passed straight through.
+ * environment. Also provides PLUGIN_DATA_DIR (under ~/.claude-code-ui/plugin-data/<name>)
+ * so plugins store user data outside their git checkout directory.
  */
 function buildPluginEnv(name) {
   const env = {
@@ -28,7 +79,18 @@ function buildPluginEnv(name) {
     HOME: process.env.HOME,
     NODE_ENV: process.env.NODE_ENV || 'production',
     PLUGIN_NAME: name,
+    CLAUDEWEB_HOST_VERSION: HOST_VERSION,
+    CLAUDEWEB_PLUGIN_API_VERSION: String(PLUGIN_API_VERSION),
   };
+
+  // Internal workers (e.g. @claudeweb/local-history) skip user plugin data dirs.
+  if (/^[a-zA-Z0-9_-]+$/.test(name)) {
+    try {
+      env.PLUGIN_DATA_DIR = ensurePluginDataDir(name);
+    } catch (err) {
+      console.warn(`[Plugins] Could not prepare PLUGIN_DATA_DIR for "${name}":`, err.message);
+    }
+  }
 
   if (process.platform === 'win32') {
     const WINDOWS_ESSENTIALS = [
@@ -56,13 +118,17 @@ export function startPluginServer(name, pluginDir, serverEntry) {
     return Promise.resolve(runningPlugins.get(name).port);
   }
 
+  const health = pluginHealth.get(name);
+  if (health?.circuitOpenUntil && health.circuitOpenUntil > Date.now()) {
+    return Promise.reject(new Error(`Plugin server "${name}" crashed repeatedly and is temporarily paused. Re-enable or restart it from Settings > Plugins.`));
+  }
+
   // Coalesce concurrent starts for the same plugin
   if (startingPlugins.has(name)) {
     return startingPlugins.get(name);
   }
 
   const startPromise = new Promise((resolve, reject) => {
-
     const serverPath = path.join(pluginDir, serverEntry);
 
     const pluginProcess = spawn('node', [serverPath], {
@@ -78,7 +144,9 @@ export function startPluginServer(name, pluginDir, serverEntry) {
       if (!resolved) {
         resolved = true;
         pluginProcess.kill();
-        reject(new Error('Plugin server did not report ready within 10 seconds'));
+        const msg = 'Plugin server did not report ready within 10 seconds';
+        recordFailure(name, msg);
+        reject(new Error(msg));
       }
     }, 10000);
 
@@ -94,10 +162,17 @@ export function startPluginServer(name, pluginDir, serverEntry) {
           if (msg.ready && typeof msg.port === 'number') {
             clearTimeout(timeout);
             resolved = true;
-            runningPlugins.set(name, { process: pluginProcess, port: msg.port });
+            const rec = getHealthRecord(name);
+            rec.lastError = null;
+            rec.circuitOpenUntil = null;
+            runningPlugins.set(name, { process: pluginProcess, port: msg.port, stopping: false });
 
-            pluginProcess.on('exit', () => {
+            pluginProcess.on('exit', (exitCode) => {
+              const entry = runningPlugins.get(name);
               runningPlugins.delete(name);
+              if (entry && !entry.stopping && exitCode !== 0) {
+                recordFailure(name, `Plugin server exited unexpectedly (code ${exitCode ?? 'signal'})`);
+              }
             });
 
             console.log(`[Plugins] Server started for "${name}" on port ${msg.port}`);
@@ -117,7 +192,9 @@ export function startPluginServer(name, pluginDir, serverEntry) {
       clearTimeout(timeout);
       if (!resolved) {
         resolved = true;
-        reject(new Error(`Failed to start plugin server: ${err.message}`));
+        const msg = `Failed to start plugin server: ${err.message}`;
+        recordFailure(name, msg);
+        reject(new Error(msg));
       }
     });
 
@@ -126,7 +203,9 @@ export function startPluginServer(name, pluginDir, serverEntry) {
       runningPlugins.delete(name);
       if (!resolved) {
         resolved = true;
-        reject(new Error(`Plugin server exited with code ${code} before reporting ready`));
+        const msg = `Plugin server exited with code ${code} before reporting ready`;
+        recordFailure(name, msg);
+        reject(new Error(msg));
       }
     });
   }).finally(() => {
@@ -144,6 +223,7 @@ export function startPluginServer(name, pluginDir, serverEntry) {
 export function stopPluginServer(name) {
   const entry = runningPlugins.get(name);
   if (!entry) return Promise.resolve();
+  entry.stopping = true;
 
   return new Promise((resolve) => {
     const cleanup = () => {
@@ -203,6 +283,7 @@ export async function startEnabledPluginServers() {
 
   for (const plugin of plugins) {
     if (!plugin.server) continue;
+    if (plugin.compatible === false) continue;
     if (config[plugin.name]?.enabled === false) continue;
 
     const pluginDir = getPluginDir(plugin.name);
@@ -214,4 +295,8 @@ export async function startEnabledPluginServers() {
       console.error(`[Plugins] Failed to start server for "${plugin.name}":`, err.message);
     }
   }
+}
+
+export function getHostVersion() {
+  return HOST_VERSION;
 }

@@ -15,7 +15,7 @@ function ProjectWorkspaceShell({
 }: ProjectWorkspaceShellProps) {
   return (
     <div
-      className="workspace-shell fixed inset-0 flex bg-background"
+      className="workspace-shell fixed inset-0 z-[1] flex bg-background"
       style={{ bottom: 'var(--keyboard-height, 0px)' }}
     >
       <ProjectEffects navigate={navigate} />

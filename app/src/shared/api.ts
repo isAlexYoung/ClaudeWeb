@@ -30,8 +30,13 @@ export const authenticatedFetch = (
 
   const defaultHeaders: Record<string, string> = {};
 
-  // Only set Content-Type for non-FormData requests
-  if (!(options.body instanceof FormData)) {
+  // Only set JSON Content-Type when the caller is not sending FormData or raw binary streams.
+  const isBinaryBody =
+    options.body instanceof FormData
+    || options.body instanceof Blob
+    || options.body instanceof ArrayBuffer
+    || ArrayBuffer.isView(options.body);
+  if (!isBinaryBody) {
     defaultHeaders['Content-Type'] = 'application/json';
   }
 
@@ -715,13 +720,42 @@ export const api = {
   usageDashboard: (range: UsageDashboardRange, timeZone: string, excludedProject: string) =>
     api.plugins.rpc('claude-usage', 'GET', `/dashboard?${new URLSearchParams({ range, timeZone, excludeProject: excludedProject })}`),
 
+  publicAppearance: {
+    get: () => fetch('/api/public/appearance', { cache: 'no-store' }),
+    mediaUrl: (hash: string) => `/api/public/appearance/media/${encodeURIComponent(hash)}`,
+  },
+
   plugins: {
     list: () => get('/api/plugins'),
     install: (url: string) => post('/api/plugins/install', { url }),
-    uninstall: (name: string) => del(`/api/plugins/${encodeURIComponent(name)}`),
+    uninstall: (name: string, options?: { removeData?: boolean }) =>
+      del(`/api/plugins/${encodeURIComponent(name)}${options?.removeData ? '?removeData=1' : ''}`),
     update: (name: string) => post(`/api/plugins/${encodeURIComponent(name)}/update`),
-    toggle: (name: string, enabled: boolean) =>
-      put(`/api/plugins/${encodeURIComponent(name)}/enable`, { enabled }),
+    restart: (name: string) => post(`/api/plugins/${encodeURIComponent(name)}/restart`),
+    toggle: (name: string, enabled: boolean, options?: { takeoverBackground?: boolean }) =>
+      put(`/api/plugins/${encodeURIComponent(name)}/enable`, {
+        enabled,
+        ...(options?.takeoverBackground ? { takeoverBackground: true } : {}),
+      }),
+    setActiveBackground: (name: string | null) =>
+      put('/api/plugins/background/active', { name }),
+    createMediaTicket: (pluginName: string, path: string, ttlMs?: number) =>
+      post(`/api/plugins/${encodeURIComponent(pluginName)}/media-ticket`, {
+        path,
+        ...(ttlMs !== undefined ? { ttlMs } : {}),
+      }),
+    uploadPublicAppearanceMedia: (pluginName: string, data: Blob | ArrayBuffer | Uint8Array, contentType?: string) =>
+      authenticatedFetch(`/api/plugins/${encodeURIComponent(pluginName)}/public-appearance/media`, {
+        method: 'POST',
+        body: data instanceof Uint8Array ? new Blob([new Uint8Array(data)], { type: contentType || 'application/octet-stream' }) : data,
+        headers: {
+          'Content-Type': contentType || (data instanceof Blob && data.type ? data.type : 'application/octet-stream'),
+        },
+      }),
+    publishPublicAppearance: (pluginName: string, payload: unknown) =>
+      put(`/api/plugins/${encodeURIComponent(pluginName)}/public-appearance`, payload),
+    clearPublicAppearance: (pluginName: string) =>
+      del(`/api/plugins/${encodeURIComponent(pluginName)}/public-appearance`),
     // Plugin bundles/icons are fetched with auth headers and handed to the
     // browser as blobs, so a bare asset URL is never requested unauthenticated.
     asset: (pluginName: string, assetFile: string) => get(pluginAssetPath(pluginName, assetFile)),
@@ -733,6 +767,21 @@ export const api = {
         {
           method: method || 'GET',
           ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        },
+      ),
+    rpcRaw: (
+      pluginName: string,
+      method: string,
+      path: string,
+      init?: { body?: BodyInit | null; headers?: Record<string, string>; signal?: AbortSignal },
+    ) =>
+      authenticatedFetch(
+        `/api/plugins/${encodeURIComponent(pluginName)}/rpc/${String(path).replace(/^\//, '')}`,
+        {
+          method: method || 'GET',
+          ...(init?.body !== undefined ? { body: init.body } : {}),
+          ...(init?.headers ? { headers: init.headers } : {}),
+          ...(init?.signal ? { signal: init.signal } : {}),
         },
       ),
   },

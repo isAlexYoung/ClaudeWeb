@@ -4,6 +4,60 @@ import path from 'node:path';
 import { spawn } from 'cross-spawn';
 
 const BUILD_TIMEOUT_MS = 60_000;
+const INSTALL_TIMEOUT_MS = 180_000;
+
+/**
+ * Installs dependencies declared in `package.json` with `--ignore-scripts`.
+ * Prefers `npm ci --ignore-scripts` when `package-lock.json` is present for reproducible installs.
+ */
+export function installDependenciesIfNeeded(
+  dir: string,
+  packageJsonPath: string,
+  onSuccess: () => void,
+  onError: (error: Error) => void,
+): void {
+  if (!fs.existsSync(packageJsonPath)) {
+    return onSuccess();
+  }
+  const hasLockfile = fs.existsSync(path.join(dir, 'package-lock.json'));
+  const args = hasLockfile ? ['ci', '--ignore-scripts'] : ['install', '--ignore-scripts'];
+  const npmProcess = spawn('npm', args, {
+    cwd: dir,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  npmProcess.stdout?.resume();
+
+  let stderr = '';
+  let settled = false;
+  const timer = setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    npmProcess.removeAllListeners();
+    npmProcess.kill();
+    onError(new Error(`npm ${args[0]} timed out`));
+  }, INSTALL_TIMEOUT_MS);
+
+  npmProcess.stderr?.on('data', (data) => { stderr += data.toString(); });
+
+  npmProcess.on('close', (code) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    if (code !== 0) {
+      const detail = stderr.trim();
+      onError(new Error(`npm ${args[0]} failed (exit code ${code})${detail ? `: ${detail.slice(-800)}` : ''}`));
+      return;
+    }
+    onSuccess();
+  });
+
+  npmProcess.on('error', (err) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    onError(err);
+  });
+}
 
 /** Used by the plugin registry and its tests to build newly installed or updated plugins. */
 export function runBuildIfNeeded(dir: string, packageJsonPath: string, onSuccess: () => void, onError: (error: Error) => void): void {
@@ -58,4 +112,3 @@ export function runBuildIfNeeded(dir: string, packageJsonPath: string, onSuccess
     onError(new Error(`Failed to spawn build: ${err.message}`));
   });
 }
-

@@ -6,7 +6,7 @@ import { UiPreferencesProvider } from '@/shared/context/UiPreferencesContext';
 import { AuthProvider, ProtectedRoute } from '@/modules/auth';
 import { TaskMasterProvider,TasksSettingsProvider } from '@/modules/task-master';
 import { WebSocketProvider } from '@/shared/context/WebSocketContext';
-import { PluginsProvider } from '@/modules/plugins';
+import { GlobalPluginsRunner, PluginSettingsPanel, PluginsProvider } from '@/modules/plugins';
 import { ProjectWorkspaceRoute } from '@/modules/project-workspace';
 import { i18n } from '@/modules/i18n';
 import { LoginDeviceNotice } from '@/modules/settings';
@@ -121,6 +121,8 @@ export default function App() {
               <TasksSettingsProvider>
                 <TaskMasterProvider>
                 <ProtectedRoute>
+                  <GlobalPluginsRunner />
+                  <PluginSettingsPanel />
                   <LoginDeviceNotice />
                   <SudoRequestNotice />
                   <Router basename={routerBasename}>

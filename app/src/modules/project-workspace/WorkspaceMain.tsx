@@ -200,6 +200,7 @@ function WorkspaceMain({
         setInspectorOpen(true);
       }}
       onTasks={() => (shouldShowTasksTab ? setActiveTab('tasks') : onShowSettings('tasks'))}
+      onOpenPluginTab={(pluginName) => setActiveTab(`plugin:${pluginName}`)}
       onRenameSession={selectedSession ? (summary) => onRenameSession(selectedSession.id, summary) : undefined}
     />
   );
@@ -289,12 +290,23 @@ function WorkspaceMain({
           {shouldShowTasksTab && <TaskMasterPanel isVisible={activeTab === 'tasks'} onBack={() => setActiveTab('chat')} />}
 
           {activeTab.startsWith('plugin:') && (
-            <div className="h-full overflow-hidden">
-              <PluginTabContent
-                pluginName={activeTab.replace('plugin:', '')}
-                selectedProject={selectedProject}
-                selectedSession={selectedSession}
-              />
+            <div className="flex h-full flex-col overflow-hidden">
+              <div className="workspace-taskmaster-bar border-b border-border/60 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('chat')}
+                  className="workspace-taskmaster-back"
+                >
+                  ← {t('commandPalette.navChat', { defaultValue: 'Back to chat' })}
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <PluginTabContent
+                  pluginName={activeTab.replace('plugin:', '')}
+                  selectedProject={selectedProject}
+                  selectedSession={selectedSession}
+                />
+              </div>
             </div>
           )}
         </div>

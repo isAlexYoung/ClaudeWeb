@@ -3,18 +3,56 @@ import path from 'node:path';
 
 import mime from 'mime-types';
 
+import { loginSessionAlive } from '@/modules/auth/index.js';
+
+import { createMediaTicketService } from './media-ticket.service.js';
 import {
-  getPluginDir, getPluginsConfig, installPluginFromGit,
-  resolvePluginAssetPath, savePluginsConfig, scanPlugins, uninstallPlugin, updatePluginFromGit,
+  getHostVersion,
+  getPluginPort,
+  getPluginProcessState,
+  isPluginRunning,
+  resetPluginCircuit,
+  startPluginServer,
+  stopPluginServer,
+} from './plugin-process.service.js';
+import {
+  getPluginDir,
+  getPluginsConfig,
+  installPluginFromGit,
+  resolvePluginAssetPath,
+  savePluginsConfig,
+  scanPlugins,
+  uninstallPlugin,
+  updatePluginFromGit,
 } from './plugin-registry.service.js';
 import {
-  getPluginPort, isPluginRunning, startPluginServer, stopPluginServer,
-} from './plugin-process.service.js';
-import { createPluginsRouter } from './plugins.routes.js';
+  createPluginMediaRouter,
+  createPluginsRouter,
+  createPublicAppearanceRouter,
+} from './plugins.routes.js';
 import { createPluginsService } from './plugins.service.js';
+import { createPublicAppearanceService } from './public-appearance.service.js';
+
+const mediaTicketService = createMediaTicketService({
+  sessionAlive: loginSessionAlive,
+});
+
+const publicAppearanceService = createPublicAppearanceService({
+  isPluginAllowed: (pluginName) => {
+    const plugin = scanPlugins().find((p) => p.name === pluginName);
+    if (!plugin || !plugin.enabled || plugin.publicAppearance !== true) return false;
+    const config = getPluginsConfig();
+    if (Array.isArray(plugin.slots) && plugin.slots.includes('background')) {
+      return config._host?.activeBackgroundPlugin === pluginName;
+    }
+    return true;
+  },
+});
 
 const pluginsService = createPluginsService({
-  scanPlugins, readConfig: getPluginsConfig, saveConfig: savePluginsConfig,
+  scanPlugins,
+  readConfig: getPluginsConfig,
+  saveConfig: savePluginsConfig,
   getPluginDirectory: getPluginDir,
   getBundledUsageDirectory: () => {
     const root = process.env.CLAUDEWEB_BUNDLED_PLUGINS_DIR;
@@ -27,12 +65,28 @@ const pluginsService = createPluginsService({
   contentType: (assetPath) => mime.lookup(assetPath) || 'application/octet-stream',
   install: installPluginFromGit,
   update: updatePluginFromGit,
-  uninstall: async (pluginName) => { await uninstallPlugin(pluginName); },
+  uninstall: async (pluginName, options) => { await uninstallPlugin(pluginName, options); },
   startServer: startPluginServer,
   stopServer: async (pluginName) => { await stopPluginServer(pluginName); },
-  getServerPort: getPluginPort, isServerRunning: isPluginRunning,
+  getServerPort: getPluginPort,
+  isServerRunning: isPluginRunning,
+  getProcessState: getPluginProcessState,
+  resetCircuit: resetPluginCircuit,
+  getHostVersion,
+  createMediaTicket: (input) => mediaTicketService.createTicket(input),
+  resolveMediaTicket: (pluginName, ticketId) => mediaTicketService.resolveTicket(pluginName, ticketId),
+  revokeMediaTickets: (pluginName) => mediaTicketService.revokeForPlugin(pluginName),
+  storePublicAppearanceMedia: (buffer) => publicAppearanceService.storeMediaBuffer(buffer),
+  publishPublicAppearance: (pluginName, payload) => publicAppearanceService.publish(pluginName, payload),
+  clearPublicAppearance: (pluginName) => publicAppearanceService.clear(pluginName),
   logError: (message, error) => console.error(message, error),
 });
 
-/** Plugin router assembled with filesystem, loader, and process adapters. */
+/** Authenticated plugin router assembled with filesystem, loader, process and ticket adapters. */
 export const pluginsRoutes = createPluginsRouter(pluginsService);
+
+/** Scoped ticket-authenticated media streaming router (mounted before bearer middleware). */
+export const pluginMediaRoutes = createPluginMediaRouter(pluginsService);
+
+/** Unauthenticated public login-screen appearance router. */
+export const publicAppearanceRoutes = createPublicAppearanceRouter(publicAppearanceService);

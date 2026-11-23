@@ -1,20 +1,31 @@
 // @ts-nocheck -- the registry's dynamic manifest schema is narrowed by Plugins service adapters.
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 import { spawn } from 'cross-spawn';
 
-import { runBuildIfNeeded } from './plugin-build.service.js';
+import { AppError } from '@/shared/utils.js';
 
+import { installDependenciesIfNeeded, runBuildIfNeeded } from './plugin-build.service.js';
+import {
+  ALLOWED_PLUGIN_SLOTS,
+  HOST_CAPABILITY_SET,
+  PLUGIN_API_VERSION,
+} from './plugin-contract.js';
 import {
   createPluginGitError, createPluginGitSpawnError, getPluginGitSpawnOptions, stopPluginGitOnServerExit,
 } from './plugin-git.service.js';
 
 const PLUGINS_DIR = path.join(os.homedir(), '.claude-code-ui', 'plugins');
+const PLUGIN_DATA_ROOT = path.join(os.homedir(), '.claude-code-ui', 'plugin-data');
 const PLUGINS_CONFIG_PATH = path.join(os.homedir(), '.claude-code-ui', 'plugins.json');
 
 const REQUIRED_MANIFEST_FIELDS = ['name', 'displayName', 'entry'];
+const ALLOWED_TYPES = ['react', 'module'];
+const ALLOWED_SLOTS = [...ALLOWED_PLUGIN_SLOTS];
+const INTEGRITY_PATTERN = /^sha256-([a-f0-9]{64}|[A-Za-z0-9+/]{43}=)$/;
 
 /** Strip embedded credentials from a repo URL before exposing it to the client. */
 function sanitizeRepoUrl(raw) {
@@ -28,14 +39,43 @@ function sanitizeRepoUrl(raw) {
     return raw.replace(/\/\/[^@/]+@/, '//');
   }
 }
-const ALLOWED_TYPES = ['react', 'module'];
-const ALLOWED_SLOTS = ['tab'];
+
+function isSafeRelativePath(value) {
+  return typeof value === 'string'
+    && value.trim().length > 0
+    && !value.includes('..')
+    && !value.includes('\\')
+    && !/[\x00-\x1f\x7f]/.test(value)
+    && !path.isAbsolute(value);
+}
 
 export function getPluginsDir() {
   if (!fs.existsSync(PLUGINS_DIR)) {
     fs.mkdirSync(PLUGINS_DIR, { recursive: true });
   }
   return PLUGINS_DIR;
+}
+
+export function getPluginDataDir(name) {
+  if (typeof name !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(name)) {
+    throw new AppError('Invalid plugin name', { code: 'INVALID_PLUGIN_NAME', statusCode: 400 });
+  }
+  const resolved = path.resolve(PLUGIN_DATA_ROOT, name);
+  if (!resolved.startsWith(path.resolve(PLUGIN_DATA_ROOT) + path.sep)) {
+    throw new AppError('Invalid plugin data directory', { code: 'INVALID_PLUGIN_NAME', statusCode: 400 });
+  }
+  return resolved;
+}
+
+export function ensurePluginDataDir(name) {
+  const dir = getPluginDataDir(name);
+  if (!fs.existsSync(PLUGIN_DATA_ROOT)) {
+    fs.mkdirSync(PLUGIN_DATA_ROOT, { recursive: true, mode: 0o700 });
+  }
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  }
+  return dir;
 }
 
 export function getPluginsConfig() {
@@ -54,11 +94,43 @@ export function savePluginsConfig(config) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
-  fs.writeFileSync(PLUGINS_CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
+  const temp = `${PLUGINS_CONFIG_PATH}.${crypto.randomBytes(6).toString('hex')}.tmp`;
+  try {
+    fs.writeFileSync(temp, JSON.stringify(config, null, 2), { mode: 0o600 });
+    fs.renameSync(temp, PLUGINS_CONFIG_PATH);
+  } finally {
+    try { fs.unlinkSync(temp); } catch { /* ignore */ }
+  }
 }
 
+export function normalizeManifestSlots(manifest) {
+  if (Array.isArray(manifest.slots) && manifest.slots.length > 0) {
+    return [...new Set(manifest.slots)];
+  }
+  return [manifest.slot || 'tab'];
+}
+
+export function normalizePanelConfig(panel) {
+  if (!panel || typeof panel !== 'object' || Array.isArray(panel)) {
+    return { mode: 'drawer', width: 520 };
+  }
+  const mode = panel.mode === 'modal' ? 'modal' : 'drawer';
+  const width = typeof panel.width === 'number' && Number.isFinite(panel.width)
+    ? Math.min(960, Math.max(320, Math.round(panel.width)))
+    : 520;
+  return {
+    ...(typeof panel.title === 'string' && panel.title.trim() ? { title: panel.title.trim().slice(0, 80) } : {}),
+    mode,
+    width,
+  };
+}
+
+/**
+ * Validates plugin manifest (v1 and v2).
+ * Unknown optional fields are tolerated for forward compatibility.
+ */
 export function validateManifest(manifest) {
-  if (!manifest || typeof manifest !== 'object') {
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
     return { valid: false, error: 'Manifest must be a JSON object' };
   }
 
@@ -73,6 +145,27 @@ export function validateManifest(manifest) {
     return { valid: false, error: 'Plugin name must only contain letters, numbers, hyphens, and underscores' };
   }
 
+  if (manifest.manifestVersion !== undefined) {
+    if (!Number.isInteger(manifest.manifestVersion) || manifest.manifestVersion < 1) {
+      return { valid: false, error: 'manifestVersion must be a positive integer' };
+    }
+  }
+
+  if (manifest.minPluginApi !== undefined) {
+    if (!Number.isInteger(manifest.minPluginApi) || manifest.minPluginApi < 1) {
+      return { valid: false, error: 'minPluginApi must be a positive integer' };
+    }
+  }
+
+  if (manifest.requiredCapabilities !== undefined) {
+    if (
+      !Array.isArray(manifest.requiredCapabilities)
+      || !manifest.requiredCapabilities.every((cap) => typeof cap === 'string' && cap.trim().length > 0)
+    ) {
+      return { valid: false, error: 'requiredCapabilities must be an array of non-empty strings' };
+    }
+  }
+
   if (manifest.type && !ALLOWED_TYPES.includes(manifest.type)) {
     return { valid: false, error: `Invalid plugin type: ${manifest.type}. Must be one of: ${ALLOWED_TYPES.join(', ')}` };
   }
@@ -81,14 +174,64 @@ export function validateManifest(manifest) {
     return { valid: false, error: `Invalid plugin slot: ${manifest.slot}. Must be one of: ${ALLOWED_SLOTS.join(', ')}` };
   }
 
+  if (manifest.slots !== undefined) {
+    if (!Array.isArray(manifest.slots) || manifest.slots.length === 0) {
+      return { valid: false, error: 'slots must be a non-empty array of slot names' };
+    }
+    for (const s of manifest.slots) {
+      if (typeof s !== 'string' || !ALLOWED_SLOTS.includes(s)) {
+        return { valid: false, error: `Invalid plugin slot: ${String(s)}. Must be one of: ${ALLOWED_SLOTS.join(', ')}` };
+      }
+    }
+  }
+
+  if (manifest.panel !== undefined && manifest.panel !== null) {
+    if (typeof manifest.panel !== 'object' || Array.isArray(manifest.panel)) {
+      return { valid: false, error: 'panel must be an object' };
+    }
+    if (manifest.panel.mode !== undefined && manifest.panel.mode !== 'drawer' && manifest.panel.mode !== 'modal') {
+      return { valid: false, error: 'panel.mode must be "drawer" or "modal"' };
+    }
+    if (manifest.panel.width !== undefined && (typeof manifest.panel.width !== 'number' || !Number.isFinite(manifest.panel.width))) {
+      return { valid: false, error: 'panel.width must be a number' };
+    }
+  }
+
+  if (manifest.publicAppearance !== undefined && typeof manifest.publicAppearance !== 'boolean') {
+    return { valid: false, error: 'publicAppearance must be a boolean' };
+  }
+
   // Validate entry is a relative path without traversal
-  if (manifest.entry.includes('..') || path.isAbsolute(manifest.entry)) {
+  if (!isSafeRelativePath(manifest.entry)) {
     return { valid: false, error: 'Entry must be a relative path without ".."' };
   }
 
   if (manifest.server !== undefined && manifest.server !== null) {
-    if (typeof manifest.server !== 'string' || manifest.server.includes('..') || path.isAbsolute(manifest.server)) {
+    if (!isSafeRelativePath(manifest.server)) {
       return { valid: false, error: 'Server entry must be a relative path string without ".."' };
+    }
+  }
+
+  if (manifest.icon !== undefined && manifest.icon !== null && typeof manifest.icon !== 'string') {
+    return { valid: false, error: 'Icon must be a string' };
+  }
+
+  if (manifest.build !== undefined && manifest.build !== null) {
+    if (typeof manifest.build !== 'object' || Array.isArray(manifest.build)) {
+      return { valid: false, error: 'build must be an object' };
+    }
+    if (manifest.build.mode !== undefined && manifest.build.mode !== 'auto' && manifest.build.mode !== 'prebuilt') {
+      return { valid: false, error: 'build.mode must be "auto" or "prebuilt"' };
+    }
+    if (manifest.build.integrity !== undefined) {
+      if (!manifest.build.integrity || typeof manifest.build.integrity !== 'object' || Array.isArray(manifest.build.integrity)) {
+        return { valid: false, error: 'build.integrity must be an object mapping file paths to sha256 digests' };
+      }
+      for (const [relPath, digest] of Object.entries(manifest.build.integrity)) {
+        if (!isSafeRelativePath(relPath) || typeof digest !== 'string' || !INTEGRITY_PATTERN.test(digest)) {
+          return { valid: false, error: `Invalid build.integrity entry for "${relPath}"` };
+        }
+      }
     }
   }
 
@@ -101,9 +244,136 @@ export function validateManifest(manifest) {
   return { valid: true };
 }
 
+export function checkPluginCompatibility(manifest) {
+  if (typeof manifest.minPluginApi === 'number' && manifest.minPluginApi > PLUGIN_API_VERSION) {
+    return {
+      compatible: false,
+      reason: `Requires plugin API v${manifest.minPluginApi}, but this ClaudeWeb host provides API v${PLUGIN_API_VERSION}. Please update ClaudeWeb.`,
+    };
+  }
+  if (Array.isArray(manifest.requiredCapabilities)) {
+    const missing = manifest.requiredCapabilities.filter((cap) => !HOST_CAPABILITY_SET.has(cap));
+    if (missing.length > 0) {
+      return {
+        compatible: false,
+        reason: `Requires host capabilities not supported by this ClaudeWeb version: ${missing.join(', ')}.`,
+      };
+    }
+  }
+  return { compatible: true, reason: null };
+}
+
+function resolveRegularFileInside(rootDir, relativePath) {
+  if (!isSafeRelativePath(relativePath)) return null;
+  const candidate = path.resolve(rootDir, relativePath);
+  if (!fs.existsSync(candidate)) return null;
+  const realRoot = fs.realpathSync(rootDir);
+  const realTarget = fs.realpathSync(candidate);
+  if (!realTarget.startsWith(realRoot + path.sep)) return null;
+  const stat = fs.statSync(realTarget);
+  if (!stat.isFile()) return null;
+  return realTarget;
+}
+
+/**
+ * Verifies declared entry/server artifacts exist inside the plugin directory,
+ * and checks SHA-256 digests when `build.integrity` is provided.
+ */
+export function verifyPluginArtifacts(pluginDir, manifest) {
+  const entryPath = resolveRegularFileInside(pluginDir, manifest.entry);
+  if (!entryPath) {
+    throw new AppError(`Plugin entry file "${manifest.entry}" was not found after installation`, {
+      code: 'PLUGIN_ARTIFACT_MISSING',
+      statusCode: 422,
+    });
+  }
+  if (manifest.server) {
+    const serverPath = resolveRegularFileInside(pluginDir, manifest.server);
+    if (!serverPath) {
+      throw new AppError(`Plugin server file "${manifest.server}" was not found after installation`, {
+        code: 'PLUGIN_ARTIFACT_MISSING',
+        statusCode: 422,
+      });
+    }
+  }
+
+  const integrity = manifest.build?.integrity;
+  if (integrity && typeof integrity === 'object') {
+    for (const [relPath, expected] of Object.entries(integrity)) {
+      const target = resolveRegularFileInside(pluginDir, relPath);
+      if (!target) {
+        throw new AppError(`Integrity check failed: "${relPath}" is missing`, {
+          code: 'PLUGIN_INTEGRITY_MISMATCH',
+          statusCode: 422,
+        });
+      }
+      const rawBytes = fs.readFileSync(target);
+      const digestValue = expected.slice('sha256-'.length);
+      const encoding = digestValue.length === 64 ? 'hex' : 'base64';
+      const actual = crypto.createHash('sha256').update(rawBytes).digest(encoding);
+      const actualBuf = Buffer.from(actual, 'utf8');
+      const expectedBuf = Buffer.from(digestValue, 'utf8');
+      if (actualBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(actualBuf, expectedBuf)) {
+        throw new AppError(`Integrity check failed: SHA-256 mismatch for "${relPath}"`, {
+          code: 'PLUGIN_INTEGRITY_MISMATCH',
+          statusCode: 422,
+        });
+      }
+    }
+  }
+}
+
+export function shouldSkipBuild(pluginDir, manifest) {
+  if (manifest.build?.mode === 'prebuilt') return true;
+  return !fs.existsSync(path.join(pluginDir, 'package.json'));
+}
+
+function preparePluginDirectory(dir, manifest) {
+  return new Promise((resolve, reject) => {
+    const compat = checkPluginCompatibility(manifest);
+    if (!compat.compatible) {
+      return reject(new AppError(compat.reason, { code: 'PLUGIN_INCOMPATIBLE', statusCode: 422 }));
+    }
+    if (shouldSkipBuild(dir, manifest)) {
+      try {
+        verifyPluginArtifacts(dir, manifest);
+        return resolve();
+      } catch (err) {
+        return reject(err);
+      }
+    }
+
+    const packageJsonPath = path.join(dir, 'package.json');
+    installDependenciesIfNeeded(
+      dir,
+      packageJsonPath,
+      () => {
+        runBuildIfNeeded(
+          dir,
+          packageJsonPath,
+          () => {
+            try {
+              verifyPluginArtifacts(dir, manifest);
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
+          },
+          reject,
+        );
+      },
+      reject,
+    );
+  });
+}
+
 export function scanPlugins() {
   const pluginsDir = getPluginsDir();
   const config = getPluginsConfig();
+  const activeBackgroundPlugin = typeof config._host?.activeBackgroundPlugin === 'string'
+    ? config._host.activeBackgroundPlugin
+    : null;
+  const overlayOrder = Array.isArray(config._host?.overlayOrder) ? config._host.overlayOrder : [];
   const plugins = [];
 
   // The integrated build ships reviewed quota code read-only; a user's own
@@ -118,7 +388,7 @@ export function scanPlugins() {
 
   for (const { entry, root } of entries) {
     if (!entry.isDirectory()) continue;
-    // Skip transient temp directories from in-progress installs
+    // Skip transient temp directories from in-progress installs/updates
     if (entry.name.startsWith('.tmp-')) continue;
 
     const manifestPath = path.join(root, entry.name, 'manifest.json');
@@ -158,6 +428,11 @@ export function scanPlugins() {
         }
       } catch { /* ignore */ }
 
+      const slots = normalizeManifestSlots(manifest);
+      const compat = checkPluginCompatibility(manifest);
+      const enabled = compat.compatible && config[manifest.name]?.enabled !== false;
+      const overlayIndex = overlayOrder.indexOf(manifest.name);
+
       plugins.push({
         name: manifest.name,
         displayName: manifest.displayName,
@@ -166,11 +441,21 @@ export function scanPlugins() {
         author: manifest.author || '',
         icon: manifest.icon || 'Puzzle',
         type: manifest.type || 'module',
-        slot: manifest.slot || 'tab',
+        slot: slots[0] || 'tab',
+        slots,
+        manifestVersion: manifest.manifestVersion || 1,
+        minPluginApi: manifest.minPluginApi ?? 1,
+        requiredCapabilities: manifest.requiredCapabilities || [],
+        panel: slots.includes('settings') ? normalizePanelConfig(manifest.panel) : null,
+        publicAppearance: manifest.publicAppearance === true,
+        compatible: compat.compatible,
+        incompatibilityReason: compat.reason,
+        activeBackground: enabled && slots.includes('background') && activeBackgroundPlugin === manifest.name,
+        overlayOrder: overlayIndex >= 0 ? overlayIndex : null,
         entry: manifest.entry,
         server: manifest.server || null,
         permissions: manifest.permissions || [],
-        enabled: config[manifest.name]?.enabled !== false, // enabled by default
+        enabled,
         dirName: entry.name,
         bundled: root !== pluginsDir,
         repoUrl,
@@ -208,6 +493,36 @@ export function resolvePluginAssetPath(name, assetPath) {
   return realResolved;
 }
 
+async function renameWithRetry(source, target) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.renameSync(source, target);
+      return;
+    } catch (err) {
+      if (['EBUSY', 'EPERM', 'EACCES'].includes(err.code) && attempt < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
+async function rmDirWithRetry(target) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      fs.rmSync(target, { recursive: true, force: true });
+      return;
+    } catch (err) {
+      if (['EBUSY', 'EPERM', 'EACCES'].includes(err.code) && attempt < 6) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 export function installPluginFromGit(url) {
   return new Promise((resolve, reject) => {
     if (typeof url !== 'string' || !url.trim()) {
@@ -241,7 +556,7 @@ export function installPluginFromGit(url) {
     const tempDir = fs.mkdtempSync(path.join(pluginsDir, `.tmp-${repoName}-`));
 
     const cleanupTemp = () => {
-      try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
+      try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch { /* ignore */ }
     };
 
     const finalize = (manifest) => {
@@ -302,30 +617,12 @@ export function installPluginFromGit(url) {
         return reject(new Error(`A plugin named "${manifest.name}" is already installed (in "${existing.dirName}")`));
       }
 
-      // Run npm install if package.json exists.
-      // --ignore-scripts prevents postinstall hooks from executing arbitrary code.
-      const packageJsonPath = path.join(tempDir, 'package.json');
-      if (fs.existsSync(packageJsonPath)) {
-        const npmProcess = spawn('npm', ['install', '--ignore-scripts'], {
-          cwd: tempDir,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        npmProcess.on('close', (npmCode) => {
-          if (npmCode !== 0) {
-            cleanupTemp();
-            return reject(new Error(`npm install for ${repoName} failed (exit code ${npmCode})`));
-          }
-          runBuildIfNeeded(tempDir, packageJsonPath, () => finalize(manifest), (err) => { cleanupTemp(); reject(err); });
-        });
-
-        npmProcess.on('error', (err) => {
+      preparePluginDirectory(tempDir, manifest)
+        .then(() => finalize(manifest))
+        .catch((err) => {
           cleanupTemp();
           reject(err);
         });
-      } else {
-        finalize(manifest);
-      }
     });
 
     gitProcess.on('error', (err) => {
@@ -337,6 +634,11 @@ export function installPluginFromGit(url) {
   });
 }
 
+/**
+ * Updates a git-installed plugin atomically in a staging directory before swapping
+ * it into place. A failed pull, incompatible manifest or failed build leaves the
+ * currently installed plugin directory untouched.
+ */
 export function updatePluginFromGit(name) {
   return new Promise((resolve, reject) => {
     const pluginDir = getPluginDir(name);
@@ -348,69 +650,103 @@ export function updatePluginFromGit(name) {
       return reject(new Error('Bundled plugins are updated with ClaudeWeb.'));
     }
 
-    // Only fast-forward to avoid silent divergence
+    const pluginsDir = getPluginsDir();
+    const dirName = path.basename(pluginDir);
+    const stageDir = fs.mkdtempSync(path.join(pluginsDir, `.tmp-update-${dirName}-`));
+    const cleanupStage = () => {
+      try { fs.rmSync(stageDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    };
+
+    try {
+      // Copy git checkout (excluding node_modules) so local changes, untracked files,
+      // remote config and tracking branch behave identically to pulling in place,
+      // without ever mutating the live directory on failure.
+      fs.cpSync(pluginDir, stageDir, {
+        recursive: true,
+        verbatimSymlinks: true,
+        filter: (src) => path.basename(src) !== 'node_modules',
+      });
+    } catch (err) {
+      cleanupStage();
+      return reject(new Error(`Failed to stage plugin update: ${err.message}`));
+    }
+
     const gitProcess = spawn('git', ['pull', '--ff-only', '--'], {
-      cwd: pluginDir,
+      cwd: stageDir,
       stdio: ['ignore', 'pipe', 'pipe'],
       ...getPluginGitSpawnOptions(),
     });
     stopPluginGitOnServerExit(gitProcess);
 
     let stderr = '';
-    // Node still emits 'close' after a failed spawn; the 'error' handler has answered by then.
     let gitDidNotStart = false;
     gitProcess.stderr.on('data', (data) => { stderr += data.toString(); });
 
     gitProcess.on('close', (code) => {
       if (gitDidNotStart) return;
       if (code !== 0) {
+        cleanupStage();
         const error = createPluginGitError('update', code, stderr);
         console.error(`[Plugins] git pull failed (exit code ${code}, ${error.code}):\n${error.details.gitOutput}`);
         return reject(error);
       }
 
       // Re-validate manifest after update
-      const manifestPath = path.join(pluginDir, 'manifest.json');
+      const manifestPath = path.join(stageDir, 'manifest.json');
       let manifest;
       try {
         manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
       } catch {
+        cleanupStage();
         return reject(new Error('manifest.json is not valid JSON after update'));
       }
 
       const validation = validateManifest(manifest);
       if (!validation.valid) {
+        cleanupStage();
         return reject(new Error(`Invalid manifest after update: ${validation.error}`));
       }
 
-      // Re-run npm install if package.json exists
-      const packageJsonPath = path.join(pluginDir, 'package.json');
-      if (fs.existsSync(packageJsonPath)) {
-        const npmProcess = spawn('npm', ['install', '--ignore-scripts'], {
-          cwd: pluginDir,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-        npmProcess.on('close', (npmCode) => {
-          if (npmCode !== 0) {
-            return reject(new Error(`npm install for ${name} failed (exit code ${npmCode})`));
-          }
-          runBuildIfNeeded(pluginDir, packageJsonPath, () => resolve(manifest), (err) => reject(err));
-        });
-        npmProcess.on('error', (err) => reject(err));
-      } else {
-        resolve(manifest);
+      if (manifest.name !== name) {
+        cleanupStage();
+        return reject(new Error(`Updated manifest changed plugin name from "${name}" to "${manifest.name}"`));
       }
+
+      preparePluginDirectory(stageDir, manifest)
+        .then(async () => {
+          const backupDir = path.join(pluginsDir, `.tmp-bak-${dirName}-${crypto.randomBytes(4).toString('hex')}`);
+          try {
+            await renameWithRetry(pluginDir, backupDir);
+            try {
+              await renameWithRetry(stageDir, pluginDir);
+            } catch (swapErr) {
+              // Restore previous installation before failing
+              try { await renameWithRetry(backupDir, pluginDir); } catch { /* best-effort restore */ }
+              throw swapErr;
+            }
+            await rmDirWithRetry(backupDir).catch(() => { /* cleaned on next restart if locked */ });
+            resolve(manifest);
+          } catch (err) {
+            cleanupStage();
+            reject(new Error(`Failed to activate updated plugin: ${err.message}`));
+          }
+        })
+        .catch((err) => {
+          cleanupStage();
+          reject(err);
+        });
     });
 
     gitProcess.on('error', (err) => {
       gitDidNotStart = true;
+      cleanupStage();
       console.error('[Plugins] Failed to spawn git pull:', err.message);
       reject(createPluginGitSpawnError('update', err));
     });
   });
 }
 
-export async function uninstallPlugin(name) {
+export async function uninstallPlugin(name, options = {}) {
   const pluginDir = getPluginDir(name);
   if (!pluginDir) {
     throw new Error(`Plugin "${name}" not found`);
@@ -422,23 +758,23 @@ export async function uninstallPlugin(name) {
 
   // On Windows, file handles may be released slightly after process exit.
   // Retry a few times with a short delay before giving up.
-  const MAX_RETRIES = 5;
-  const RETRY_DELAY_MS = 500;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      fs.rmSync(pluginDir, { recursive: true, force: true });
-      break;
-    } catch (err) {
-      if (err.code === 'EBUSY' && attempt < MAX_RETRIES) {
-        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-      } else {
-        throw err;
-      }
+  await rmDirWithRetry(pluginDir);
+
+  if (options.removeData === true) {
+    const dataDir = getPluginDataDir(name);
+    if (fs.existsSync(dataDir)) {
+      await rmDirWithRetry(dataDir).catch(() => { /* ignore locked data dir */ });
     }
   }
 
-  // Remove from config
+  // Remove from config and clear any host slot ownership
   const config = getPluginsConfig();
   delete config[name];
+  if (config._host?.activeBackgroundPlugin === name) {
+    config._host.activeBackgroundPlugin = null;
+  }
+  if (Array.isArray(config._host?.overlayOrder)) {
+    config._host.overlayOrder = config._host.overlayOrder.filter((item) => item !== name);
+  }
   savePluginsConfig(config);
 }

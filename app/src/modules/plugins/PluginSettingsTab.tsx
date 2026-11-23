@@ -1,18 +1,24 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  AlertTriangle,
   BookOpen,
   ExternalLink,
   GitBranch,
+  Layers,
   Loader2,
   RefreshCw,
+  RotateCcw,
   ServerCrash,
+  ShieldAlert,
+  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 
 import { usePlugins } from '@/modules/plugins/context/PluginsContext';
-import type { Plugin } from '@/shared/types';
 import PluginIcon from '@/modules/plugins/PluginIcon';
+import { getPluginSlots } from '@/modules/plugins/pluginRuntime';
+import type { Plugin, PluginRuntimeState } from '@/shared/types';
 
 const CUSTOM_PLUGINS_URL = 'https://github.com/isAlexYoung/ClaudeWeb/blob/main/doc/CUSTOM_PLUGINS.md';
 
@@ -24,13 +30,28 @@ const CUSTOM_PLUGINS_URL = 'https://github.com/isAlexYoung/ClaudeWeb/blob/main/d
 const SYSTEM_PLUGIN_NAMES = new Set(['claude-usage']);
 
 /* ─── Toggle Switch ─────────────────────────────────────────────────────── */
-function ToggleSwitch({ checked, onChange, ariaLabel }: { checked: boolean; onChange: (v: boolean) => void; ariaLabel: string }) {
+function ToggleSwitch({
+  checked,
+  disabled,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+  ariaLabel: string;
+}) {
   return (
-    <label className="relative inline-flex cursor-pointer select-none items-center">
+    <label
+      className={`relative inline-flex select-none items-center ${
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+      }`}
+    >
       <input
         type="checkbox"
         className="peer sr-only"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
         aria-label={ariaLabel}
       />
@@ -68,30 +89,58 @@ function ServerDot({ running, t }: { running: boolean; t: any }) {
 type PluginCardProps = {
   plugin: Plugin;
   index: number;
+  isActiveBackground: boolean;
+  runtimeState?: PluginRuntimeState;
   onToggle: (enabled: boolean) => void;
+  onOpenPanel: () => void;
+  onActivateBackground: () => void;
   onUpdate: () => void;
-  onUninstall: () => void;
+  onRestart: () => void;
+  onUninstall: (removeData: boolean) => void;
   updating: boolean;
+  restarting: boolean;
   confirmingUninstall: boolean;
   onCancelUninstall: () => void;
+  backgroundConflictWith: string | null;
+  onConfirmBackgroundTakeover: () => void;
+  onCancelBackgroundTakeover: () => void;
   updateError: string | null;
 };
 
 function PluginCard({
   plugin,
   index,
+  isActiveBackground,
+  runtimeState,
   onToggle,
+  onOpenPanel,
+  onActivateBackground,
   onUpdate,
+  onRestart,
   onUninstall,
   updating,
+  restarting,
   confirmingUninstall,
   onCancelUninstall,
+  backgroundConflictWith,
+  onConfirmBackgroundTakeover,
+  onCancelBackgroundTakeover,
   updateError,
 }: PluginCardProps) {
   const { t } = useTranslation('settings');
-  const accentColor = plugin.enabled
-    ? 'bg-emerald-500'
-    : 'bg-muted-foreground/20';
+  const [removeData, setRemoveData] = useState(false);
+
+  const slots = getPluginSlots(plugin);
+  const hasSettingsPanel = slots.includes('settings');
+  const hasBackgroundSlot = slots.includes('background');
+  const incompatible = plugin.compatible === false;
+  const hasError = runtimeState?.status === 'failed' || Boolean(plugin.serverCircuitOpen) || Boolean(plugin.serverError);
+
+  const accentColor = incompatible || hasError
+    ? 'bg-amber-500'
+    : plugin.enabled
+      ? 'bg-emerald-500'
+      : 'bg-muted-foreground/20';
 
   return (
     <div
@@ -116,16 +165,28 @@ function PluginCard({
               />
             </div>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-sm font-semibold leading-none text-foreground">
                   {plugin.displayName}
                 </span>
                 <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                   v{plugin.version}
                 </span>
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {plugin.slot}
-                </span>
+                {slots.map((slot) => (
+                  <span key={slot} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {slot}
+                  </span>
+                ))}
+                {isActiveBackground && plugin.enabled && (
+                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                    {t('pluginSettings.activeBackgroundBadge', { defaultValue: 'Active background' })}
+                  </span>
+                )}
+                {incompatible && (
+                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                    {t('pluginSettings.incompatibleBadge', { defaultValue: 'Incompatible' })}
+                  </span>
+                )}
                 <ServerDot running={!!plugin.serverRunning} t={t} />
               </div>
               {plugin.description && (
@@ -133,7 +194,7 @@ function PluginCard({
                   {plugin.description}
                 </p>
               )}
-              <div className="mt-1 flex items-center gap-3">
+              <div className="mt-1 flex flex-wrap items-center gap-3">
                 {plugin.author && (
                   <span className="text-xs text-muted-foreground/60">
                     {plugin.author}
@@ -157,8 +218,38 @@ function PluginCard({
           </div>
 
           {/* Controls */}
-          <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-1.5">
+            {hasSettingsPanel && (
+              <button
+                type="button"
+                onClick={onOpenPanel}
+                disabled={!plugin.enabled || incompatible}
+                title={
+                  !plugin.enabled
+                    ? t('pluginSettings.enableToOpenPanel', { defaultValue: 'Enable plugin to open its panel' })
+                    : t('pluginSettings.openPanel', { defaultValue: 'Open Panel' })
+                }
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <SlidersHorizontal className="h-3 w-3" />
+                <span>{t('pluginSettings.openPanel', { defaultValue: 'Open Panel' })}</span>
+              </button>
+            )}
+
+            {hasBackgroundSlot && plugin.enabled && !isActiveBackground && !incompatible && (
+              <button
+                type="button"
+                onClick={onActivateBackground}
+                title={t('pluginSettings.useAsBackground', { defaultValue: 'Use as active background' })}
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Layers className="h-3 w-3" />
+                <span>{t('pluginSettings.useAsBackgroundShort', { defaultValue: 'Use background' })}</span>
+              </button>
+            )}
+
             <button
+              type="button"
               onClick={onUpdate}
               disabled={updating || !plugin.repoUrl}
               title={plugin.repoUrl ? t('pluginSettings.pullLatest') : t('pluginSettings.noGitRemote')}
@@ -173,7 +264,8 @@ function PluginCard({
             </button>
 
             <button
-              onClick={onUninstall}
+              type="button"
+              onClick={() => onUninstall(removeData)}
               title={confirmingUninstall ? t('pluginSettings.confirmUninstall') : t('pluginSettings.uninstallPlugin')}
               aria-label={t('pluginSettings.uninstallPlugin')}
               className={`rounded p-1.5 transition-colors ${confirmingUninstall
@@ -184,30 +276,117 @@ function PluginCard({
               <Trash2 className="h-3.5 w-3.5" />
             </button>
 
-            <ToggleSwitch checked={plugin.enabled} onChange={onToggle} ariaLabel={`${plugin.enabled ? t('pluginSettings.disable') : t('pluginSettings.enable')} ${plugin.displayName}`} />
+            <ToggleSwitch
+              checked={plugin.enabled}
+              disabled={incompatible && !plugin.enabled}
+              onChange={onToggle}
+              ariaLabel={`${plugin.enabled ? t('pluginSettings.disable') : t('pluginSettings.enable')} ${plugin.displayName}`}
+            />
           </div>
         </div>
 
-        {/* Confirm uninstall banner */}
-        {confirmingUninstall && (
-          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/50 py-3 text-destructive">
-            <span className="text-sm text-red-600 dark:text-red-400">
-              {t('pluginSettings.confirmUninstallMessage', { name: plugin.displayName })}
+        {/* Incompatibility reason */}
+        {incompatible && plugin.incompatibilityReason && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>{plugin.incompatibilityReason}</span>
+          </div>
+        )}
+
+        {/* Runtime crash / server circuit-breaker recovery bar */}
+        {hasError && (
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs">
+            <div className="flex min-w-0 items-center gap-1.5 text-amber-700 dark:text-amber-300">
+              <ServerCrash className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">
+                {plugin.serverCircuitOpen
+                  ? t('pluginSettings.circuitOpenMessage', {
+                      defaultValue: 'Plugin server restarted repeatedly and was paused.',
+                    })
+                  : runtimeState?.error || plugin.serverError}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onRestart}
+              disabled={restarting}
+              className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-background px-2 py-0.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            >
+              {restarting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+              <span>{t('pluginSettings.retryRestart', { defaultValue: 'Restart' })}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Background slot conflict confirmation */}
+        {backgroundConflictWith && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3 text-sm">
+            <span className="text-xs text-foreground">
+              {t('pluginSettings.backgroundConflictMessage', {
+                current: backgroundConflictWith,
+                next: plugin.displayName,
+                defaultValue: `"${backgroundConflictWith}" is currently providing the workspace background. Switch background to "${plugin.displayName}"?`,
+              })}
             </span>
             <div className="flex gap-1.5">
               <button
-                onClick={onCancelUninstall}
-                className="rounded border border-border px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                type="button"
+                onClick={onCancelBackgroundTakeover}
+                className="rounded border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 {t('pluginSettings.cancel')}
               </button>
               <button
-                onClick={onUninstall}
-                className="rounded border border-red-300 px-2.5 py-1 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
+                type="button"
+                onClick={onConfirmBackgroundTakeover}
+                className="rounded bg-foreground px-2.5 py-1 text-xs font-medium text-background transition-opacity hover:opacity-90"
               >
-                {t('pluginSettings.remove')}
+                {t('pluginSettings.switchBackground', { defaultValue: 'Switch background' })}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Confirm uninstall banner */}
+        {confirmingUninstall && (
+          <div className="mt-3 space-y-2 border-t border-border/50 pt-3 text-destructive">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-red-600 dark:text-red-400">
+                {t('pluginSettings.confirmUninstallMessage', { name: plugin.displayName })}
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRemoveData(false);
+                    onCancelUninstall();
+                  }}
+                  className="rounded border border-border px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {t('pluginSettings.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUninstall(removeData)}
+                  className="rounded border border-red-300 px-2.5 py-1 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
+                >
+                  {t('pluginSettings.remove')}
+                </button>
+              </div>
+            </div>
+            <label className="flex cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={removeData}
+                onChange={(e) => setRemoveData(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border"
+              />
+              <span>
+                {t('pluginSettings.removePluginData', {
+                  defaultValue: 'Also delete saved plugin data (wallpapers and settings)',
+                })}
+              </span>
+            </label>
           </div>
         )}
 
@@ -227,8 +406,22 @@ function PluginCard({
 /** Rendered by the settings module as its Plugins tab, for installing, updating and toggling plugins. */
 export default function PluginSettingsTab() {
   const { t } = useTranslation('settings');
-  const { plugins: allPlugins, loading, installPlugin, uninstallPlugin, updatePlugin, togglePlugin } =
-    usePlugins();
+  const {
+    plugins: allPlugins,
+    hostInfo,
+    loading,
+    safeMode,
+    exitSafeMode,
+    runtimeStates,
+    clearBootBlocked,
+    openPluginPanel,
+    installPlugin,
+    uninstallPlugin,
+    updatePlugin,
+    restartPlugin,
+    togglePlugin,
+    setActiveBackground,
+  } = usePlugins();
   const plugins = allPlugins.filter((plugin) => !SYSTEM_PLUGIN_NAMES.has(plugin.name));
 
   // Repository URL being entered for a custom plugin.
@@ -239,8 +432,12 @@ export default function PluginSettingsTab() {
   const [installError, setInstallError] = useState<string | null>(null);
   // The installed plugin awaiting explicit removal confirmation.
   const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null);
+  // Pending background slot conflict awaiting explicit switch confirmation.
+  const [backgroundConflict, setBackgroundConflict] = useState<{ pluginName: string; currentOwner: string } | null>(null);
   // Track independent updates without blocking other plugin controls.
   const [updatingPlugins, setUpdatingPlugins] = useState<Set<string>>(new Set());
+  // Track independent restarts without blocking other plugin controls.
+  const [restartingPlugins, setRestartingPlugins] = useState<Set<string>>(new Set());
   // Keep update failures next to their installed plugin.
   const [updateErrors, setUpdateErrors] = useState<Record<string, string>>({});
 
@@ -252,6 +449,20 @@ export default function PluginSettingsTab() {
       setUpdateErrors((prev) => ({ ...prev, [name]: result.error || t('pluginSettings.updateFailed') }));
     }
     setUpdatingPlugins((prev) => { const next = new Set(prev); next.delete(name); return next; });
+  };
+
+  const handleRestart = async (plugin: Plugin) => {
+    setRestartingPlugins((prev) => new Set(prev).add(plugin.name));
+    setUpdateErrors((prev) => { const next = { ...prev }; delete next[plugin.name]; return next; });
+    if (plugin.server) {
+      const result = await restartPlugin(plugin.name);
+      if (!result.success) {
+        setUpdateErrors((prev) => ({ ...prev, [plugin.name]: result.error || t('pluginSettings.restartFailed', { defaultValue: 'Restart failed' }) }));
+      }
+    } else {
+      clearBootBlocked(plugin.name);
+    }
+    setRestartingPlugins((prev) => { const next = new Set(prev); next.delete(plugin.name); return next; });
   };
 
   const handleInstall = async () => {
@@ -267,12 +478,12 @@ export default function PluginSettingsTab() {
     setInstalling(false);
   };
 
-  const handleUninstall = async (name: string) => {
+  const handleUninstall = async (name: string, removeData: boolean) => {
     if (confirmUninstall !== name) {
       setConfirmUninstall(name);
       return;
     }
-    const result = await uninstallPlugin(name);
+    const result = await uninstallPlugin(name, removeData ? { removeData: true } : undefined);
     if (result.success) {
       setConfirmUninstall(null);
     } else {
@@ -283,7 +494,29 @@ export default function PluginSettingsTab() {
 
   const renderPluginCard = (plugin: Plugin, index: number) => {
     const handleToggle = async (enabled: boolean) => {
+      setInstallError(null);
+      setBackgroundConflict(null);
       const r = await togglePlugin(plugin.name, enabled);
+      if (!r.success) {
+        if (r.code === 'BACKGROUND_SLOT_OCCUPIED' && r.activeBackgroundPlugin) {
+          setBackgroundConflict({ pluginName: plugin.name, currentOwner: r.activeBackgroundPlugin });
+          return;
+        }
+        setInstallError(r.error || t('pluginSettings.toggleFailed'));
+      }
+    };
+
+    const handleConfirmTakeover = async () => {
+      setBackgroundConflict(null);
+      const r = await togglePlugin(plugin.name, true, { takeoverBackground: true });
+      if (!r.success) {
+        setInstallError(r.error || t('pluginSettings.toggleFailed'));
+      }
+    };
+
+    const handleActivateBackground = async () => {
+      setInstallError(null);
+      const r = await setActiveBackground(plugin.name);
       if (!r.success) {
         setInstallError(r.error || t('pluginSettings.toggleFailed'));
       }
@@ -294,12 +527,23 @@ export default function PluginSettingsTab() {
         key={plugin.name}
         plugin={plugin}
         index={index}
+        isActiveBackground={hostInfo.activeBackgroundPlugin === plugin.name}
+        runtimeState={runtimeStates[plugin.name]}
         onToggle={(enabled) => void handleToggle(enabled)}
+        onOpenPanel={() => openPluginPanel(plugin.name)}
+        onActivateBackground={() => void handleActivateBackground()}
         onUpdate={() => void handleUpdate(plugin.name)}
-        onUninstall={() => void handleUninstall(plugin.name)}
+        onRestart={() => void handleRestart(plugin)}
+        onUninstall={(removeData) => void handleUninstall(plugin.name, removeData)}
         updating={updatingPlugins.has(plugin.name)}
+        restarting={restartingPlugins.has(plugin.name)}
         confirmingUninstall={confirmUninstall === plugin.name}
         onCancelUninstall={() => setConfirmUninstall(null)}
+        backgroundConflictWith={
+          backgroundConflict?.pluginName === plugin.name ? backgroundConflict.currentOwner : null
+        }
+        onConfirmBackgroundTakeover={() => void handleConfirmTakeover()}
+        onCancelBackgroundTakeover={() => setBackgroundConflict(null)}
         updateError={updateErrors[plugin.name] ?? null}
       />
     );
@@ -316,6 +560,27 @@ export default function PluginSettingsTab() {
           {t('pluginSettings.description')}
         </p>
       </div>
+
+      {/* Safe Mode banner */}
+      {safeMode && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-xs">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+            <ShieldAlert className="h-4 w-4 flex-shrink-0" />
+            <span>
+              {t('pluginSettings.safeModeBanner', {
+                defaultValue: 'Plugin Safe Mode is active — third-party plugins are paused.',
+              })}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={exitSafeMode}
+            className="rounded border border-amber-500/40 bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            {t('pluginSettings.exitSafeMode', { defaultValue: 'Resume plugins' })}
+          </button>
+        </div>
+      )}
 
       {/* Install from Git — compact */}
       <div className="settings-composite-input flex items-center gap-0 rounded-lg bg-muted/40">
@@ -349,15 +614,20 @@ export default function PluginSettingsTab() {
         </button>
       </div>
 
-      <a
-        href={CUSTOM_PLUGINS_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="-mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-      >
-        <BookOpen className="h-3.5 w-3.5" />
-        {t('pluginSettings.customPlugins')} <ExternalLink className="h-3 w-3" />
-      </a>
+      <div className="-mt-4 flex flex-wrap items-center justify-between gap-2">
+        <a
+          href={CUSTOM_PLUGINS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          <BookOpen className="h-3.5 w-3.5" />
+          {t('pluginSettings.customPlugins')} <ExternalLink className="h-3 w-3" />
+        </a>
+        <span className="text-xs text-muted-foreground/70">
+          {t('pluginSettings.securityWarning')}
+        </span>
+      </div>
 
       {installError && (
         <p className="-mt-4 text-sm text-red-500">{installError}</p>
@@ -365,18 +635,18 @@ export default function PluginSettingsTab() {
 
       {/* Plugin sections */}
       <div className="extension-list border-y border-border/50">
-      {loading ? (
-        <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          {t('pluginSettings.scanningPlugins')}
-        </div>
-      ) : (
-        <div className="divide-y divide-border/50">
-          {plugins.length ? plugins.map(renderPluginCard) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">{t('pluginSettings.noPluginsInstalled')}</p>
-          )}
-        </div>
-      )}
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('pluginSettings.scanningPlugins')}
+          </div>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {plugins.length ? plugins.map(renderPluginCard) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">{t('pluginSettings.noPluginsInstalled')}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

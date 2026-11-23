@@ -27,7 +27,7 @@ MCP 和技能管理目前仍使用下表列出的各自路径，不会随这个�
 | 您的 Claude：回复风格 | Claude 配置目录的 `settings.json`，键 `outputStyle`；自定义风格位于 `output-styles/*.md`。 |
 | 您的 Claude：自动记忆、记忆目录、后台整理 | 同一个 `settings.json` 中的 `autoMemoryEnabled`、`autoMemoryDirectory`、`autoDreamEnabled`；缺失的键交给 Claude 默认处理。 |
 | 通知：渠道、声音、事件类型 | `auth.db` 的 `user_notification_preferences` 表。浏览器通知授权由浏览器管理；推送订阅端点另存数据库。 |
-| 插件：自定义网页插件 | `~/.claude-code-ui/plugins/<插件名>/`；注册信息和启用状态在 `~/.claude-code-ui/plugins.json`。这是当前兼容目录名。 |
+| 插件：自定义网页插件 | `~/.claude-code-ui/plugins/<插件名>/`；注册信息、启用状态和背景槽位归属在 `~/.claude-code-ui/plugins.json`；插件持久化数据在 `~/.claude-code-ui/plugin-data/<插件名>/`；登录页外观快照在 `~/.claude-code-ui/public-appearance/`。 |
 | 插件：MCP 用户范围 | `~/.claude.json` 的 `mcpServers`。 |
 | 插件：MCP 项目范围 | 项目根目录的 `.mcp.json`，键 `mcpServers`。 |
 | 插件：MCP 本地项目范围 | `~/.claude.json` 的 `projects[项目绝对路径].mcpServers`。 |
@@ -63,8 +63,7 @@ MCP 和技能管理目前仍使用下表列出的各自路径，不会随这个�
   缺失文件不会添加规则，无效 JSON 应先修复。项目的 `.claude/settings.json`、
   `.claude/settings.local.json` 也用于项目聊天；项目未被 CLI 信任前，项目允许规则可能不被采用。
   可在该目录以交互方式运行 Claude 并接受信任提示。
-- **自定义插件**：插件代码在服务器执行，安装前应审查来源或确认作者可信。
-  格式与开发方法见[自定义插件说明](CUSTOM_PLUGINS.md)。
+- **自定义插件**：当前为受信任代码模型，插件代码在网页上下文和服务器 `claudeweb` 账户下执行，安装前应审查来源或确认作者可信。若第三方插件异常影响界面，可在网址后加 `?safe-plugins=1` 进入安全模式，或在服务器执行 `sudo claudeweb plugins --disable-all` 紧急停用全部第三方插件。格式与开发方法见[自定义插件说明](CUSTOM_PLUGINS.md)。
 
 ## 插件、MCP 与技能刷新
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useSurfacePresence } from '@/shared/hooks/useSurfacePresence';
 import { ProviderLoginModal } from '@/modules/provider-auth';
+import { useOptionalPlugins } from '@/modules/plugins';
 import { Button } from '@/shared/ui';
 import { api } from '@/shared/api';
 import SettingsSidebar from '@/modules/settings/SettingsSidebar';
@@ -42,6 +43,12 @@ type DesktopNotificationsState = {
 function Settings({ isOpen, onClose, projects = [], initialTab = 'agents', onArchiveChanged }: SettingsProps) {
   const { t } = useTranslation('settings');
   const { isPresent, presenceProps } = useSurfacePresence(isOpen);
+  const pluginsCtx = useOptionalPlugins();
+  const isPluginDrawerOpen = useMemo(() => {
+    if (!pluginsCtx?.openPanelPlugin) return false;
+    const panelPlugin = pluginsCtx.plugins.find((p) => p.name === pluginsCtx.openPanelPlugin);
+    return Boolean(panelPlugin && panelPlugin.panel?.mode !== 'modal');
+  }, [pluginsCtx?.openPanelPlugin, pluginsCtx?.plugins]);
   const desktopNotificationsBridge = useMemo(() => (
     typeof window === 'undefined'
       ? null
@@ -188,8 +195,11 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents', onArc
 
   return (
     <div
-      className="motion-modal modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm md:p-4"
+      className={`motion-modal modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm md:p-4 ${
+        isPluginDrawerOpen ? 'pointer-events-none opacity-0' : ''
+      }`}
       {...presenceProps}
+      aria-hidden={isPluginDrawerOpen ? true : presenceProps['aria-hidden']}
       onMouseDown={handleBackdropMouseDown}
       onClick={handleBackdropClick}
     >

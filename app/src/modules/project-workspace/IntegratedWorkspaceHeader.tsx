@@ -14,12 +14,16 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Puzzle,
   TerminalSquare,
 } from 'lucide-react';
 
+import { getPluginSlots, useOptionalPlugins } from '@/modules/plugins';
 import { useSurfacePresence } from '@/shared/hooks/useSurfacePresence';
 import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceContext';
 import type { Project, ProjectSession, TranscriptExportFormat } from '@/shared/types';
+
+const SYSTEM_PLUGIN_NAMES = new Set(['claude-usage']);
 
 type IntegratedWorkspaceHeaderProps = {
   onDesktop?: () => void;
@@ -32,6 +36,7 @@ type IntegratedWorkspaceHeaderProps = {
   onInspectorToggle: () => void;
   onTool: (tool: 'context' | 'shell' | 'files' | 'browser') => void;
   onTasks: () => void;
+  onOpenPluginTab?: (pluginName: string) => void;
   /** Renames the open conversation; absent when there is none. */
   onRenameSession?: (summary: string) => Promise<boolean>;
 };
@@ -49,6 +54,14 @@ const NOTICE_MS = 2500;
 export default function IntegratedWorkspaceHeader(props: IntegratedWorkspaceHeaderProps) {
   const { t } = useTranslation('common');
   const { transcriptActions, home, mode } = useWorkspaceExperience();
+  const pluginsCtx = useOptionalPlugins();
+  const customTabPlugins = (pluginsCtx?.plugins ?? []).filter(
+    (plugin) =>
+      plugin.enabled
+      && plugin.compatible !== false
+      && !SYSTEM_PLUGIN_NAMES.has(plugin.name)
+      && getPluginSlots(plugin).includes('tab'),
+  );
   // The More menu holds Tasks, Context and the conversation's copy/export actions.
   const [moreOpen, setMoreOpen] = useState(false);
   // A short confirmation or failure after copy/export, since both finish out of sight.
@@ -171,6 +184,24 @@ export default function IntegratedWorkspaceHeader(props: IntegratedWorkspaceHead
                 <Gauge size={16} />
                 {t('workspace.header.context')}
               </button>
+              {props.onOpenPluginTab && customTabPlugins.length > 0 && (
+                <>
+                  <hr />
+                  {customTabPlugins.map((plugin) => (
+                    <button
+                      key={plugin.name}
+                      role="menuitem"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        props.onOpenPluginTab?.(plugin.name);
+                      }}
+                    >
+                      <Puzzle size={16} />
+                      {plugin.displayName}
+                    </button>
+                  ))}
+                </>
+              )}
               {transcriptActions && (
                 <>
                   <hr />

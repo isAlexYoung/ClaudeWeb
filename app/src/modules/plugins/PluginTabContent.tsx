@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@/shared/context/ThemeContext';
-import { api } from '@/shared/api';
 import { usePlugins } from '@/modules/plugins/context/PluginsContext';
-import type { Project, ProjectSession } from '@/shared/types';
+import {
+  buildPluginHostContext,
+  createPluginHostApi,
+  createPluginStyleManager,
+  loadPluginModule,
+} from '@/modules/plugins/pluginRuntime';
+import type { ClaudeWebPluginModule, PluginHostContext, Project, ProjectSession, ThemeMode } from '@/shared/types';
 
 type PluginTabContentProps = {
   pluginName: string;
@@ -12,22 +17,21 @@ type PluginTabContentProps = {
   selectedSession: ProjectSession | null;
 };
 
-type PluginContext = {
-  theme: 'dark' | 'light';
-  // Plugin contract historically used `name` for the project identifier; we
-  // keep that key and populate it from the DB `projectId` so external plugins
-  // continue to receive a stable opaque id.
-  project: { name: string; path: string } | null;
-  session: { id: string; title: string } | null;
-};
-
 function buildContext(
   isDarkMode: boolean,
+  themeMode: ThemeMode,
+  locale: string,
   selectedProject: Project | null,
   selectedSession: ProjectSession | null,
-): PluginContext {
-  return {
-    theme: isDarkMode ? 'dark' : 'light',
+): PluginHostContext {
+  return buildPluginHostContext({
+    isDarkMode,
+    themeMode,
+    locale,
+    route: 'workspace',
+    // Plugin contract historically used `name` for the project identifier; we
+    // keep that key and populate it from the DB `projectId` so external plugins
+    // continue to receive a stable opaque id.
     project: selectedProject
       ? {
         name: selectedProject.projectId,
@@ -40,7 +44,7 @@ function buildContext(
         title: selectedSession.title || selectedSession.name || selectedSession.id,
       }
       : null,
-  };
+  });
 }
 
 /** Rendered by the project-workspace module to host a plugin's own UI inside its workspace tab. */
@@ -49,29 +53,45 @@ export default function PluginTabContent({
   selectedProject,
   selectedSession,
 }: PluginTabContentProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const { isDarkMode } = useTheme();
-  const { plugins } = usePlugins();
+  const { isDarkMode, themeMode } = useTheme();
+  const { plugins, hostInfo, safeMode, pluginRevisions, eventBus, notifyPlugin } = usePlugins();
 
   // Stable refs so effects don't need context values in their dep arrays
-  const contextRef = useRef<PluginContext>(buildContext(isDarkMode, selectedProject, selectedSession));
-  const contextCallbacksRef = useRef<Set<(ctx: PluginContext) => void>>(new Set());
+  const contextRef = useRef<PluginHostContext>(
+    buildContext(isDarkMode, themeMode, i18n.language, selectedProject, selectedSession),
+  );
+  const contextCallbacksRef = useRef<Set<(ctx: PluginHostContext) => void>>(new Set());
+  const moduleRef = useRef<ClaudeWebPluginModule | null>(null);
 
-  const moduleRef = useRef<any>(null);
+  const plugin = plugins.find((p) => p.name === pluginName);
+  const revision = pluginRevisions[pluginName] ?? 0;
 
-  const plugin = plugins.find(p => p.name === pluginName);
+  const getContext = useMemo(() => () => contextRef.current, []);
+  const subscribeContext = useMemo(
+    () => (cb: (ctx: PluginHostContext) => void) => {
+      contextCallbacksRef.current.add(cb);
+      return () => {
+        contextCallbacksRef.current.delete(cb);
+      };
+    },
+    [],
+  );
 
   // Keep contextRef current and notify the mounted plugin on every context change
   useEffect(() => {
-    const ctx = buildContext(isDarkMode, selectedProject, selectedSession);
+    const ctx = buildContext(isDarkMode, themeMode, i18n.language, selectedProject, selectedSession);
     contextRef.current = ctx;
 
     for (const cb of contextCallbacksRef.current) {
       try { cb(ctx); } catch { /* plugin error — ignore */ }
     }
-  }, [isDarkMode, selectedProject, selectedSession]);
+  }, [i18n.language, isDarkMode, selectedProject, selectedSession, themeMode]);
+
+  const hostInfoRef = useRef(hostInfo);
+  hostInfoRef.current = hostInfo;
 
   useEffect(() => {
     // Drop any previous plugin's error before this load attempt starts, so a
@@ -79,42 +99,48 @@ export default function PluginTabContent({
     setLoadError(null);
     if (!containerRef.current || !plugin?.enabled) return;
 
+    if (safeMode) {
+      setLoadError(
+        t('settings:pluginSettings.safeModeTabBlocked', {
+          defaultValue: 'Plugin Safe Mode is active. Resume plugins to open this tab.',
+        }),
+      );
+      return;
+    }
+
+    if (plugin.compatible === false) {
+      setLoadError(
+        plugin.incompatibilityReason
+        || t('settings:pluginSettings.incompatible', { defaultValue: 'Incompatible with this ClaudeWeb version.' }),
+      );
+      return;
+    }
+
     let active = true;
     const container = containerRef.current;
-    const entryFile = plugin?.entry ?? 'index.js';
+    const entryFile = plugin.entry ?? 'index.js';
     const contextCallbacks = contextCallbacksRef.current;
+    const controller = new AbortController();
+    const styleManager = createPluginStyleManager(`${pluginName}:tab`);
 
     (async () => {
       try {
-        // Fetch the plugin JS with auth headers (Cloudflare Worker requires auth on all routes).
-        // Then import it via a Blob URL so the browser never makes an unauthenticated request.
-        const res = await api.plugins.asset(pluginName, entryFile);
-        if (!res.ok) throw new Error(`Failed to fetch plugin (HTTP ${res.status})`);
-        const jsText = await res.text();
-        const blob = new Blob([jsText], { type: 'application/javascript' });
-        const blobUrl = URL.createObjectURL(blob);
-        // @vite-ignore
-        const mod = await import(/* @vite-ignore */ blobUrl).finally(() => URL.revokeObjectURL(blobUrl));
-        if (!active || !containerRef.current) return;
+        const mod = await loadPluginModule(pluginName, entryFile, revision);
+        if (!active || !containerRef.current || controller.signal.aborted) return;
 
         moduleRef.current = mod;
 
-        // The host surface handed to the plugin module, distinct from the
-        // app's own `api` client that backs `rpc` below.
-        const pluginHostApi = {
-          get context(): PluginContext { return contextRef.current; },
-
-          onContextChange(cb: (ctx: PluginContext) => void): () => void {
-            contextCallbacks.add(cb);
-            return () => contextCallbacks.delete(cb);
-          },
-
-          async rpc(method: string, path: string, body?: unknown): Promise<unknown> {
-            const res = await api.plugins.rpc(pluginName, method, path, body);
-            if (!res.ok) throw new Error(`RPC error ${res.status}`);
-            return res.json();
-          },
-        };
+        const pluginHostApi = createPluginHostApi({
+          plugin,
+          hostInfo: hostInfoRef.current,
+          signal: controller.signal,
+          getContext,
+          subscribeContext,
+          eventBus,
+          styleManager,
+          allowSurface: false,
+          onNotify: notifyPlugin,
+        });
 
         await mod.mount?.(container, pluginHostApi);
         if (!active) {
@@ -123,19 +149,32 @@ export default function PluginTabContent({
           return;
         }
       } catch (err) {
-        if (!active) return;
+        if (!active || controller.signal.aborted) return;
         console.error(`[Plugin:${pluginName}] Failed to load:`, err);
-        setLoadError(String(err));
+        setLoadError(err instanceof Error ? err.message : String(err));
       }
     })();
 
     return () => {
       active = false;
+      controller.abort();
       try { moduleRef.current?.unmount?.(container); } catch { /* ignore */ }
+      container.innerHTML = '';
+      styleManager.clearAll();
       contextCallbacks.clear();
       moduleRef.current = null;
     };
-  }, [pluginName, plugin?.entry, plugin?.enabled]); // re-mount when plugin or enabled state changes
+  }, [
+    eventBus,
+    getContext,
+    notifyPlugin,
+    plugin,
+    pluginName,
+    revision,
+    safeMode,
+    subscribeContext,
+    t,
+  ]);
 
   return (
     <div className="relative h-full w-full overflow-auto">
