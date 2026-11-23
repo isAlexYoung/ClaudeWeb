@@ -35,6 +35,16 @@ async function withAuthServer(service: Partial<Service>, run: (baseUrl: string) 
 const post = (url: string, body: unknown, headers: Record<string, string> = {}) =>
   fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
 
+test('CMCP discovery advertises the URL tool bridge and session-code uses the authenticated session', async () => {
+  let seen = '';
+  await withAuthServer({ createCmcpSessionCode: (sessionId) => { seen = sessionId; return { code: 'browser-code', expiresInSeconds: 120 }; } }, async (baseUrl) => {
+    const info = await (await fetch(`${baseUrl}/api/auth/cmcp`)).json();
+    assert.deepEqual(info, { protocol: 'claudeweb-cmcp', version: 1, capabilities: { webMcp: 1 } });
+    assert.deepEqual(await (await post(`${baseUrl}/api/auth/cmcp/session-code`, {})).json(), { code: 'browser-code', expiresInSeconds: 120 });
+  });
+  assert.equal(seen, 'session-9');
+});
+
 test('login counts attempts against the Cloudflare visitor IP on a local connection', async () => {
   const seen: Array<{ password: unknown; ip: string; userAgent: string | null }> = [];
   await withAuthServer({

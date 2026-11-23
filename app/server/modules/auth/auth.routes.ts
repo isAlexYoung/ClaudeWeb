@@ -78,7 +78,7 @@ export function createAuthRouter(
   // CMCP releases that only know WebDesktop's "cmcp-" protocols treat it as a
   // standalone service with its own login page.
   router.get('/cmcp', (_req, res) => {
-    res.json({ protocol: 'claudeweb-cmcp', version: 1 });
+    res.json({ protocol: 'claudeweb-cmcp', version: 1, capabilities: { webMcp: 1 } });
   });
 
   router.post('/cmcp/code', async (req, res, next) => {
@@ -104,6 +104,12 @@ export function createAuthRouter(
     } catch (error) {
       next(error);
     }
+  });
+
+  router.post('/cmcp/session-code', authenticateToken, (req, res, next) => {
+    try {
+      res.json(service.createCmcpSessionCode((req as AuthenticatedRequest).authSessionId as string));
+    } catch (error) { next(error); }
   });
 
   router.get('/user', authenticateToken, (req, res) => {

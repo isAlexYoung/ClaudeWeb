@@ -5,6 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.1.5 - 2026-11-23 (stable)
+
+- Connect PC MCP tools directly through a ClaudeWeb URL with CMCP 4.24.2, without a separate SSH connection.
+- Register the connector in the ClaudeWeb service user's own configuration and retain existing MCP entries.
+- Share one authenticated session between the tool connection and its browser, and sign out that session when CMCP disconnects.
+
 ## 2.1.4 - 2026-11-23 (stable)
 
 - Keep login and loading screens on the chosen theme, with warm white as the default.

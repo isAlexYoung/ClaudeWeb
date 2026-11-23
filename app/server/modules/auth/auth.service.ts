@@ -103,7 +103,7 @@ function lockedError(seconds: number): AppError {
 export function createAuthService<User extends AuthUser>(dependencies: AuthDependencies<User>) {
   const idle = (session: LoginSessionRecord, now: number) =>
     session.via === 'web' && now - session.last_active_at > WEB_IDLE_LIMIT_MS;
-  const cmcpCodes = new Map<string, { generation: string; expiresAt: number }>();
+  const cmcpCodes = new Map<string, { generation: string; expiresAt: number; sessionId?: string }>();
 
   /** Checks the password against the per-IP lockout; returns its generation. */
   async function checkPassword(input: { password: unknown; ip: string }): Promise<string> {
@@ -260,6 +260,20 @@ export function createAuthService<User extends AuthUser>(dependencies: AuthDepen
       return { code, expiresInSeconds: CMCP_CODE_LIFETIME_MS / 1000 };
     },
 
+    /** CMCP's browser joins its authenticated tool connection without consuming another device slot. */
+    createCmcpSessionCode(sessionId: string) {
+      const session = checkSession(sessionId);
+      if (!session || session.via !== 'cmcp') {
+        throw new AppError('CMCP session expired', { code: 'AUTH_TOKEN_EXPIRED', statusCode: 401 });
+      }
+      const now = dependencies.now();
+      dropExpiredCodes(now);
+      while (cmcpCodes.size >= CMCP_CODES_KEPT) cmcpCodes.delete(cmcpCodes.keys().next().value as string);
+      const code = randomBytes(32).toString('base64url');
+      cmcpCodes.set(code, { generation: session.password_generation, expiresAt: now + CMCP_CODE_LIFETIME_MS, sessionId });
+      return { code, expiresInSeconds: CMCP_CODE_LIFETIME_MS / 1000 };
+    },
+
     /**
      * Second half: the page signs in with the code. The device choice works as
      * for a password; the code stays usable while the user chooses. CMCP logins
@@ -274,6 +288,13 @@ export function createAuthService<User extends AuthUser>(dependencies: AuthDepen
         throw new AppError('This CMCP sign-in link has expired. Open ClaudeWeb from CMCP again, or enter the password.', {
           code: 'AUTH_CMCP_CODE_INVALID', statusCode: 401,
         });
+      }
+      if (entry.sessionId) {
+        const session = checkSession(entry.sessionId);
+        const user = session && dependencies.owner.getById(session.user_id);
+        cmcpCodes.delete(input.code as string);
+        if (!session || !user) throw new AppError('CMCP session expired', { code: 'AUTH_CMCP_CODE_INVALID', statusCode: 401 });
+        return { success: true, user: { id: user.id, username: user.username }, token: dependencies.signToken({ userId: user.id, username: user.username, sid: session.id }) };
       }
       const result = openSession(entry.generation, { ...input, via: 'cmcp' });
       cmcpCodes.delete(input.code as string);

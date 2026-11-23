@@ -13,7 +13,7 @@ CMCP 连接、从 WebDesktop 迁移，以及常见问题。所有 `claudeweb` �
 要求：一台拥有管理权限的 amd64 服务器，系统为 Debian 12、Debian 13、Ubuntu 22.04、Ubuntu 24.04 或 Ubuntu 26.04，
 至少 2 核 CPU、2 GB 内存，不支持 ARM64。
 
-以 root 运行，安装最新正式版（2.1.4）：
+以 root 运行，安装最新正式版（2.1.5）：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
@@ -74,12 +74,14 @@ claudeweb domain
 
 ## 4. 用 CMCP 连接
 
-CMCP（4.24.1 及以上）可以连接 ClaudeWeb，并让 Claude 使用你电脑上的文件和工具。
+CMCP（4.24.2 及以上，支持 Windows、Mac 和 Linux）可以通过网址直接连接 ClaudeWeb 2.1.5，让 Claude 使用你电脑上的文件和工具，无需额外建立 SSH 通道。
 
-1. 在 CMCP 中添加设备，填好这台服务器的 SSH 登录信息，选择 ClaudeWeb 登录方式。
+1. 在 CMCP 中添加设备，选择 ClaudeWeb 登录方式。网址连接不需要填写 SSH 登录信息。
 2. ClaudeWeb 地址填域名（如果配置了），或使用经 SSH 隧道的本机地址。
 3. 填 ClaudeWeb 登录密码并打开自动登录。CMCP 会用一次性登录码登录，密码不会出现在网址里。
-4. 点击「连接」：连上后会自动打开浏览器并登录。本机工具经这台设备的 SSH 后台通道连接。
+4. 点击「连接」：连上后会自动打开浏览器并登录，本机工具通过同一个网址连接。首次连接后开始新的 Code 对话；Chat 模式需在「设置 → 插件」启用 MCP。
+
+SSH 连接仍可使用。以 root 连接标准独立版时，CMCP 会以 `claudeweb` 用户注册本机工具，写入 `/home/claudeweb/.claude.json`。工具连接与浏览器共用一个登录会话，断开 CMCP 时只注销这个会话。
 
 「初始化／修复 ClaudeWeb 连接」能识别 ClaudeWeb 独立版，不会另装 Claude CLI。
 

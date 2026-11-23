@@ -80,6 +80,27 @@ const rejectsWith = (code: string, check?: (error: AppError) => void) => (error:
   return true;
 };
 
+test('CMCP browser codes reuse the tool session, are one-use, and die when that session signs out', async () => {
+  const harness = createHarness();
+  const issued = await harness.service.createCmcpCode({ password: 'right-password', ip: '127.0.0.1' });
+  const connected = harness.service.redeemCmcpCode({ code: issued.code, ip: '127.0.0.1', userAgent: 'CMCP tools', mode: 'join' });
+  const sessionId = [...harness.sessions.keys()][0];
+  const browser = harness.service.createCmcpSessionCode(sessionId);
+  const joined = harness.service.redeemCmcpCode({ code: browser.code, ip: '127.0.0.1', userAgent: 'Browser' });
+  assert.equal(joined.token, connected.token);
+  assert.equal(harness.sessions.size, 1, 'the browser must not consume another device slot');
+  assert.throws(() => harness.service.redeemCmcpCode({ code: browser.code, ip: '127.0.0.1', userAgent: 'Replay' }), rejectsWith('AUTH_CMCP_CODE_INVALID'));
+  const stale = harness.service.createCmcpSessionCode(sessionId);
+  harness.service.logout(sessionId);
+  assert.throws(() => harness.service.redeemCmcpCode({ code: stale.code, ip: '127.0.0.1', userAgent: 'Browser' }), rejectsWith('AUTH_CMCP_CODE_INVALID'));
+});
+
+test('ordinary web sessions cannot mint a CMCP browser handoff', async () => {
+  const harness = createHarness();
+  await harness.service.login({ password: 'right-password', ip: '127.0.0.1', userAgent: 'Browser' });
+  assert.throws(() => harness.service.createCmcpSessionCode([...harness.sessions.keys()][0]), rejectsWith('AUTH_TOKEN_EXPIRED'));
+});
+
 test('the right password signs in as the owner and records a session for this device', async () => {
   const harness = createHarness();
 

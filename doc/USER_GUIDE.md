@@ -13,7 +13,7 @@ You need an amd64 server you can administer, running Debian 12, Debian 13,
 Ubuntu 22.04, Ubuntu 24.04 or Ubuntu 26.04, with at least 2 CPU cores and
 2 GB of memory. ARM64 is not supported.
 
-As root, this installs the latest stable release (2.1.4):
+As root, this installs the latest stable release (2.1.5):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
@@ -85,16 +85,16 @@ opens ClaudeWeb on any device, behind the same login password.
 
 ## 4. Connect CMCP
 
-CMCP 4.24.1 or later connects to ClaudeWeb and lets Claude use the files and
-tools on your computer.
+CMCP 4.24.2 or later on Windows, Mac and Linux connects PC tools directly through a ClaudeWeb 2.1.5 URL, without a separate SSH channel.
 
-1. Add the server in CMCP with its SSH login and choose ClaudeWeb sign-in.
+1. Add the server in CMCP and choose ClaudeWeb sign-in. URL connections do not need SSH credentials.
 2. As the ClaudeWeb address, use the domain if you set one up, or the local
    address through the SSH tunnel.
 3. Enter the ClaudeWeb login password and turn on automatic sign-in. CMCP
    signs in with a one-time code, so the password never appears in an address.
-4. Click Connect: once connected, the browser opens signed in. Local tools go
-   through the device's SSH background channel.
+4. Click Connect: the browser opens signed in and PC tools use the same URL. Start a new Code conversation after the first connection; Chat mode needs MCP enabled in Settings > Plugins.
+
+SSH remains supported. Root connections to the standard standalone install register the connector as `claudeweb` in `/home/claudeweb/.claude.json`. The web tool connection and browser share one login session; disconnecting CMCP signs out only that session.
 
 "Set up / repair ClaudeWeb connection" recognises standalone ClaudeWeb and
 installs no second Claude CLI.

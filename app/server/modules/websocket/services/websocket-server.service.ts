@@ -7,6 +7,7 @@ import { verifyWebSocketClient } from '@/modules/websocket/services/websocket-au
 import { handlePluginWsProxy } from '@/modules/websocket/services/plugin-websocket-proxy.service.js';
 import { handleShellConnection } from '@/modules/websocket/services/shell-websocket.service.js';
 import { handleDesktopNotificationsConnection } from '@/modules/notifications/index.js';
+import { handleCmcpConnection } from '@/modules/cmcp/index.js';
 import type { AuthenticatedWebSocketRequest } from '@/shared/types.js';
 
 type WebSocketServerDependencies = {
@@ -120,6 +121,11 @@ export function createWebSocketServer(
     }
     const url = incomingRequest.url ?? '/';
     const pathname = new URL(url, 'http://localhost').pathname;
+
+    if (pathname === '/cmcp-ws') {
+      handleCmcpConnection(ws);
+      return;
+    }
 
     if (pathname === '/shell') {
       handleShellConnection(ws, dependencies.shell);
