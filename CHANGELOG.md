@@ -5,6 +5,13 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.2 - 2026-11-23 (stable)
+
+- Promote Plugin Host v2 (`apiVersion: 2`) to stable: multi-slot plugin architecture (`background`, `overlay`, `settings`, `tab`), single-active background slot arbitration, unified `activate()`/`deactivate()` lifecycle, live workspace `project`/`session` and `isFocusedSession` propagation, and stable plugin UIs across list refreshes.
+- Add seamless full-window smoked-dark / frosted-light wallpaper glassmorphism with adaptive `tone` (`auto` / `dark` / `light`), floating transparent header, frosted glass composer capsule, adaptive Markdown/prose contrast, and host-verified public login-screen appearance snapshots (`/api/public/appearance`).
+- Add short-lived session-bound Scoped Media Tickets (`Range`/`206` streaming with magic-byte MIME whitelist), streaming binary `rpcRaw`, persistent `PLUGIN_DATA_DIR`, prebuilt SHA-256 artifact verification, atomic temp-directory Git updates, Safe Mode (`?safe-plugins=1`), Boot Crash Guard, and `claudeweb plugins --disable-all`.
+- Publish standalone third-party plugin SDK declarations (`doc/plugin-sdk/claudeweb-plugin.d.ts`), Manifest JSON Schema (`doc/plugin-sdk/manifest.schema.json`), and complete `doc/CUSTOM_PLUGINS.md` developer reference.
+
 ## 2.2.1 - 2026-11-23 (test)
 
 - Redesign wallpaper glassmorphism (`workspace-theme.css`) to a seamless full-window smoked-dark / frosted-light glass aesthetic with adaptive `tone` (`auto` / `dark` / `light`), floating transparent header, frosted composer capsule, and adaptive Markdown/prose typography contrast across Warm, Light, and Dark themes.

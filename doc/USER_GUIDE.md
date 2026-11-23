@@ -13,7 +13,7 @@ You need an amd64 server you can administer, running Debian 12, Debian 13,
 Ubuntu 22.04, Ubuntu 24.04 or Ubuntu 26.04, with at least 2 CPU cores and
 2 GB of memory. ARM64 is not supported.
 
-As root, this installs the latest stable release (2.1.5):
+As root, this installs the latest stable release (2.2.2):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
