@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, type Dispatch, type SetStateAction, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, type Dispatch, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ChatInterface } from '@/modules/chat';
@@ -23,6 +23,7 @@ import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceCont
 import WorkspaceStateView from '@/modules/project-workspace/WorkspaceStateView';
 import WorkspaceErrorBoundary from '@/modules/project-workspace/WorkspaceErrorBoundary';
 import { ScheduledTasksPage } from '@/modules/scheduled-tasks';
+import { ArtefactsPage, SpreadsheetEditor } from '@/modules/artefacts';
 import MobileMenuButton from '@/modules/project-workspace/MobileMenuButton';
 import { useWorkspaceTools } from '@/modules/project-workspace/context/WorkspaceToolsContext';
 
@@ -208,6 +209,33 @@ function WorkspaceMain({
 
   if (isLoading) {
     return <WorkspaceStateView mode="loading" isMobile={isMobile} onMenuClick={onMenuClick} />;
+  }
+
+  if (experience.artefactsOpen) {
+    const menuButton = isMobile ? <MobileMenuButton onMenuClick={onMenuClick} /> : null;
+    const openSession = (sessionId: string) => {
+      // An artefact's conversation runs in the Chat workspace.
+      experience.enterSession(sessionId, 'chat');
+      onNavigateToSession(sessionId);
+    };
+    return experience.openArtefactId ? (
+      <Suspense fallback={<WorkspaceStateView mode="loading" isMobile={isMobile} onMenuClick={onMenuClick} />}>
+        <SpreadsheetEditor
+          key={experience.openArtefactId}
+          artefactId={experience.openArtefactId}
+          menuButton={menuButton}
+          onClose={experience.closeArtefact}
+          onOpenSession={openSession}
+        />
+      </Suspense>
+    ) : (
+      <ArtefactsPage
+        menuButton={menuButton}
+        onOpenArtefact={experience.openArtefact}
+        onOpenSession={openSession}
+        onNewChat={() => experience.openHome('chat')}
+      />
+    );
   }
 
   if (experience.scheduledTasksOpen) {

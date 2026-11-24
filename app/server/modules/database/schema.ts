@@ -135,6 +135,27 @@ CREATE TABLE IF NOT EXISTS uploaded_files (
 );
 `;
 
+// ClaudeWeb Artefacts: a spreadsheet (and later other kinds) kept as a file in
+// ~/Artefacts, with the conversation Claude edits it in. The file holds the
+// content; the row holds the title, pin and times shown on the Artefacts page.
+export const ARTEFACTS_TABLE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS artefacts (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    -- sheet is the only kind that can be created so far.
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    -- The conversation Claude edits it in, created on the first request.
+    session_id TEXT,
+    pinned INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    opened_at DATETIME NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+`;
+
 // ClaudeWeb scheduled tasks: a prompt that starts a new conversation on a
 // schedule. Each run is one row in scheduled_task_runs pointing at the
 // conversation it created; the conversation itself is an ordinary session.

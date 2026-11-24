@@ -5,6 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.8 - 2026-11-24 (stable)
+
+- Add Artefacts (作品) to the left sidebar, between Search and Scheduled tasks, in both Chat and Code. The page lists your artefacts as cards or rows, with search, a filter menu (sort by last opened, date created or name; type with counts; opened date; pinned only), a grid/list switch that is remembered, and a New menu. Cards can be opened, pinned, renamed, deleted or followed to their conversation.
+- Spreadsheets can be created and edited: an open-source grid (FortuneSheet) with formulas, merged cells, frozen rows, number formats, text and fill colours, undo and CSV download. Describe a change in the box under the sheet and Claude edits the file (`~/Artefacts/<id>.sheet.json`) in its own conversation while the grid waits read-only; the conversation can be shown beside the sheet or opened in the full chat. Your own edits save automatically, and a save that would overwrite a change Claude just made reloads Claude's version instead. Documents, slides, designs, data and whiteboards show their tiles and say they are coming soon.
+- Scheduled tasks now appears in the left sidebar only in Chat mode. Switching between Chat and Code slides the mode switch and fades the sidebar's content across.
+
 ## 2.2.7 - 2026-11-24 (stable)
 
 - Compaction: the summary a compaction produces no longer shows up during the run as a message you sent; it is folded into the one-line "Compacted" row, as it already was after a reload, and its full text leaves out the reminder blocks written for the model.

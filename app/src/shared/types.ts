@@ -1949,6 +1949,14 @@ export type WorkspaceExperience = WorkspaceSessionPreferences & {
   /** The standalone plugin manager fills the main area without opening Settings. */
   pluginsOpen: boolean;
   openPlugins: () => void;
+  /** The Artefacts page (or one artefact's editor) fills the main area. */
+  artefactsOpen: boolean;
+  openArtefacts: () => void;
+  /** The artefact whose editor is open on the Artefacts page; null shows the list. */
+  openArtefactId: string | null;
+  openArtefact: (id: string) => void;
+  /** Leaves the editor for the Artefacts list. */
+  closeArtefact: () => void;
   homeRequest: number;
   homeError: WorkspaceHomeError | null;
   contextUsage: Record<string, unknown> | null;
@@ -1980,6 +1988,75 @@ export type WorkspaceExperience = WorkspaceSessionPreferences & {
   setContextUsage: (usage: Record<string, unknown> | null) => void;
   setHomeError: (error: WorkspaceHomeError | null) => void;
   setTranscriptActions: (actions: TranscriptActions | null) => void;
+};
+
+/** The kinds of artefact the Artefacts page shows; only `sheet` can be created so far. */
+export type ArtefactKind = 'doc' | 'slides' | 'sheet' | 'design' | 'design-system' | 'data' | 'whiteboard' | 'other';
+
+/** One artefact as `GET /api/artefacts` lists it. Times are ISO strings. */
+export type ArtefactSummary = {
+  id: string;
+  kind: ArtefactKind;
+  title: string;
+  /** The conversation Claude edits it in; null until the first request. */
+  sessionId: string | null;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  openedAt: string;
+};
+
+/** A cell in a `claudeweb-sheet@1` file: a string starting with "=" is a formula. */
+export type SheetCellValue = string | number | boolean | null;
+
+/** Formatting for one cell of a `claudeweb-sheet@1` file. */
+export type SheetCellStyle = {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  color?: string;
+  bg?: string;
+  align?: 'left' | 'center' | 'right';
+  valign?: 'top' | 'middle' | 'bottom';
+  fontSize?: number;
+  /** Number format, such as "0.00", "#,##0", "0%" or "yyyy-mm-dd". */
+  format?: string;
+};
+
+/** One worksheet of a `claudeweb-sheet@1` file; cells and styles are keyed by A1 address. */
+export type SheetData = {
+  name: string;
+  cells: Record<string, SheetCellValue>;
+  styles?: Record<string, SheetCellStyle>;
+  /** Merged ranges such as "A1:C1". */
+  merges?: string[];
+  /** Pixels by column letter. */
+  colWidths?: Record<string, number>;
+  /** Pixels by row number. */
+  rowHeights?: Record<string, number>;
+  frozen?: { rows?: number; cols?: number };
+};
+
+/** A spreadsheet file as Claude and the editor both read and write it. */
+export type SheetDocument = {
+  format: 'claudeweb-sheet@1';
+  sheets: SheetData[];
+};
+
+/** One artefact as its editor opens it; `content` is null when the file is missing or invalid. */
+export type ArtefactDetail = ArtefactSummary & {
+  content: SheetDocument | null;
+  contentError: string | null;
+  /** Changes whenever the file does, whoever wrote it. */
+  revision: string;
+};
+
+/** What the editor polls while it is open. */
+export type ArtefactState = {
+  revision: string;
+  running: boolean;
+  sessionId: string | null;
+  lastError: string | null;
 };
 
 /** Real Agent SDK category snapshot, kept separate from billing input/output token counters. Optional lists depend on the running CLI version. */

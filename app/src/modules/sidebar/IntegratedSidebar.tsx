@@ -21,11 +21,13 @@ import {
   RefreshCw,
   Search,
   Settings as SettingsIcon,
+  Shapes,
   SquarePen,
   Trash2,
 } from 'lucide-react';
 
 import { useScheduledTaskSessionIds } from '@/modules/scheduled-tasks';
+import { useModeSwapMotion } from '@/modules/sidebar/hooks/useModeSwapMotion';
 import { api } from '@/shared/api';
 import { CHAT_WORKSPACE_PATH } from '@/shared/constants';
 import { getWorkspaceSessionMode } from '@/shared/utils';
@@ -88,6 +90,9 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
   const { list } = props;
   const { t } = useTranslation('sidebar');
   const experience = useWorkspaceExperience();
+  // Scheduled tasks are a Chat feature: Code mode does not list them.
+  const showScheduledTasks = experience.mode === 'chat';
+  const modeSwapRef = useModeSwapMotion(experience.mode);
   // Search lives in one modal instead of the navigation tree; the backend query is unchanged.
   const [searchOpen, setSearchOpen] = useState(false);
   // A project has one contextual action menu open at a time.
@@ -377,12 +382,22 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
         </button>
         <button
           className="workspace-icon-button"
-          aria-label={t('scheduledTasks.title')}
-          aria-pressed={experience.scheduledTasksOpen}
-          onClick={() => { experience.openScheduledTasks(); props.onNavigatePage?.(); }}
+          aria-label={t('artefacts.title')}
+          aria-pressed={experience.artefactsOpen}
+          onClick={() => { experience.openArtefacts(); props.onNavigatePage?.(); }}
         >
-          <Clock size={19} />
+          <Shapes size={19} />
         </button>
+        {showScheduledTasks && (
+          <button
+            className="workspace-icon-button"
+            aria-label={t('scheduledTasks.title')}
+            aria-pressed={experience.scheduledTasksOpen}
+            onClick={() => { experience.openScheduledTasks(); props.onNavigatePage?.(); }}
+          >
+            <Clock size={19} />
+          </button>
+        )}
         <button className="workspace-icon-button" aria-label={t('settings:mainTabs.plugins')} aria-pressed={experience.pluginsOpen} onClick={() => { experience.openPlugins(); props.onNavigatePage?.(); }}>
           <Plug size={19} />
         </button>
@@ -408,7 +423,7 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
         <button className="workspace-icon-button" aria-label={t('workspace.refresh')} title={t('workspace.refresh')} aria-busy={props.isRefreshing} disabled={props.isRefreshing} onClick={props.onRefresh}>
           <RefreshCw size={18} className={props.isRefreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />
         </button>
-        <div className="workspace-mode-tabs" role="tablist" aria-label={t('workspace.modeTabs')}>
+        <div className="workspace-mode-tabs" role="tablist" aria-label={t('workspace.modeTabs')} data-mode={experience.mode}>
           <button role="tab" aria-label={t('workspace.modeChat')} aria-selected={experience.mode === 'chat'} onClick={() => experience.switchMode('chat')}>
             <MessagesSquare size={19} />
           </button>
@@ -417,6 +432,7 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
           </button>
         </div>
       </div>
+      <div ref={modeSwapRef} className="workspace-sidebar-body">
       <button className="workspace-new-chat" onClick={() => experience.openHome(experience.mode)}>
         <SquarePen size={18} />
         {t('workspace.newChat')}
@@ -426,13 +442,23 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
         {t('workspace.search')}
       </button>
       <button
-        className={`workspace-new-chat workspace-scheduled-entry ${experience.scheduledTasksOpen ? 'selected' : ''}`}
-        aria-pressed={experience.scheduledTasksOpen}
-        onClick={() => { experience.openScheduledTasks(); props.onNavigatePage?.(); }}
+        className={`workspace-new-chat workspace-scheduled-entry ${experience.artefactsOpen ? 'selected' : ''}`}
+        aria-pressed={experience.artefactsOpen}
+        onClick={() => { experience.openArtefacts(); props.onNavigatePage?.(); }}
       >
-        <Clock size={18} />
-        {t('scheduledTasks.title')}
+        <Shapes size={18} />
+        {t('artefacts.title')}
       </button>
+      {showScheduledTasks && (
+        <button
+          className={`workspace-new-chat workspace-scheduled-entry ${experience.scheduledTasksOpen ? 'selected' : ''}`}
+          aria-pressed={experience.scheduledTasksOpen}
+          onClick={() => { experience.openScheduledTasks(); props.onNavigatePage?.(); }}
+        >
+          <Clock size={18} />
+          {t('scheduledTasks.title')}
+        </button>
+      )}
       <button
         className={`workspace-new-chat workspace-scheduled-entry ${experience.pluginsOpen ? 'selected' : ''}`}
         aria-pressed={experience.pluginsOpen}
@@ -480,6 +506,7 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
           )}
         </section>}
       </nav>
+      </div>
       <WorkspaceAccount onSettings={props.onSettings} />
       <SidebarSearchDialog {...props} open={searchOpen} onOpenChange={setSearchOpen} projects={list.filteredProjects.filter(project => !isChatWorkspace(project))} onOpenSession={openSession} />
       <RenameDialogs list={list} />

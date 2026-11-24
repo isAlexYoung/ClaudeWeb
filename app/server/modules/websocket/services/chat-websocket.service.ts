@@ -292,7 +292,9 @@ async function dispatchRun(
     return { started: false, error: 'A run is already in progress for this session.' };
   }
 
-  const clientOptions = (data.options ?? {}) as AnyRecord;
+  // Text appended to the system prompt is set only by the server's own runs
+  // (extraRuntimeOptions); a client cannot pass it in with its options.
+  const { systemPromptAppend: _clientSystemPromptAppend, ...clientOptions } = (data.options ?? {}) as AnyRecord;
   const command = typeof data.content === 'string' ? data.content : '';
 
   // Record what this turn runs with so reopening the session later restores the
@@ -676,6 +678,11 @@ export async function runDetachedChatTurn(
      * land mid-run, so the timer outranks whatever is running.
      */
     interruptActiveRun?: boolean;
+    /**
+     * Appended to the system prompt for this turn only. Artefacts set it to
+     * tell Claude which file it is editing and the file's format.
+     */
+    systemPromptAppend?: string;
   },
   dependencies: ChatWebSocketDependencies,
 ): Promise<{ started: boolean; error: string | null }> {
@@ -720,6 +727,7 @@ export async function runDetachedChatTurn(
     session,
     { sessionId: input.sessionId, content: input.content, options: input.options ?? {} },
     dependencies,
+    input.systemPromptAppend ? { systemPromptAppend: input.systemPromptAppend } : {},
   );
 }
 

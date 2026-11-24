@@ -2,6 +2,7 @@ import { Database } from 'better-sqlite3';
 
 import {
   APP_CONFIG_TABLE_SCHEMA_SQL,
+  ARTEFACTS_TABLE_SCHEMA_SQL,
   LAST_SCANNED_AT_SQL,
   NOTIFICATION_CHANNEL_ENDPOINTS_TABLE_SCHEMA_SQL,
   PROJECTS_TABLE_SCHEMA_SQL,
@@ -551,6 +552,9 @@ export const runMigrations = (db: Database) => {
     // ClaudeWeb File management: a new table only, nothing existing is changed.
     db.exec(UPLOADED_FILES_TABLE_SCHEMA_SQL);
     db.exec('CREATE INDEX IF NOT EXISTS idx_uploaded_files_project ON uploaded_files(project_path, created_at)');
+    // ClaudeWeb Artefacts: a new table only, nothing existing is changed.
+    db.exec(ARTEFACTS_TABLE_SCHEMA_SQL);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_artefacts_user ON artefacts(user_id, opened_at)');
 
     db.exec('CREATE INDEX IF NOT EXISTS idx_session_ids_lookup ON sessions(session_id)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_provider_session_id ON sessions(provider_session_id)');

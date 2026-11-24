@@ -486,6 +486,12 @@ If necessary, tell the user to enable the preview's external libraries checkbox.
 To propose a follow-up from a visual, use a button with data-claude-prompt="your request", or window.claudeWeb.followUp("your request"). The host shows the request for the user to add to the composer; it never sends automatically. Keep proposals under 2000 characters. Visuals pause when offscreen; do not rely on frame state persisting after pause, refresh or reopening the chat.`
   };
 
+  // A server-started run (an artefact edit) can add instructions for this turn
+  // only; chat clients cannot set this, the gateway strips it from their options.
+  if (typeof options.systemPromptAppend === 'string' && options.systemPromptAppend.trim()) {
+    sdkOptions.systemPrompt.append = `${sdkOptions.systemPrompt.append}\n\n${options.systemPromptAppend.trim()}`;
+  }
+
   sdkOptions.settingSources = ['project', 'user', 'local'];
 
   // The SDK resumes with the provider-native session id, never the app id.

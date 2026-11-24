@@ -32,9 +32,12 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
   // Only the New Chat entry shows the landing experience, never a project's new-session action.
   const [home, setHome] = useState(() => !location.pathname.includes('/session/'));
   // Main-area pages are mutually exclusive and leave the last conversation available to resume.
-  const [mainPage, setMainPage] = useState<'workspace' | 'scheduled-tasks' | 'plugins'>('workspace');
+  const [mainPage, setMainPage] = useState<'workspace' | 'scheduled-tasks' | 'plugins' | 'artefacts'>('workspace');
   const scheduledTasksOpen = mainPage === 'scheduled-tasks';
   const pluginsOpen = mainPage === 'plugins';
+  const artefactsOpen = mainPage === 'artefacts';
+  // The artefact whose editor fills the Artefacts page; null shows the list.
+  const [openArtefactId, setOpenArtefactId] = useState<string | null>(null);
   // Reopening New Chat must reset an existing draft even when the mode is unchanged.
   const [homeRequest, setHomeRequest] = useState(0);
   // A failed chat-workspace preparation stays visible until a new attempt is requested.
@@ -142,6 +145,22 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setContextDetails(null);
   }, []);
 
+  const openArtefacts = useCallback(() => {
+    setMainPage('artefacts');
+    setOpenArtefactId(null);
+    setContextUsage(null);
+    setContextDetails(null);
+  }, []);
+
+  const openArtefact = useCallback((id: string) => {
+    setMainPage('artefacts');
+    setOpenArtefactId(id);
+    setContextUsage(null);
+    setContextDetails(null);
+  }, []);
+
+  const closeArtefact = useCallback(() => setOpenArtefactId(null), []);
+
   const toggleSessionPin = useCallback((id: string) => {
     const saved = readSessions();
     writeUserPreference('workspaceSessions', {
@@ -159,6 +178,11 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     openScheduledTasks,
     pluginsOpen,
     openPlugins,
+    artefactsOpen,
+    openArtefacts,
+    openArtefactId,
+    openArtefact,
+    closeArtefact,
     homeRequest,
     homeError,
     contextUsage,
@@ -182,8 +206,9 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setHomeError,
     setTranscriptActions,
   }), [
-    mode, home, scheduledTasksOpen, pluginsOpen, homeRequest, homeError, contextUsage, contextDetails, transcriptActions, sessions,
-    openHome, homeDraft, startChatWithDraft, consumeHomeDraft, switchMode, resumeSessionId, homeProject, openScheduledTasks, openPlugins, enterProject, enterSession, rememberSession, toggleSessionPin,
+    mode, home, scheduledTasksOpen, pluginsOpen, artefactsOpen, openArtefactId, homeRequest, homeError, contextUsage, contextDetails, transcriptActions, sessions,
+    openHome, homeDraft, startChatWithDraft, consumeHomeDraft, switchMode, resumeSessionId, homeProject, openScheduledTasks, openPlugins,
+    openArtefacts, openArtefact, closeArtefact, enterProject, enterSession, rememberSession, toggleSessionPin,
   ]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

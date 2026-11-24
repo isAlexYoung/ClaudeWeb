@@ -62,6 +62,7 @@ import {
     scheduledTasksRoutes,
 } from './modules/scheduled-tasks/index.js';
 import { assetsRoutes, indexOlderUploads, initializeUploadCleanup } from './modules/assets/index.js';
+import { artefactsRoutes, initializeArtefacts } from './modules/artefacts/index.js';
 import { sideChatsRoutes, closeSideChats } from './modules/side-chats/index.js';
 import { projectMemoryRoutes } from './modules/project-memory/index.js';
 import { fileTreeRoutes } from './modules/file-tree/index.js';
@@ -230,6 +231,7 @@ app.use('/api/plugins', authenticateToken, pluginsRoutes);
 app.use('/api/providers', authenticateToken, providerRoutes);
 app.use('/api/scheduled-messages', authenticateToken, scheduledMessagesRoutes);
 app.use('/api/scheduled-tasks', authenticateToken, scheduledTasksRoutes);
+app.use('/api/artefacts', authenticateToken, artefactsRoutes);
 
 // Agent API Routes (uses API key authentication)
 app.use('/api/agent', agentRoutes);
@@ -432,6 +434,8 @@ async function startServer() {
             initializeScheduledMessageDispatcher(providerRuntimeService);
             // Runs scheduled tasks that came due while the server was down once, then polls.
             initializeScheduledTaskDispatcher(providerRuntimeService);
+            // Artefacts: lets the spreadsheet editor's requests run a Claude turn.
+            initializeArtefacts(providerRuntimeService);
             // Settings > Tasks and sessions > Archive inactive sessions; hourly, off unless chosen.
             initializeSessionAutoArchive();
             initializeUploadCleanup();

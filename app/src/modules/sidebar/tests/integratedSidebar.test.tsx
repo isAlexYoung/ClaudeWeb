@@ -72,7 +72,7 @@ const createList = (overrides: Partial<SidebarProjectListProps> = {}) => ({
   ...overrides,
 }) as unknown as SidebarProjectListProps;
 
-const renderSidebar = (list = createList(), props: Record<string, unknown> = {}) => render(
+const sidebarTree = (list = createList(), props: Record<string, unknown> = {}) => (
   <WorkspaceExperienceProvider>
     <IntegratedSidebar
       list={list}
@@ -99,8 +99,10 @@ const renderSidebar = (list = createList(), props: Record<string, unknown> = {})
       onDeleteArchivedSession={() => {}}
       {...props}
     />
-  </WorkspaceExperienceProvider>,
+  </WorkspaceExperienceProvider>
 );
+
+const renderSidebar = (list = createList(), props: Record<string, unknown> = {}) => render(sidebarTree(list, props));
 
 beforeAll(async () => {
   await i18n.changeLanguage('en');
@@ -226,14 +228,16 @@ test('an open conversation rename saves through the sidebar controller', () => {
   assert.deepEqual((list.onSaveEditingSession as ReturnType<typeof vi.fn>).mock.calls, [['project-1', 'session-1', 'Fix CI', 'claude']]);
 });
 
-test('Scheduled tasks sits under New chat and marks the conversations a task started', () => {
+test('Scheduled tasks sits under New chat, Search and Artefacts and marks the conversations a task started', () => {
   scheduled.ids = new Set(['session-1']);
   const view = renderSidebar();
   const entry = view.getByRole('button', { name: 'Scheduled tasks' });
   const newChat = view.getByRole('button', { name: 'New chat' });
   const search = view.getByRole('button', { name: /^Search$/ });
+  const artefacts = view.getByRole('button', { name: 'Artefacts' });
   assert.equal(newChat.nextElementSibling, search);
-  assert.equal(search.nextElementSibling, entry);
+  assert.equal(search.nextElementSibling, artefacts);
+  assert.equal(artefacts.nextElementSibling, entry);
   assert.equal(entry.getAttribute('aria-pressed'), 'false');
   fireEvent.click(entry);
   assert.equal(entry.getAttribute('aria-pressed'), 'true');
@@ -241,6 +245,32 @@ test('Scheduled tasks sits under New chat and marks the conversations a task sta
   assert.equal(view.getByRole('button', { name: 'Hello' }).getAttribute('data-scheduled'), null);
   fireEvent.click(view.getByRole('tab', { name: 'Project' }));
   assert.equal(view.getByRole('button', { name: 'Fix the build' }).getAttribute('data-scheduled'), 'true');
+});
+
+test('Artefacts shows in both modes and Scheduled tasks only in Chat, expanded and collapsed', () => {
+  const list = createList();
+  const view = renderSidebar(list);
+  const shown = (name: string) => view.queryByRole('button', { name }) !== null;
+  const artefacts = view.getByRole('button', { name: 'Artefacts' });
+  fireEvent.click(artefacts);
+  assert.equal(artefacts.getAttribute('aria-pressed'), 'true');
+  assert.equal(shown('Scheduled tasks'), true);
+  // The collapsed rail has no mode tabs; it follows the mode chosen while expanded.
+  view.rerender(sidebarTree(list, { collapsed: true }));
+  assert.equal(shown('Scheduled tasks'), true);
+  assert.equal(shown('Artefacts'), true);
+
+  view.rerender(sidebarTree(list));
+  fireEvent.click(view.getByRole('tab', { name: 'Project' }));
+  assert.equal(shown('Scheduled tasks'), false);
+  assert.equal(shown('Artefacts'), true);
+  view.rerender(sidebarTree(list, { collapsed: true }));
+  assert.equal(shown('Scheduled tasks'), false);
+  assert.equal(shown('Artefacts'), true);
+
+  view.rerender(sidebarTree(list));
+  fireEvent.click(view.getByRole('tab', { name: 'Chat' }));
+  assert.equal(shown('Scheduled tasks'), true);
 });
 
 test('legacy Chat-directory conversations stay in Chats, even without a saved mode classification', () => {

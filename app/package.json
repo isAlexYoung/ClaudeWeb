@@ -1,6 +1,6 @@
 {
   "name": "claudeweb",
-  "version": "2.2.7",
+  "version": "2.2.8",
   "productName": "ClaudeWeb",
   "description": "Self-hosted web interface for Claude Code, installed on your own Linux server",
   "type": "module",
@@ -59,6 +59,7 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.165",
+    "@fortune-sheet/react": "^1.0.4",
     "@octokit/rest": "^22.0.0",
     "@vscode/ripgrep": "^1.17.1",
     "bcrypt": "^6.0.0",

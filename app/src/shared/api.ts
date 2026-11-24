@@ -380,6 +380,20 @@ export const api = {
     runNow: (id: string) => post(`/api/scheduled-tasks/${encodeURIComponent(id)}/run`),
   },
 
+  // Artefacts: spreadsheets kept as files that Claude edits in a conversation of their own.
+  artefacts: {
+    list: () => get('/api/artefacts'),
+    create: (body: { kind: 'sheet'; title?: string }) => post('/api/artefacts', body),
+    open: (id: string) => get(`/api/artefacts/${encodeURIComponent(id)}`),
+    saveContent: (id: string, body: { content: unknown; baseRevision: string }) =>
+      put(`/api/artefacts/${encodeURIComponent(id)}/content`, body),
+    update: (id: string, body: { title?: string; pinned?: boolean }) => patch(`/api/artefacts/${encodeURIComponent(id)}`, body),
+    remove: (id: string) => del(`/api/artefacts/${encodeURIComponent(id)}`),
+    state: (id: string) => get(`/api/artefacts/${encodeURIComponent(id)}/state`),
+    sendMessage: (id: string, body: { text: string; sessionTitle?: string }) =>
+      post(`/api/artefacts/${encodeURIComponent(id)}/messages`, body),
+  },
+
   // Workspace file tree
   readFile: (projectId: string, filePath: string) =>
     get(`/api/file-tree/projects/${projectId}/file${query({ filePath })}`),
