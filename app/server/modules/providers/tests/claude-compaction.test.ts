@@ -99,3 +99,40 @@ test('the summary keeps its flag, so the client can fold it into the row', () =>
   assert.equal(row.role, 'assistant');
   assert.equal(row.isCompactSummary, true);
 });
+
+const LIVE_SUMMARY = 'This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.\n\nSummary: ...';
+
+test('the live summary, which carries no flag, is still recognised and not drawn as a user message', () => {
+  const rows = provider.normalizeMessage({
+    type: 'user',
+    isSynthetic: true,
+    uuid: 'live-summary',
+    message: { role: 'user', content: LIVE_SUMMARY },
+  }, SESSION_ID);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].role, 'assistant');
+  assert.equal(rows[0].isCompactSummary, true);
+  assert.equal(rows[0].content, LIVE_SUMMARY);
+});
+
+test('a live summary sent as content blocks is recognised too', () => {
+  const rows = provider.normalizeMessage({
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'text', text: LIVE_SUMMARY }] },
+  }, SESSION_ID);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].role, 'assistant');
+  assert.equal(rows[0].isCompactSummary, true);
+});
+
+test('an ordinary user message that merely mentions a summary stays a user message', () => {
+  const rows = provider.normalizeMessage({
+    type: 'user',
+    message: { role: 'user', content: 'Can you write a summary of the previous conversation?' },
+  }, SESSION_ID);
+
+  assert.equal(rows[0].role, 'user');
+  assert.equal(rows[0].isCompactSummary, undefined);
+});

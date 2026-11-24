@@ -218,6 +218,19 @@
 .workspace-connector { display: flex; gap: 10px; padding: 14px 20px; font-size: 13px; }
 .workspace-connector > span { border: 1px solid var(--workspace-line); border-radius: 50%; width: 25px; height: 25px; display: grid; place-items: center; font-size: 11px; }
 .workspace-connector small { display: block; color: hsl(var(--muted-foreground)); font-size: 11px; margin-top: 3px; }
+.workspace-task-list { padding: 12px 12px 14px; }
+.workspace-task-list-label { padding: 0 8px 6px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.workspace-task { display: flex; align-items: center; gap: 9px; min-height: 40px; padding: 6px 8px; border-radius: 9px; font-size: 13px; }
+.workspace-task:hover { background: var(--workspace-hover); }
+.workspace-task-dot { flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--primary)); animation: workspace-task-pulse 1.6s ease-in-out infinite; }
+@keyframes workspace-task-pulse { 50% { opacity: .35; } }
+.workspace-task-text { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.workspace-task-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.workspace-task-text small { color: hsl(var(--muted-foreground)); font-size: 11px; }
+.workspace-task-elapsed { flex-shrink: 0; color: hsl(var(--muted-foreground)); font-size: 12px; font-variant-numeric: tabular-nums; }
+.workspace-task-stop { flex-shrink: 0; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; color: hsl(var(--muted-foreground)); }
+.workspace-task-stop:hover { background: var(--workspace-hover); color: hsl(var(--destructive)); }
+@media (prefers-reduced-motion: reduce) { .workspace-task-dot { animation: none; } }
 .workspace-chat .chat-messages-pane > div.mx-auto { max-width: var(--transcript-width, 850px); padding: 16px 36px 30px; }
 .workspace-chat .font-serif { font-family: var(--workspace-chat-font); }
 /* The user's own messages stay in the interface font, as in Claude Desktop. */

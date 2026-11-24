@@ -64,10 +64,13 @@ function createContainer(scrollHeight: number, clientHeight: number) {
 }
 
 function createStore(messagesBySession: Map<string, NormalizedMessage[]>) {
-  // A hydrated slot, so the session-loading effect takes its early return
-  // instead of re-fetching on every render.
+  // Hydrated once the session has been fetched, so the session-loading effect
+  // takes its early return instead of re-fetching on every render — but not
+  // before, as in the real store: a session never opened is fetched, while one
+  // opened before is shown from the cache and only refreshed.
+  const loadedSessions = new Set<string>();
   const slotFor = (sessionId: string) => ({
-    fetchedAt: 1,
+    fetchedAt: loadedSessions.has(sessionId) ? 1 : 0,
     status: 'idle' as const,
     total: messagesBySession.get(sessionId)?.length ?? 0,
     hasMore: false,
@@ -75,7 +78,10 @@ function createStore(messagesBySession: Map<string, NormalizedMessage[]>) {
   });
 
   return {
-    fetchFromServer: vi.fn(async (sessionId: string) => slotFor(sessionId)),
+    fetchFromServer: vi.fn(async (sessionId: string) => {
+      loadedSessions.add(sessionId);
+      return slotFor(sessionId);
+    }),
     fetchMore: vi.fn(async (sessionId: string) => ({ slot: slotFor(sessionId), prependedCount: 0 })),
     appendRealtime: vi.fn(),
     refreshLatestFromServer: vi.fn(async (sessionId: string) => ({

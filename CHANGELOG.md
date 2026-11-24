@@ -5,6 +5,13 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.7 - 2026-11-24 (stable)
+
+- Compaction: the summary a compaction produces no longer shows up during the run as a message you sent; it is folded into the one-line "Compacted" row, as it already was after a reload, and its full text leaves out the reminder blocks written for the model.
+- Context panel: the context window is no longer taken as 160K for sessions that are clearly larger. A session that has held more than that (or a model chosen with the [1m] suffix) is measured against the next window size, so a 1M session stops reading 100% before and after compacting, and the counter drops to the compacted size as soon as a compaction finishes.
+- Chat: conversations stay loaded in the browser until the page is reloaded. Switching to another conversation, or to Scheduled tasks or Plugins, and back shows the conversation as it was — older pages included — and only fetches what is new. The 30 most recently opened conversations are kept; signing out clears them.
+- Right sidebar: running background tasks (workflows, agents, backgrounded commands) are listed under Memory with how long each has been running and a button to stop it. Nothing is shown when no task runs.
+
 ## 2.2.6 - 2026-11-24 (stable)
 
 - Scheduled task editor: the Model menu lists the Claude models again (Default model, Fable / Opus / Sonnet / Haiku by version, older versions under More models); the Instructions box grows with its text instead of showing a resize handle; the "+" run-location option is gone and new scheduled tasks always run in Chat (editing an existing task keeps its folder).

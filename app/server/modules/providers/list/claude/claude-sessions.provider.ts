@@ -63,6 +63,40 @@ const formatDuration = (milliseconds: number): string => {
  */
 const MAX_TRANSMITTED_SUBAGENT_ACTIVITIES = 200;
 
+/** How the CLI opens every compaction summary, whatever model wrote the rest. */
+const COMPACT_SUMMARY_PREAMBLE = /^\s*This session is being continued from a previous conversation that ran out of context\./;
+
+/**
+ * The text of a compaction summary row, or null for any other row.
+ *
+ * Claude stores the summary as a synthetic user row so the next turn resumes
+ * with it in context. The transcript flags it `isCompactSummary` and stores a
+ * string; the live SDK stream has no such flag (only `isSynthetic`) and may
+ * send the text as content blocks. The CLI's fixed opening sentence identifies
+ * it either way — nobody types that sentence to start a message.
+ */
+function readCompactSummaryText(raw: AnyRecord): string | null {
+  if (raw.type !== 'user' || raw.message?.role !== 'user') {
+    return null;
+  }
+  const content = raw.message?.content;
+  const text = typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content
+        .filter((part: AnyRecord) => part?.type === 'text' && typeof part.text === 'string')
+        .map((part: AnyRecord) => part.text as string)
+        .join('\n')
+      : '';
+  if (!text.trim()) {
+    return null;
+  }
+  if (raw.isCompactSummary === true || COMPACT_SUMMARY_PREAMBLE.test(text)) {
+    return text;
+  }
+  return null;
+}
+
 type ClaudeToolResult = {
   content: unknown;
   isError: boolean;
@@ -1357,6 +1391,24 @@ export class ClaudeSessionsProvider implements IProviderSessions {
       return [];
     }
 
+    // The summary a compaction produced. Checked before the user-row branches
+    // because the CLI writes it as a synthetic user row, and the live stream
+    // neither flags it nor always sends it as a string — read as an ordinary
+    // row it showed up as a message the user had typed.
+    const compactSummary = readCompactSummaryText(raw);
+    if (compactSummary) {
+      return [createNormalizedMessage({
+        id: baseId,
+        sessionId,
+        timestamp: ts,
+        provider: PROVIDER,
+        kind: 'text',
+        role: 'assistant',
+        content: compactSummary,
+        isCompactSummary: true,
+      })];
+    }
+
     if (raw.message?.role === 'user' && raw.message?.content && raw.isMeta !== true) {
       if (Array.isArray(raw.message.content)) {
         // Image attachments sent through the SDK are persisted as base64
@@ -1455,28 +1507,6 @@ export class ClaudeSessionsProvider implements IProviderSessions {
         }
       } else if (typeof raw.message.content === 'string') {
         const text = raw.message.content;
-
-        /**
-         * Claude stores compact summaries as synthetic "user" rows so the CLI
-         * can resume the next session turn with the summary in-context.
-         *
-         * For the web UI this is much more useful as assistant-authored summary
-         * text; otherwise it is both filtered by the generic internal-prefix
-         * check and visually mislabeled as a user message.
-         */
-        if (raw.isCompactSummary === true && text.trim()) {
-          messages.push(createNormalizedMessage({
-            id: baseId,
-            sessionId,
-            timestamp: ts,
-            provider: PROVIDER,
-            kind: 'text',
-            role: 'assistant',
-            content: text,
-            isCompactSummary: true,
-          }));
-          return messages;
-        }
 
         /**
          * Local slash commands are serialized as tagged text even though they
@@ -1851,6 +1881,7 @@ export class ClaudeSessionsProvider implements IProviderSessions {
         rawMessages,
         undefined,
         getReportedClaudeContextWindow(providerSessionId),
+        { providerSessionId },
       ),
     };
   }

@@ -7,6 +7,14 @@ export function normalizeInlineCodeFences(text: string) {
   }
 }
 
+/** Notes the CLI injects for the model, which a compaction summary carries along verbatim. */
+const SYSTEM_REMINDER_BLOCK = /<system-reminder>[\s\S]*?<\/system-reminder>\s*/g;
+
+/** Used by MessageComponent: a compaction summary without the model-only reminder blocks. */
+export function readableCompactionSummary(summary: string): string {
+  return summary.replace(SYSTEM_REMINDER_BLOCK, '').trim();
+}
+
 export function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

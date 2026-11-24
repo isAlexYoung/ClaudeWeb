@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   createProviderTokenUsageService,
+  inferClaudeContextWindow,
   summarizeClaudeTokenUsage,
 } from '@/modules/providers/services/provider-token-usage.service.js';
 import { AppError } from '@/shared/utils.js';
@@ -211,4 +212,44 @@ test('Claude token usage falls back to the whole file when the tail has no usage
   } finally {
     await rm(tempDirectory, { recursive: true, force: true });
   }
+});
+
+const mainTurn = (promptTokens: number) => ({
+  type: 'assistant',
+  message: { role: 'assistant', usage: { input_tokens: 10, cache_read_input_tokens: promptTokens - 10, output_tokens: 0 } },
+});
+
+test('the reported window always wins over any inference', () => {
+  assert.equal(inferClaudeContextWindow({ reported: 200_000, configured: 160_000, observedTokens: 900_000 }), 200_000);
+});
+
+test('a context larger than the configured window raises it to the next standard size', () => {
+  assert.equal(inferClaudeContextWindow({ configured: 160_000, observedTokens: 120_000 }), 160_000);
+  assert.equal(inferClaudeContextWindow({ configured: 160_000, observedTokens: 180_000 }), 200_000);
+  assert.equal(inferClaudeContextWindow({ configured: 160_000, observedTokens: 405_000 }), 1_000_000);
+});
+
+test('a model chosen with the [1m] suffix is measured against 1M', () => {
+  assert.equal(inferClaudeContextWindow({ configured: 160_000, model: 'opus[1m]' }), 1_000_000);
+});
+
+test('after a compaction the window still reflects the size the session reached before it', () => {
+  const entries = [
+    mainTurn(948_000),
+    {
+      type: 'system',
+      subtype: 'compact_boundary',
+      compactMetadata: { trigger: 'auto', preTokens: 973_824, postTokens: 39_102 },
+    },
+    mainTurn(138_000),
+  ];
+  const usage = summarizeClaudeTokenUsage(entries, undefined, undefined, { providerSessionId: 'window-after-compaction' });
+  assert.equal(usage.used, 138_000);
+  assert.equal(usage.total, 1_000_000);
+});
+
+test('a session seen at a large context keeps the larger window when a later read only holds the tail', () => {
+  summarizeClaudeTokenUsage([mainTurn(500_000)], undefined, undefined, { providerSessionId: 'window-remembered' });
+  const usage = summarizeClaudeTokenUsage([mainTurn(90_000)], undefined, undefined, { providerSessionId: 'window-remembered' });
+  assert.equal(usage.total, 1_000_000);
 });

@@ -349,6 +349,8 @@
       "desktop": "打开ClaudeDesktop"
     },
     "inspector": {
+      "runningTasks": "运行中的任务",
+      "stopTask": "停止 {{name}}",
       "terminal": "终端",
       "files": "文件",
       "back": "返回上下文与连接器",

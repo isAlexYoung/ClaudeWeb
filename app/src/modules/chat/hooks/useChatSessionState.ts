@@ -832,6 +832,46 @@ export function useChatSessionState({
 
     lastLoadedSessionKeyRef.current = sessionKey;
 
+    const canRequestSelected = () => (
+      isActiveRef.current
+      && activeSessionIdRef.current === selectedSessionId
+    );
+
+    // A session opened earlier on this page is still cached, older pages
+    // included: show it as it was and fetch only what is new, instead of
+    // replacing it with the first page again. Only a tail that cannot be
+    // stitched onto the cache falls back to a fresh first page.
+    if (existingSlot?.fetchedAt) {
+      setHasMoreMessages(existingSlot.hasMore);
+      setTotalMessages(existingSlot.total);
+      messagesOffsetRef.current = existingSlot.offset;
+      if (existingSlot.tokenUsage !== undefined) {
+        setTokenBudget((existingSlot.tokenUsage as Record<string, unknown> | null) ?? null);
+      }
+      setIsLoadingSessionMessages(false);
+      void sessionStore.refreshLatestFromServer(selectedSessionId, {
+        limit: SESSION_MESSAGES_PAGE_SIZE,
+        canRequest: canRequestSelected,
+      }).then(async (result) => {
+        let slot = result.slot;
+        if (!result.applied && !result.deferred) {
+          slot = await sessionStore.fetchFromServer(selectedSessionId, {
+            limit: SESSION_MESSAGES_PAGE_SIZE,
+            offset: 0,
+            canRequest: canRequestSelected,
+          }) ?? slot;
+        }
+        if (!slot || activeSessionIdRef.current !== selectedSessionId) return;
+        setHasMoreMessages(slot.hasMore);
+        setTotalMessages(slot.total);
+        messagesOffsetRef.current = slot.offset;
+        if (slot.tokenUsage !== undefined) {
+          setTokenBudget((slot.tokenUsage as Record<string, unknown> | null) ?? null);
+        }
+      });
+      return;
+    }
+
     // Fetch from server → store updates → chatMessages re-derives automatically
     setIsLoadingSessionMessages(true);
     sessionStore.fetchFromServer(selectedSessionId, {

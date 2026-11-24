@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PencilIcon } from 'lucide-react';
 
 import type { ChatMessage, ClaudePermissionSuggestion, PermissionGrantResult, LLMProvider,DiffLine,Project } from '@/shared/types';
-import { formatUsageLimitText } from '@/modules/chat/utils/chatFormatting';
+import { formatUsageLimitText, readableCompactionSummary } from '@/modules/chat/utils/chatFormatting';
 import { ToolRenderer, ToolErrorDisplay, SubagentPanel, WorkflowPanel, shouldHideToolResult } from '@/modules/chat/tools';
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/modules/chat/transcript/Reasoning';
 import ChatMessageImages from '@/modules/chat/transcript/ChatMessageImages';
@@ -200,7 +200,7 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, s
               </summary>
               <div className="mt-1">
                 <Markdown className="prose prose-sm prose-gray max-w-none font-serif dark:prose-invert">
-                  {message.compactSummary}
+                  {readableCompactionSummary(message.compactSummary)}
                 </Markdown>
               </div>
             </details>

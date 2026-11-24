@@ -130,6 +130,118 @@ export function getReportedClaudeContextWindow(providerSessionId: string | null 
   return providerSessionId ? reportedClaudeContextWindows.get(providerSessionId) : undefined;
 }
 
+/**
+ * The largest context each session has been seen holding: a turn's whole
+ * prompt, or the size a compaction started from. A window can never be smaller
+ * than that, which is what lets `inferClaudeContextWindow` correct a window it
+ * would otherwise take from CONTEXT_WINDOW — after a restart, or during a long
+ * turn whose `result` (the only message that states the window) has not come
+ * yet. Process memory like the map above, and filled from both the live stream
+ * and the transcript reads, so either side can tell the other.
+ */
+const observedClaudeContextTokens = new Map<string, number>();
+
+/** Used by the Claude runtime provider and the transcript readers below; keeps the largest value per session. */
+export function noteObservedClaudeContextTokens(providerSessionId: string | null | undefined, tokens: number): void {
+  if (!providerSessionId || !Number.isFinite(tokens) || tokens <= 0) {
+    return;
+  }
+  const previous = observedClaudeContextTokens.get(providerSessionId) ?? 0;
+  if (tokens <= previous) {
+    return;
+  }
+  observedClaudeContextTokens.delete(providerSessionId);
+  observedClaudeContextTokens.set(providerSessionId, tokens);
+  if (observedClaudeContextTokens.size > MAX_REPORTED_CLAUDE_CONTEXT_WINDOWS) {
+    const oldestSessionId = observedClaudeContextTokens.keys().next().value;
+    if (oldestSessionId !== undefined) {
+      observedClaudeContextTokens.delete(oldestSessionId);
+    }
+  }
+}
+
+/** Used by the Claude runtime provider to start a resumed run from what the transcript showed. */
+export function getObservedClaudeContextTokens(providerSessionId: string | null | undefined): number {
+  return providerSessionId ? observedClaudeContextTokens.get(providerSessionId) ?? 0 : 0;
+}
+
+/** Context-window sizes Claude models come in, smallest first. */
+const CLAUDE_CONTEXT_WINDOW_TIERS = [200_000, 1_000_000];
+
+/** The CONTEXT_WINDOW setting, or 160K when it is unset or unreadable. */
+export function readConfiguredClaudeContextWindow(configured: string | undefined = process.env.CONTEXT_WINDOW): number {
+  const parsed = Number.parseInt(configured ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 160_000;
+}
+
+/**
+ * The window a session's usage is measured against.
+ *
+ * The SDK-reported window wins. Without one, the configured window stands
+ * unless something proves it too small: a model selected with the `[1m]`
+ * suffix, or a context larger than it (current or before a compaction) — then
+ * the smallest standard size that fits. Without this a 1M session showed every
+ * reading against 160K and sat at 100% before and after compacting.
+ */
+export function inferClaudeContextWindow({
+  reported,
+  configured,
+  observedTokens = 0,
+  model,
+}: {
+  reported?: number | null;
+  configured: number;
+  observedTokens?: number;
+  model?: string | null;
+}): number {
+  if (typeof reported === 'number' && Number.isFinite(reported) && reported > 0) {
+    return reported;
+  }
+  let window = configured;
+  if (model && /\[1m\]/i.test(model)) {
+    window = Math.max(window, 1_000_000);
+  }
+  if (observedTokens > window) {
+    window = CLAUDE_CONTEXT_WINDOW_TIERS.find((size) => size >= observedTokens) ?? observedTokens;
+  }
+  return window;
+}
+
+/** The context one main-thread assistant row's request carried, or 0 for other rows. */
+function readClaudeRowContextTokens(entry: AnyRecord | null | undefined): number {
+  if (!entry || entry.isSidechain === true || entry.type !== 'assistant') {
+    return 0;
+  }
+  const usage = entry.message?.usage;
+  if (!usage || typeof usage !== 'object') {
+    return 0;
+  }
+  return readUsageNumber(usage.input_tokens ?? usage.inputTokens)
+    + readUsageNumber(usage.cache_read_input_tokens ?? usage.cacheReadInputTokens ?? usage.cacheReadTokens)
+    + readUsageNumber(usage.cache_creation_input_tokens ?? usage.cacheCreationInputTokens ?? usage.cacheCreationTokens)
+    + readUsageNumber(usage.output_tokens ?? usage.outputTokens);
+}
+
+/** The size a compaction started from, or 0 when the row is not a compact boundary. */
+export function readClaudeCompactionPreTokens(entry: AnyRecord | null | undefined): number {
+  if (!entry || entry.type !== 'system' || entry.subtype !== 'compact_boundary') {
+    return 0;
+  }
+  const metadata = entry.compact_metadata ?? entry.compactMetadata;
+  return metadata && typeof metadata === 'object'
+    ? readUsageNumber(metadata.pre_tokens ?? metadata.preTokens)
+    : 0;
+}
+
+/** The largest context the given transcript rows show the session holding. */
+function findLargestClaudeContext(entries: AnyRecord[]): number {
+  let largest = 0;
+  for (const entry of entries) {
+    largest = Math.max(largest, readClaudeRowContextTokens(entry), readClaudeCompactionPreTokens(entry));
+  }
+  return largest;
+}
+
 function readUsageNumber(value: unknown): number {
   const parsedValue = Number(value);
   return Number.isFinite(parsedValue) ? parsedValue : 0;
@@ -149,12 +261,14 @@ function readUsageNumber(value: unknown): number {
  * once per turn.
  *
  * The total is the window the SDK reported for the session when there is one,
- * and the CONTEXT_WINDOW setting otherwise.
+ * and otherwise the CONTEXT_WINDOW setting, raised when the session is known to
+ * need more (see `inferClaudeContextWindow`).
  */
 export function summarizeClaudeTokenUsage(
   entries: AnyRecord[],
   configuredContextWindow: string | undefined = process.env.CONTEXT_WINDOW,
   reportedContextWindow?: number,
+  options: { providerSessionId?: string | null; model?: string | null } = {},
 ): TokenUsageResult {
   let inputTokens = 0;
   let outputTokens = 0;
@@ -202,11 +316,14 @@ export function summarizeClaudeTokenUsage(
     break;
   }
 
-  const parsedContextWindow = Number.parseInt(configuredContextWindow ?? '', 10);
-  const configuredOrDefaultContextWindow = Number.isFinite(parsedContextWindow) ? parsedContextWindow : 160_000;
-  const contextWindow = reportedContextWindow && reportedContextWindow > 0
-    ? reportedContextWindow
-    : configuredOrDefaultContextWindow;
+  const largestContext = findLargestClaudeContext(entries);
+  noteObservedClaudeContextTokens(options.providerSessionId, largestContext);
+  const contextWindow = inferClaudeContextWindow({
+    reported: reportedContextWindow,
+    configured: readConfiguredClaudeContextWindow(configuredContextWindow),
+    observedTokens: Math.max(largestContext, getObservedClaudeContextTokens(options.providerSessionId)),
+    model: options.model,
+  });
   const cacheTokens = cacheReadTokens + cacheCreationTokens;
 
   return {
@@ -338,6 +455,7 @@ export function createProviderTokenUsageService(
         entries,
         dependencies.getClaudeContextWindow(),
         dependencies.getReportedClaudeContextWindow(providerSessionId),
+        { providerSessionId, model: session.model },
       );
     },
   };

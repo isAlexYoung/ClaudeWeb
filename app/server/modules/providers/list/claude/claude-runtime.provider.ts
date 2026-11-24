@@ -49,7 +49,12 @@ import {
 } from '@/modules/notifications/index.js';
 import { sessionHistoryCache } from '@/modules/providers/services/session-history-cache.service.js';
 import {
+  getObservedClaudeContextTokens,
   getReportedClaudeContextWindow,
+  inferClaudeContextWindow,
+  noteObservedClaudeContextTokens,
+  readClaudeCompactionPreTokens,
+  readConfiguredClaudeContextWindow,
   rememberClaudeContextWindow
 } from '@/modules/providers/services/provider-token-usage.service.js';
 import { createCompleteMessage, createNormalizedMessage } from '@/shared/utils.js';
@@ -1754,11 +1759,41 @@ async function queryClaudeSDK(
         }
       }
 
+      // What this message shows the session holding — a main-thread prompt, or
+      // the size a compaction started from — bounds the window from below, so a
+      // 1M session is not measured against CONTEXT_WINDOW while the turn's
+      // `result` (the only message stating the window) is still to come.
+      const observedSessionId = message.session_id || capturedSessionId || providerSessionId || null;
+      noteObservedClaudeContextTokens(observedSessionId, readClaudeCompactionPreTokens(message));
+      if (message.type === 'assistant' && !message.parent_tool_use_id && message.message?.usage) {
+        noteObservedClaudeContextTokens(observedSessionId, buildTokenBudget(message.message.usage).used);
+      }
+      const contextWindow = inferClaudeContextWindow({
+        reported: reportedContextWindow,
+        configured: readConfiguredClaudeContextWindow(),
+        observedTokens: getObservedClaudeContextTokens(observedSessionId),
+        model: sdkOptions.model,
+      });
+
       // Extract and send token budget updates from assistant usage payloads,
       // falling back to the turn's cumulative bill only for SDK builds that
       // report no per-assistant usage at all.
-      let tokenBudgetData = extractTokenBudget(message, reportedContextWindow)
-        || (assistantBudgetSent ? null : extractCumulativeTokenBudget(message, reportedContextWindow));
+      let tokenBudgetData = extractTokenBudget(message, contextWindow)
+        || (assistantBudgetSent ? null : extractCumulativeTokenBudget(message, contextWindow));
+      if (!tokenBudgetData && message.type === 'system' && message.subtype === 'compact_boundary') {
+        // A compaction has just shrunk the context; show the size it ended at
+        // now rather than the pre-compaction reading until the next reply.
+        const postTokens = readNumber(message.compact_metadata?.post_tokens ?? message.compactMetadata?.postTokens);
+        if (postTokens > 0) {
+          tokenBudgetData = {
+            used: postTokens,
+            total: contextWindow,
+            inputTokens: postTokens,
+            outputTokens: 0,
+            breakdown: { input: postTokens, output: 0 },
+          };
+        }
+      }
       if (
         !tokenBudgetData
         && turnContextWindow

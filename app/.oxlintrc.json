@@ -99,6 +99,8 @@
           "src/shared/codeEditorSettings.ts",
           "src/shared/userSettings.ts",
           "src/shared/chatDrafts.ts",
+          "src/shared/sessionCache.ts",
+          "src/shared/sessionTasks.ts",
           "src/shared/syntaxHighlighter.ts",
           "src/shared/timeFormat.ts",
           "src/shared/byteSize.ts"

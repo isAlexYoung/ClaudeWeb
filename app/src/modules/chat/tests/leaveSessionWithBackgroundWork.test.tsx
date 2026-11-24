@@ -30,17 +30,24 @@ const project: Project = {
 };
 const session: ProjectSession = { id: 'session-a', summary: 'A', lastActivity: '2026-01-01T00:00:00.000Z', messageCount: 1 } as ProjectSession;
 
+const slot = { fetchedAt: 1, status: 'idle' as const, total: 0, hasMore: false, offset: 0 };
+// Sessions this test has loaded: only those have a hydrated slot, as in the real
+// store, so opening a session the first time goes through a fetch.
+const loadedSessions = new Set<string>();
 const store = {
-  fetchFromServer: vi.fn(async () => ({ fetchedAt: 1, status: 'idle' as const, total: 0, hasMore: false, offset: 0 })),
+  fetchFromServer: vi.fn(async (sessionId: string) => {
+    loadedSessions.add(sessionId);
+    return slot;
+  }),
   fetchMore: vi.fn(),
   appendRealtime: vi.fn(),
-  refreshLatestFromServer: vi.fn(),
+  refreshLatestFromServer: vi.fn(async () => ({ slot, applied: true, changed: false, deferred: false })),
   setActiveSession: vi.fn(),
   isStale: vi.fn(() => false),
   updateStreaming: vi.fn(),
   finalizeStreaming: vi.fn(),
   getMessages: vi.fn(() => []),
-  getSessionSlot: vi.fn(() => ({ fetchedAt: 1, status: 'idle' as const, total: 0, hasMore: false, offset: 0 })),
+  getSessionSlot: vi.fn((sessionId: string) => (loadedSessions.has(sessionId) ? slot : undefined)),
 };
 
 async function renderWith(processingSessions: SessionActivityMap) {
@@ -71,6 +78,7 @@ async function renderWith(processingSessions: SessionActivityMap) {
 }
 
 beforeEach(() => {
+  loadedSessions.clear();
   store.appendRealtime.mockClear();
   vi.stubGlobal('requestAnimationFrame', () => 0);
   vi.stubGlobal('cancelAnimationFrame', () => undefined);
@@ -104,4 +112,35 @@ test('a session mid-response keeps its view while the selection catches up', asy
 
   assert.equal(hook.result.current.currentSessionId, 'session-a');
   assert.equal(resetStreamingState.mock.calls.length, 0);
+});
+
+test('returning to a conversation opened earlier shows its cache and fetches only what is new', async () => {
+  const { useChatSessionState } = await import('@/modules/chat/hooks/useChatSessionState');
+  const sessionB = { ...session, id: 'session-b', summary: 'B' } as ProjectSession;
+  const hook = renderHook(
+    ({ selectedSession }: { selectedSession: ProjectSession | null }) =>
+      useChatSessionState({
+        isActive: true,
+        selectedProject: project,
+        selectedSession,
+        ws: null,
+        sendMessage: vi.fn(),
+        resetStreamingState: vi.fn(),
+        statusCheckSentAtRef: { current: new Map() },
+        lastSeqRef: { current: new Map() },
+        sessionStore: store as never,
+        processingSessions: new Map(),
+      }),
+    { initialProps: { selectedSession: session as ProjectSession | null } },
+  );
+  await act(async () => { hook.rerender({ selectedSession: sessionB }); });
+  store.fetchFromServer.mockClear();
+  store.refreshLatestFromServer.mockClear();
+
+  await act(async () => { hook.rerender({ selectedSession: session }); });
+
+  assert.equal(hook.result.current.currentSessionId, 'session-a');
+  assert.equal(store.fetchFromServer.mock.calls.length, 0, 'a cached conversation is not reloaded from its first page');
+  assert.equal(store.refreshLatestFromServer.mock.calls.length, 1);
+  assert.equal(hook.result.current.isLoadingSessionMessages, false);
 });

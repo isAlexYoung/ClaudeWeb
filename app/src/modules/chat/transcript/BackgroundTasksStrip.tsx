@@ -1,9 +1,11 @@
-import { memo } from 'react';
+import { memo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { X } from 'lucide-react';
 
 import type { BackgroundTaskSummary, ChatMessage } from '@/shared/types';
+import { publishSessionTasks } from '@/shared/sessionTasks';
+import type { SessionTaskEntry } from '@/shared/sessionTasks';
 import {
   describeWorkflowAgent,
   findCurrentWorkflowAgent,
@@ -54,6 +56,15 @@ function readLaunchDescription(message: ChatMessage): string {
   // The CLI sets a workflow's description in the script's `meta` header, not
   // in the tool input, and reports it back as the run's first summary.
   return typeof script === 'string' ? parseWorkflowMeta(script).description ?? '' : '';
+}
+
+/** "Workflow", "Command" or "Agent", for a task known only from the activity map. */
+function taskKindLabel(task: BackgroundTaskSummary, t: TFunction): string {
+  return task.taskType === 'local_workflow'
+    ? t('workflow.title', 'Workflow')
+    : task.taskType === 'local_bash'
+      ? t('workflow.backgroundCommand', 'Command')
+      : t('workflow.backgroundAgent', 'Agent');
 }
 
 /** What one running task's chip says: its kind, its name, and how far it has got. */
@@ -113,6 +124,37 @@ export const BackgroundTasksStrip = memo(({ messages, tasks, sessionId, sendMess
   );
   const fromMap = ownBackgroundTasks(tasks ?? []).filter((task) => !settledToolIds.has(task.toolUseId));
 
+  // The same list, published for the workspace inspector, which lists it under
+  // Memory with each task's elapsed time.
+  const stopTask = useCallback((taskId: string) => {
+    if (sessionId) sendMessage({ type: 'chat.stop-task', sessionId, taskId });
+  }, [sendMessage, sessionId]);
+  const published: SessionTaskEntry[] = [
+    ...running.map((message) => {
+      const { kind, name } = describeTask(message, t);
+      return {
+        id: message.toolId,
+        taskId: readBackgroundTaskId(message),
+        kind,
+        name: name || readLaunchDescription(message),
+        startedAt: new Date(message.timestamp).getTime(),
+      };
+    }),
+    ...fromMap.map((task) => ({
+      id: task.taskId,
+      taskId: task.taskId,
+      kind: taskKindLabel(task, t),
+      name: task.workflowName ?? task.description,
+      startedAt: task.startedAt,
+    })),
+  ];
+  const publishedKey = JSON.stringify(published);
+  useEffect(() => {
+    if (!sessionId) return undefined;
+    publishSessionTasks(sessionId, JSON.parse(publishedKey) as SessionTaskEntry[], stopTask);
+    return () => publishSessionTasks(sessionId, []);
+  }, [publishedKey, sessionId, stopTask]);
+
   if (running.length === 0 && fromMap.length === 0) {
     return null;
   }
@@ -155,11 +197,7 @@ export const BackgroundTasksStrip = memo(({ messages, tasks, sessionId, sendMess
         );
       })}
       {fromMap.map((task) => {
-        const kind = task.taskType === 'local_workflow'
-          ? t('workflow.title', 'Workflow')
-          : task.taskType === 'local_bash'
-            ? t('workflow.backgroundCommand', 'Command')
-            : t('workflow.backgroundAgent', 'Agent');
+        const kind = taskKindLabel(task, t);
         const name = task.workflowName ?? task.description;
         const label = (
           <>

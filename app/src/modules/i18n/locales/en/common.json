@@ -463,6 +463,8 @@
       "desktop": "Open ClaudeDesktop"
     },
     "inspector": {
+      "runningTasks": "Running tasks",
+      "stopTask": "Stop {{name}}",
       "terminal": "Terminal",
       "files": "Files",
       "back": "Back to Context and connectors",

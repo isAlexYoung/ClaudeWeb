@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { api, readApiErrorMessage } from '@/shared/api';
 import { AUTH_SESSION_EXPIRED_EVENT, AUTH_TOKEN_REFRESHED_EVENT, getAuthTokenRefreshDelay, isValidRefreshedToken, storeAuthToken } from '@/shared/authToken';
 import { hydrateChatDrafts, resetChatDrafts } from '@/shared/chatDrafts';
+import { resetSessionCaches } from '@/shared/sessionCache';
 import { hydrateUserPreferences, resetUserPreferences } from '@/shared/userSettings';
 /** The signed-in account held by AuthContext - a required `username` plus an optional id and any additional fields the auth API returns - and should be read through `useAuth()` rather than re-derived from raw auth responses. */
 type AuthUser = {
@@ -141,6 +142,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // looking at the previous user's theme, language, permissions and drafts.
     resetUserPreferences();
     resetChatDrafts();
+    resetSessionCaches();
   }, []);
 
   // Preferences live in auth.db, so they can only be fetched once there is a

@@ -10,6 +10,7 @@ import { WorkspaceToolSlot, useWorkspaceTools } from '@/modules/project-workspac
 import { useViewMotion } from '@/shared/hooks/useViewMotion';
 import { MotionSurface } from '@/shared/ui';
 import { useConnectorStatus } from '@/modules/project-workspace/hooks/useConnectorStatus';
+import WorkspaceTaskList from '@/modules/project-workspace/WorkspaceTaskList';
 import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceContext';
 import { useUiPreferences } from '@/shared/context/UiPreferencesContext';
 import type { Project, ProjectSession, TurnChanges } from '@/shared/types';
@@ -202,6 +203,7 @@ export default function WorkspaceContextInspector({ view, project, session, onBa
       </MotionSurface>
       <SideChatInspector sessionId={session?.id || null} />
       <ProjectMemoryInspector projectId={mode === 'project' ? project?.projectId || null : null} projectName={project?.displayName || ''} sessionId={session?.id || null} onFileOpen={onFileOpen} />
+      <WorkspaceTaskList sessionId={session?.id || null} />
     </aside>
   );
 }

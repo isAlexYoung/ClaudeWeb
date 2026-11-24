@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { normalizedToChatMessages } from '@/modules/chat/hooks/useChatMessages';
+import { readableCompactionSummary } from '@/modules/chat/utils/chatFormatting';
 import type { NormalizedMessage } from '@/shared/types';
 
 const row = (fields: Partial<NormalizedMessage>): NormalizedMessage => ({
@@ -145,5 +146,12 @@ describe('compaction rows and the projection cache', () => {
     expect(firstRow.compactSummary).toBeUndefined();
     expect(second[0].compactSummary).toBe('The summary body');
     expect(second[0]).not.toBe(firstRow);
+  });
+});
+
+describe('the summary a compaction row shows', () => {
+  it('leaves out the reminder blocks written for the model', () => {
+    const summary = 'This session is being continued.\n\n<system-reminder>\n<tools-used-before-summary>Bash, Edit</tools-used-before-summary>\n</system-reminder>\nSummary: 1. Primary request';
+    expect(readableCompactionSummary(summary)).toBe('This session is being continued.\n\nSummary: 1. Primary request');
   });
 });

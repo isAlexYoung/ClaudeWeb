@@ -5,11 +5,17 @@
  * Session switch = change activeSessionId pointer. No clearing. Old data stays.
  * WebSocket handler = store.appendRealtime(msg.sessionId, msg). One line.
  * No localStorage for messages. Backend JSONL is the source of truth.
+ *
+ * The Map lives at module level, not in the component, so leaving the chat
+ * (Scheduled tasks, Plugins) and coming back keeps every conversation already
+ * loaded. It is bounded to the most recently opened sessions and lasts until
+ * the page reloads or the account signs out.
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { api } from '@/shared/api';
+import { registerSessionCacheReset } from '@/shared/sessionCache';
 import type { LLMProvider, NormalizedMessage } from '@/shared/types';
 import { removeOptimisticUserEchoes } from '@/modules/chat/utils/sessionMessageReconciliation';
 import {
@@ -546,10 +552,62 @@ const STALE_THRESHOLD_MS = 30_000;
 
 const MAX_REALTIME_MESSAGES = 500;
 
+// ─── Page-lifetime cache ───────────────────────────────────────────────────────
+
+/** Every session's slot, shared by all mounts of the chat so unmounting it loses nothing. */
+const sessionSlots = new Map<string, SessionSlot>();
+
+/**
+ * How many conversations stay cached. A session with many images or long tool
+ * output can hold megabytes, so the least recently opened ones are dropped and
+ * simply load again from the server when reopened.
+ */
+export const MAX_CACHED_SESSIONS = 30;
+
+registerSessionCacheReset(() => sessionSlots.clear());
+
+/** Marks a session as just opened and drops the least recently opened ones past the cap. */
+function touchSessionSlot(sessionId: string): void {
+  const slot = sessionSlots.get(sessionId);
+  if (!slot) return;
+  sessionSlots.delete(sessionId);
+  sessionSlots.set(sessionId, slot);
+  for (const [candidateId, candidate] of sessionSlots) {
+    if (sessionSlots.size <= MAX_CACHED_SESSIONS) break;
+    // A slot mid-read would be recreated empty by the read landing; leave it.
+    if (candidateId === sessionId || candidate.status === 'loading') continue;
+    sessionSlots.delete(candidateId);
+  }
+}
+
+/**
+ * Drops half-streamed replies left in the cache by a chat that unmounted while
+ * they were arriving. The text accumulated so far lived in that mount's
+ * handlers, so the row can never be finished; the persisted reply replaces it
+ * on the next tail refresh, and a reply still running streams in afresh.
+ */
+function dropAbandonedStreams(): void {
+  for (const slot of sessionSlots.values()) {
+    if (!slot.realtimeMessages.some((message) => message.kind === 'stream_delta')) continue;
+    slot.realtimeMessages = slot.realtimeMessages.filter((message) => message.kind !== 'stream_delta');
+    recomputeMergedIfNeeded(slot);
+  }
+}
+
+/** Test hook: the cached session ids, least recently opened first. */
+export function readCachedSessionIds(): string[] {
+  return [...sessionSlots.keys()];
+}
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useSessionStore() {
-  const storeRef = useRef(new Map<string, SessionSlot>());
+  const storeRef = useRef(sessionSlots);
+  // Once per mount, before anything in this mount can start a stream.
+  useState(() => {
+    dropAbandonedStreams();
+    return true;
+  });
   const activeSessionIdRef = useRef<string | null>(null);
   // Bump to force re-render — only when the active session's data changes.
   // Session ids are stable for the whole conversation lifetime (the backend
@@ -564,6 +622,7 @@ export function useSessionStore() {
 
   const setActiveSession = useCallback((sessionId: string | null) => {
     activeSessionIdRef.current = sessionId;
+    if (sessionId) touchSessionSlot(sessionId);
   }, []);
 
   const getSlot = useCallback((sessionId: string): SessionSlot => {

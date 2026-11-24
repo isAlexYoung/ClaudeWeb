@@ -20,17 +20,23 @@ vi.mock('@/shared/api', () => ({
 const project: Project = { projectId: 'project-1', path: '/repo', fullPath: '/repo', displayName: 'Repo', isStarred: false };
 const session: ProjectSession = { id: 'session-a', summary: 'A', lastActivity: '2026-01-01T00:00:00.000Z', messageCount: 1 } as ProjectSession;
 const slot = { fetchedAt: 1, status: 'idle' as const, total: 0, hasMore: false, offset: 0 };
+// Sessions this test has loaded: only those have a hydrated slot, as in the real
+// store, so opening a session the first time goes through a fetch.
+const loadedSessions = new Set<string>();
 const store = {
-  fetchFromServer: vi.fn(async () => slot),
+  fetchFromServer: vi.fn(async (sessionId: string) => {
+    loadedSessions.add(sessionId);
+    return slot;
+  }),
   fetchMore: vi.fn(),
   appendRealtime: vi.fn(),
-  refreshLatestFromServer: vi.fn(),
+  refreshLatestFromServer: vi.fn(async () => ({ slot, applied: true, changed: false, deferred: false })),
   setActiveSession: vi.fn(),
   isStale: vi.fn(() => false),
   updateStreaming: vi.fn(),
   finalizeStreaming: vi.fn(),
   getMessages: vi.fn(() => []),
-  getSessionSlot: vi.fn(() => slot),
+  getSessionSlot: vi.fn((sessionId: string) => (loadedSessions.has(sessionId) ? slot : undefined)),
 };
 
 const row = (timestamp: string) => {
@@ -45,6 +51,7 @@ const row = (timestamp: string) => {
 const frames: FrameRequestCallback[] = [];
 
 beforeEach(() => {
+  loadedSessions.clear();
   vi.spyOn(performance, 'now').mockReturnValue(0);
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.push(callback); return frames.length; });
   vi.stubGlobal('cancelAnimationFrame', () => undefined);

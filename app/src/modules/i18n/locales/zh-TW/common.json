@@ -253,6 +253,8 @@
       "desktop": "開啟ClaudeDesktop"
     },
     "inspector": {
+      "runningTasks": "執行中的任務",
+      "stopTask": "停止 {{name}}",
       "changes": "改動",
       "noChanges": "點擊改動彙總卡片裡的檔案，在這裡查看具體改動。"
     },
