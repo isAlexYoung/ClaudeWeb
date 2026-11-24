@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.3",
+   "channel": "stable",
+   "published_at": "2026-11-24T17:01:41Z",
+   "notes": "\u4fee\u590d\u7535\u5b50\u8868\u683c\u7a7a\u95f2\u4e0e Claude \u7f16\u8f91\u671f\u95f4\u7684\u6eda\u8f6e\u53ca\u62d6\u52a8\u6eda\u52a8\uff1b\u91cd\u6784\u7535\u5b50\u8868\u683c\u5206\u5c4f\u76f4\u63a5\u590d\u7528\u4e3b\u5bf9\u8bdd\u7a97\u53e3\uff08\u9ed8\u8ba4\u5de6\u8868\u683c + \u53f3\u5bf9\u8bdd\uff0c\u652f\u6301\u4e1d\u6ed1\u5c55\u5f00/\u5173\u95ed\u52a8\u753b\u3001\u5b8c\u6574\u6e32\u67d3 SVG \u56fe\u8868\u4e0e\u6c14\u6ce1\u3001\u9690\u85cf\u91cd\u590d\u8f93\u5165\u6846\uff09\uff1b\u5b9e\u73b0\u8868\u683c\u5361\u7247\u968f\u5bf9\u8bdd\u6eda\u52a8\u53cc\u5411\u8fc7\u6e21\u5230\u9876\u680f\u3002 / Fixed spreadsheet wheel & pan scrolling (idle and while Claude edits); reused the live main Chat window with smooth split-view open/close animations (default left sheet + right chat, full SVG charts & user bubbles, single floating sheet composer); added bidirectional scroll-linked card-to-header transition.",
+   "package": {
+    "name": "claudeweb-2.3.3-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.3/claudeweb-2.3.3-linux-x64.tar.xz",
+    "bytes": 71700028,
+    "sha256": "a346c04bcaade315c3982d2434fbaa9f55af36489b8c8d59355265e63da6dea3"
+   }
+  },
+  {
    "version": "2.3.2",
    "channel": "stable",
    "published_at": "2026-11-24T15:57:54Z",
@@ -218,5 +230,5 @@
    }
   }
  ],
- "generated_at": "2026-11-24T15:57:55Z"
+ "generated_at": "2026-11-24T17:01:42Z"
 }
