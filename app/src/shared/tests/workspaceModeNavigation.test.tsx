@@ -10,6 +10,32 @@ beforeEach(() => {
 });
 
 describe('Chat and Code navigation memories', () => {
+  it('opens Plugins independently of Scheduled tasks and restores the remembered conversation', () => {
+    const { result } = renderHook(useWorkspaceExperience, { wrapper: WorkspaceExperienceProvider });
+    act(() => result.current.enterSession('chat-a'));
+    act(() => result.current.openScheduledTasks());
+    expect(result.current.scheduledTasksOpen).toBe(true);
+    act(() => result.current.openPlugins());
+    expect(result.current.pluginsOpen).toBe(true);
+    expect(result.current.scheduledTasksOpen).toBe(false);
+    act(() => result.current.switchMode('chat'));
+    expect(result.current.pluginsOpen).toBe(false);
+    expect(result.current.resumeSessionId).toBe('chat-a');
+    act(() => result.current.openPlugins());
+    act(() => result.current.openScheduledTasks());
+    expect(result.current.pluginsOpen).toBe(false);
+    expect(result.current.scheduledTasksOpen).toBe(true);
+  });
+
+  it('leaves Plugins for New Chat, an existing session, or a project', () => {
+    const { result } = renderHook(useWorkspaceExperience, { wrapper: WorkspaceExperienceProvider });
+    for (const navigate of [() => result.current.openHome(), () => result.current.enterSession('code-a'), () => result.current.enterProject()]) {
+      act(() => result.current.openPlugins());
+      expect(result.current.pluginsOpen).toBe(true);
+      act(navigate);
+      expect(result.current.pluginsOpen).toBe(false);
+    }
+  });
   it('remembers a legacy Chat-directory classification when subsequent URL navigation supplies only an id', () => {
     const { result } = renderHook(useWorkspaceExperience, { wrapper: WorkspaceExperienceProvider });
     act(() => result.current.enterSession('legacy-chat', 'chat'));

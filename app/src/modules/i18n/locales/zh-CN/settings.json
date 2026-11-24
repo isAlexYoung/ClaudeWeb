@@ -1042,6 +1042,30 @@
     "connectorNamePlaceholder": "留空时使用服务器名称",
     "connectorUrl": "连接器地址",
     "advancedConnector": "使用配置表单添加",
-    "invalidConnectorUrl": "请输入 HTTP 或 HTTPS 连接器地址。"
+    "invalidConnectorUrl": "请输入 HTTP 或 HTTPS 连接器地址。",
+    "yourExtensions": "你的插件",
+    "popular": "最常用",
+    "connectorBy": "连接器 · 由 {{provider}} 提供",
+    "connectName": "连接 {{name}}",
+    "recommended": {
+      "drive": "搜索、读取和管理 Google Drive 中的文件。",
+      "gmail": "搜索收件箱、总结邮件会话并起草回复。",
+      "calendar": "管理日程安排，协调会议时间。",
+      "microsoft": "搜索 Microsoft 365 中的 Outlook 邮件、日历和文件。"
+    },
+    "accountConnectorIntro": "通过 Claude 账户连接，无需在 VPS 上额外安装服务。",
+    "accountConnectStep": "点击下方入口，在 Claude 连接器中找到 {{name}}，完成账户授权。",
+    "cliLoginStep": "在 VPS 的网页终端运行 claude，登录同一个 Claude 账户：",
+    "cliVerifyStep": "聊天模式需在“设置 → 任务与会话”中开启 MCP。新建会话后使用；也可在 CLI 中检查连接器：",
+    "accountConnectorLimits": "需要 Claude 订阅账户登录。API Key、第三方 API 和 setup-token 不会继承账户连接器。此页面无法确认授权结果，推荐项不会计入已安装列表。",
+    "microsoftAccount": "Microsoft 365 支持个人及工作或学校账户，具体取决于 Claude 套餐；组织账户可能需要管理员批准。",
+    "connectionDocs": "Claude CLI 连接说明",
+    "openConnectors": "打开 Claude 连接器",
+    "connectionLink": "连接入口链接",
+    "copyConnectionLink": "复制链接",
+    "openWorkspaceBrowser": "打开内置浏览器",
+    "linkCopied": "链接已复制，可在内置浏览器的地址栏粘贴打开。",
+    "copyLinkFailed": "复制受限，请选中上方链接后手动复制。",
+    "manualConnectionHint": "VPS 无法自动打开浏览器时，可复制此入口，在内置浏览器中打开。先用浏览器的粘贴工具传入链接，再在地址栏粘贴。具体授权由官方页面发起，此入口不是临时 OAuth 链接。"
   }
 }

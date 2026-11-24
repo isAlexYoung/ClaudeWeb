@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { i18n } from '@/modules/i18n';
 import { PluginsProvider } from '@/modules/plugins/context/PluginsContext';
 import ExtensionsSettingsPage from '@/modules/plugins/ExtensionsSettingsPage';
+import PluginsPage from '@/modules/plugins/PluginsPage';
 import type { Plugin, ProviderMcpServer, ProviderSkill } from '@/shared/types';
 
 let plugins: Plugin[];
@@ -134,4 +135,44 @@ it('installs a skill link from the dedicated page and returns it to the enabled 
   fireEvent.submit(input.closest('form')!);
   expect(await screen.findByRole('article', { name: 'Linked Skill' })).toBeTruthy();
   expect(within(screen.getByRole('region', { name: 'Enabled' })).getByRole('article', { name: 'Linked Skill' })).toBeTruthy();
+});
+
+it('reuses management in the full-size page and filters recommendations alongside installed items', async () => {
+  render(<PluginsProvider><PluginsPage currentProjects={[{ projectId: String(++fixtureId), path: '/fixture/full-page' }]} menuButton={<button>Menu</button>} /></PluginsProvider>);
+  await screen.findByRole('article', { name: 'Summary' });
+  expect(screen.getByTestId('plugins-page')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Menu' })).toBeTruthy();
+  const recommendations = screen.getByRole('region', { name: 'Most popular' });
+  expect(within(recommendations).getAllByRole('article')).toHaveLength(4);
+  fireEvent.click(screen.getByRole('button', { name: 'Skills' }));
+  expect(screen.queryByRole('region', { name: 'Most popular' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'All' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Filter your extensions' }), { target: { value: 'Gmail' } });
+  expect(within(screen.getByRole('region', { name: 'Most popular' })).getAllByRole('article')).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Connect Gmail' }));
+  const dialog = screen.getByRole('dialog');
+  expect(within(dialog).getByRole('link', { name: 'Open Claude connectors' }).getAttribute('href')).toBe('https://claude.ai/customize/connectors');
+  expect(within(dialog).getByText('/login')).toBeTruthy();
+  expect(within(dialog).getByText('/mcp')).toBeTruthy();
+  expect(within(dialog).getByText(/API keys/)).toBeTruthy();
+  expect(connectors).toHaveLength(2);
+});
+
+it('does not show account recommendations inside the compact Settings manager', async () => {
+  openPage();
+  await screen.findByRole('article', { name: 'Summary' });
+  expect(screen.queryByRole('region', { name: 'Most popular' })).toBeNull();
+});
+
+it('shows the shared browser indicator only while minimized and restores it from the plugin header', async () => {
+  const onOpenBrowser = vi.fn();
+  const projects = [{ projectId: String(++fixtureId), path: '/fixture/browser-indicator' }];
+  const page = render(<PluginsProvider><PluginsPage currentProjects={projects} browserMinimized onOpenBrowser={onOpenBrowser} /></PluginsProvider>);
+  await screen.findByRole('article', { name: 'Summary' });
+  const button = screen.getByRole('button', { name: 'Open built-in browser' });
+  expect(within(button).getByTestId('browser-running-dot')).toBeTruthy();
+  fireEvent.click(button);
+  expect(onOpenBrowser).toHaveBeenCalledTimes(1);
+  page.rerender(<PluginsProvider><PluginsPage currentProjects={projects} browserMinimized={false} onOpenBrowser={onOpenBrowser} /></PluginsProvider>);
+  expect(screen.queryByTestId('browser-running-dot')).toBeNull();
 });

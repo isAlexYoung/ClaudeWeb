@@ -7,6 +7,7 @@ import { ProviderSkills, useProviderSkills } from '@/modules/skills';
 import { usePlugins } from '@/modules/plugins/context/PluginsContext';
 import PluginSettingsTab from '@/modules/plugins/PluginSettingsTab';
 import ExtensionCard from '@/modules/plugins/ExtensionCard';
+import RecommendedConnectors from '@/modules/plugins/RecommendedConnectors';
 import { getPluginSlots } from '@/modules/plugins/pluginRuntime';
 import { useExtensionTransitions } from '@/modules/plugins/hooks/useExtensionTransitions';
 import { Button, Dialog, DialogContent, DialogTitle, Input } from '@/shared/ui';
@@ -15,8 +16,8 @@ import type { McpFormState, McpProject, SettingsExtensionItem } from '@/shared/t
 const EMPTY_PROJECTS: McpProject[] = [];
 const KIND_ORDER = { plugin: 0, mcp: 1, skill: 2 };
 
-/** Used by Settings to manage installed extensions and open a separate installation page. */
-export default function ExtensionsSettingsPage({ currentProjects = EMPTY_PROJECTS }: { currentProjects?: McpProject[] }) {
+/** Used by Settings and the workspace PluginsPage to manage extensions with the same installers and actions. */
+export default function ExtensionsSettingsPage({ currentProjects = EMPTY_PROJECTS, showRecommendations = false, onOpenBrowser }: { currentProjects?: McpProject[]; showRecommendations?: boolean; onOpenBrowser?: () => void }) {
   const { t } = useTranslation('settings');
   const custom = usePlugins();
   const mcp = useMcpServers({ selectedProvider: 'claude', currentProjects });
@@ -164,6 +165,7 @@ export default function ExtensionsSettingsPage({ currentProjects = EMPTY_PROJECT
         </div>
         {custom.safeMode && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted p-3 text-xs"><span>{t('pluginSettings.safeModeBanner')}</span><Button variant="outline" size="sm" onClick={custom.exitSafeMode}>{t('pluginSettings.exitSafeMode')}</Button></div>}
         {loadErrors.length > 0 && <p role="alert" className="text-xs text-destructive">{[...new Set(loadErrors)].join(' · ')}</p>}
+        {showRecommendations && <h2 className="text-base font-medium">{t('extensions.yourExtensions')}</h2>}
         <div ref={listRef} className="space-y-6" aria-busy={loading || undefined}>
           {([true, false] as const).map(enabled => {
             const group = visible.filter(item => item.enabled === enabled);
@@ -173,6 +175,7 @@ export default function ExtensionsSettingsPage({ currentProjects = EMPTY_PROJECT
           })}
           {!visible.length && <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">{loading ? <><Loader2 className="h-4 w-4 animate-spin" />{t('extensions.loading')}</> : query.trim() || filter !== 'all' ? t('extensions.noMatches') : t('extensions.empty')}</div>}
         </div>
+        {showRecommendations && filter !== 'skill' && <RecommendedConnectors query={query} onOpenBrowser={onOpenBrowser} />}
       </> : <>
         <div className="flex items-center gap-2"><Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => setView('list')} aria-label={t('extensions.back')}><ArrowLeft className="h-4 w-4" /></Button><h3 className="text-base font-medium">{t('extensions.add')}</h3></div>
         <div className="flex gap-1 border-b border-border/50 pb-3" role="group" aria-label={t('extensions.installType')}>

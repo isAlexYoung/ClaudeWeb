@@ -120,7 +120,7 @@ export type PluginHostContext = {
   theme: 'dark' | 'light';
   themeMode: 'warm' | 'light' | 'dark';
   locale: string;
-  route: 'workspace' | 'scheduled-tasks' | 'settings';
+  route: 'workspace' | 'scheduled-tasks' | 'plugins' | 'settings';
   project: { name: string; path: string } | null;
   session: { id: string; title: string } | null;
   reducedMotion: boolean;

@@ -1049,6 +1049,30 @@
     "connectorNamePlaceholder": "Defaults to the server name",
     "connectorUrl": "Connector URL",
     "advancedConnector": "Add using configuration form",
-    "invalidConnectorUrl": "Enter an HTTP or HTTPS connector URL."
+    "invalidConnectorUrl": "Enter an HTTP or HTTPS connector URL.",
+    "yourExtensions": "Your extensions",
+    "popular": "Most popular",
+    "connectorBy": "Connector · By {{provider}}",
+    "connectName": "Connect {{name}}",
+    "recommended": {
+      "drive": "Search, read, and manage files in Google Drive.",
+      "gmail": "Search your inbox, summarize threads, and draft replies.",
+      "calendar": "Manage your schedule and coordinate meetings.",
+      "microsoft": "Search Outlook, calendars, and files in Microsoft 365."
+    },
+    "accountConnectorIntro": "Use this connector through your Claude account. It does not require installing an additional service on your VPS.",
+    "accountConnectStep": "Open Claude connectors below, find {{name}}, and complete the account authorization.",
+    "cliLoginStep": "In the VPS web terminal, start claude and sign in to the same Claude account:",
+    "cliVerifyStep": "For Chat, enable MCP in Settings → Tasks & sessions. Start a new conversation; in the CLI, check the connector with",
+    "accountConnectorLimits": "Requires a Claude subscription login. API keys, third-party API providers, and setup-token credentials do not inherit account connectors. This page cannot confirm authorization; recommended items are not counted as installed.",
+    "microsoftAccount": "Microsoft 365 supports personal and work or school accounts, depending on your Claude plan. Organization accounts may require administrator approval.",
+    "connectionDocs": "Claude CLI connection guide",
+    "openConnectors": "Open Claude connectors",
+    "connectionLink": "Connection link",
+    "copyConnectionLink": "Copy link",
+    "openWorkspaceBrowser": "Open built-in browser",
+    "linkCopied": "Link copied. Open the built-in browser and paste it into the address bar.",
+    "copyLinkFailed": "Copy was blocked. Select the link above and copy it manually.",
+    "manualConnectionHint": "If the VPS cannot open a browser, copy this entry link and open it in the built-in browser. Use its Paste tool to transfer the link, then paste in the address bar. Complete authorization on the official site; this entry link is not a temporary OAuth URL."
   }
 }

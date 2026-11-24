@@ -17,6 +17,7 @@ import {
   PanelLeftOpen,
   Pencil,
   Pin,
+  Plug,
   RefreshCw,
   Search,
   Settings as SettingsIcon,
@@ -50,6 +51,7 @@ type IntegratedSidebarProps = {
   onCollapse: () => void;
   onExpand: () => void;
   onSettings: (tab?: SettingsMainTab) => void;
+  onNavigatePage?: () => void;
   onRefresh: () => void;
   isRefreshing?: boolean;
   onCreateProject: () => void;
@@ -377,9 +379,12 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
           className="workspace-icon-button"
           aria-label={t('scheduledTasks.title')}
           aria-pressed={experience.scheduledTasksOpen}
-          onClick={experience.openScheduledTasks}
+          onClick={() => { experience.openScheduledTasks(); props.onNavigatePage?.(); }}
         >
           <Clock size={19} />
+        </button>
+        <button className="workspace-icon-button" aria-label={t('settings:mainTabs.plugins')} aria-pressed={experience.pluginsOpen} onClick={() => { experience.openPlugins(); props.onNavigatePage?.(); }}>
+          <Plug size={19} />
         </button>
         <button className="workspace-icon-button workspace-rail-settings" aria-label={t('workspace.settings')} onClick={() => props.onSettings()}>
           <SettingsIcon size={19} />
@@ -423,10 +428,18 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
       <button
         className={`workspace-new-chat workspace-scheduled-entry ${experience.scheduledTasksOpen ? 'selected' : ''}`}
         aria-pressed={experience.scheduledTasksOpen}
-        onClick={experience.openScheduledTasks}
+        onClick={() => { experience.openScheduledTasks(); props.onNavigatePage?.(); }}
       >
         <Clock size={18} />
         {t('scheduledTasks.title')}
+      </button>
+      <button
+        className={`workspace-new-chat workspace-scheduled-entry ${experience.pluginsOpen ? 'selected' : ''}`}
+        aria-pressed={experience.pluginsOpen}
+        onClick={() => { experience.openPlugins(); props.onNavigatePage?.(); }}
+      >
+        <Plug size={18} />
+        {t('settings:mainTabs.plugins')}
       </button>
       <nav className="workspace-navigation">
         {error && <p role="alert">{error}</p>}

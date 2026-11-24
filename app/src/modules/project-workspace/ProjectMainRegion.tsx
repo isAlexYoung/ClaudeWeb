@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react';
-import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceContext';
 
+import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceContext';
 import { useProjectMainState } from '@/modules/project-workspace/context/ProjectsStateContext';
 import type { SessionEstablishedContext, SessionNavigationOptions,ProjectWorkspaceShellProps } from '@/shared/types';
 import WorkspaceMain from '@/modules/project-workspace/WorkspaceMain';
@@ -14,6 +14,7 @@ function ProjectMainRegion({
 }: ProjectWorkspaceShellProps) {
   const { rememberSession } = useWorkspaceExperience();
   const {
+    projects,
     selectedProject,
     selectedSession,
     activeTab,
@@ -54,6 +55,7 @@ function ProjectMainRegion({
 
   return (
     <WorkspaceMain
+      projects={projects}
       selectedProject={selectedProject}
       selectedSession={selectedSession}
       activeTab={activeTab}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { act, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { useEffect } from 'react';
 import { test, vi } from 'vitest';
 
@@ -29,7 +29,7 @@ vi.mock('@/modules/browser-panel', () => ({
       browser.mounts += 1;
       return () => { browser.unmounts += 1; };
     }, []);
-    return <div data-testid="browser" />;
+    return <div data-testid="browser"><input aria-label="Browser content" defaultValue="" /></div>;
   },
 }));
 
@@ -90,4 +90,24 @@ test('the terminal keeps running while hidden and ends only when closed', () => 
   act(() => tools.closeTerminal());
   assert.equal(terminal.unmounts, 1);
   assert.equal(view.queryByTestId('terminal'), null);
+});
+
+test('the same browser content survives switching between chat and plugin page docks', () => {
+  const initialMounts = browser.mounts;
+  const view = render(<WorkspaceToolsProvider><div key="chat"><Probe showSlot tool="browser" /></div></WorkspaceToolsProvider>);
+  act(() => tools.openBrowser());
+  const original = view.getByTestId('browser');
+  fireEvent.change(view.getByRole('textbox', { name: 'Browser content' }), { target: { value: 'An already-open authorization page' } });
+  view.rerender(<WorkspaceToolsProvider><div key="plugins"><Probe showSlot={false} tool="browser" /></div></WorkspaceToolsProvider>);
+  assert.equal(tools.minimized.browser, true);
+  view.rerender(<WorkspaceToolsProvider><div key="plugins"><Probe showSlot tool="browser" /></div></WorkspaceToolsProvider>);
+  act(() => tools.openBrowser());
+  assert.equal(view.getByTestId('browser'), original);
+  assert.equal((view.getByRole('textbox', { name: 'Browser content' }) as HTMLInputElement).value, 'An already-open authorization page');
+  assert.equal(browser.mounts, initialMounts + 1);
+  assert.equal(tools.minimized.browser, false);
+  view.rerender(<WorkspaceToolsProvider><div key="chat"><Probe showSlot tool="browser" /></div></WorkspaceToolsProvider>);
+  assert.equal(view.getByTestId('browser'), original);
+  act(() => tools.closeBrowser());
+  assert.equal(tools.minimized.browser, false);
 });

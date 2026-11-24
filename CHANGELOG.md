@@ -5,6 +5,11 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.4 - 2026-11-24 (stable)
+
+- Add a sidebar Plugins page that shares the Settings extension manager, with full-size search, filters, enabled/disabled cards, and installation flows. Add Google Drive, Gmail, Google Calendar, and Microsoft 365 recommendations with Claude account authorization guidance, a selectable/copyable connection link, access to the persistent built-in browser, and documented VPS CLI requirements.
+- Share the existing browser session and its minimized orange indicator between chat and the standalone Plugins page. Keep connector recommendations exclusive to the standalone page.
+
 ## 2.2.3 - 2026-11-24 (stable)
 
 - Unify Settings > Plugins into searchable, filterable extension cards grouped by enabled state, with installation on a separate page and animated state changes. Add persistent MCP/skill toggles and move the chat MCP preference to Tasks & sessions.

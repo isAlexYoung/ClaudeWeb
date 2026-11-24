@@ -166,6 +166,28 @@ test('sidebar refresh is visibly busy and rejects repeated clicks until its requ
   fireEvent.click(button); assert.equal(refresh.mock.calls.length, 0);
 });
 
+test('Plugins opens a main-area page without opening Settings in expanded and collapsed navigation', () => {
+  for (const collapsed of [false, true]) {
+    const onSettings = vi.fn();
+    const onNavigatePage = vi.fn();
+    const view = renderSidebar(createList(), { collapsed, onSettings, onNavigatePage });
+    const plugins = view.getByRole('button', { name: 'Plugins' });
+    fireEvent.click(plugins);
+    assert.equal(plugins.getAttribute('aria-pressed'), 'true');
+    assert.equal(onSettings.mock.calls.length, 0);
+    fireEvent.click(plugins);
+    assert.equal(onNavigatePage.mock.calls.length, 2, 'reselecting the current page still closes a mobile drawer');
+    const tasks = view.getByRole('button', { name: 'Scheduled tasks' });
+    fireEvent.click(tasks);
+    assert.equal(plugins.getAttribute('aria-pressed'), 'false');
+    assert.equal(tasks.getAttribute('aria-pressed'), 'true');
+    fireEvent.click(plugins);
+    fireEvent.click(view.getByRole('button', { name: 'New chat' }));
+    assert.equal(plugins.getAttribute('aria-pressed'), 'false');
+    view.unmount();
+  }
+});
+
 test('only the clicked occurrence is selected across Pinned, Project and Recent', () => {
   writeUserPreference('workspaceSessions', { chatSessionIds: [], pinnedSessionIds: [SESSION.id] });
   const view = renderSidebar(createList({ selectedProject: PROJECT, selectedSession: SESSION }), {

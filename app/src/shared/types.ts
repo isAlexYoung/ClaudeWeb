@@ -1419,7 +1419,7 @@ export type PluginHostContext = {
   theme: 'dark' | 'light';
   themeMode: 'warm' | 'light' | 'dark';
   locale: string;
-  route: 'workspace' | 'scheduled-tasks' | 'settings';
+  route: 'workspace' | 'scheduled-tasks' | 'plugins' | 'settings';
   project: { name: string; path: string } | null;
   session: { id: string; title: string } | null;
   reducedMotion: boolean;
@@ -1946,6 +1946,9 @@ export type WorkspaceExperience = WorkspaceSessionPreferences & {
   /** The Scheduled tasks page fills the main area instead of a chat. */
   scheduledTasksOpen: boolean;
   openScheduledTasks: () => void;
+  /** The standalone plugin manager fills the main area without opening Settings. */
+  pluginsOpen: boolean;
+  openPlugins: () => void;
   homeRequest: number;
   homeError: WorkspaceHomeError | null;
   contextUsage: Record<string, unknown> | null;

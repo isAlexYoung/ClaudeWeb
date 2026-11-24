@@ -5,7 +5,7 @@ import { ChatInterface } from '@/modules/chat';
 import { FileTree } from '@/modules/file-tree';
 import { StandaloneShell } from '@/modules/standalone-shell';
 import { GitPanel } from '@/modules/git-panel';
-import { PluginTabContent, useOptionalPlugins } from '@/modules/plugins';
+import { PluginsPage, PluginTabContent, useOptionalPlugins } from '@/modules/plugins';
 import { usePaletteOps, usePaletteOpsRegister } from '@/modules/command-palette';
 import { TaskMasterPanel, useTaskMasterProjectSync, useTasksSettings } from '@/modules/task-master';
 import type { AppTab, DirectoryRevealRequest, Project, ProjectSession, SessionEstablishedContext, SessionNavigationOptions, SettingsMainTab, TurnChanges } from '@/shared/types';
@@ -27,6 +27,7 @@ import MobileMenuButton from '@/modules/project-workspace/MobileMenuButton';
 import { useWorkspaceTools } from '@/modules/project-workspace/context/WorkspaceToolsContext';
 
 type WorkspaceMainProps = {
+  projects: Project[];
   selectedProject: Project | null;
   selectedSession: ProjectSession | null;
   activeTab: AppTab;
@@ -51,6 +52,7 @@ type WorkspaceMainProps = {
 
 /** Rendered by ProjectMainRegion to show the selected project's active tab: chat, files, shell, git, tasks or a plugin. */
 function WorkspaceMain({
+  projects,
   selectedProject,
   selectedSession,
   activeTab,
@@ -80,7 +82,7 @@ function WorkspaceMain({
   const setPluginWorkspaceContext = pluginsCtx?.setWorkspaceContext;
   useEffect(() => {
     setPluginWorkspaceContext?.({
-      route: experience.scheduledTasksOpen ? 'scheduled-tasks' : 'workspace',
+      route: experience.pluginsOpen ? 'plugins' : experience.scheduledTasksOpen ? 'scheduled-tasks' : 'workspace',
       project: selectedProject
         ? {
             name: selectedProject.projectId,
@@ -96,6 +98,7 @@ function WorkspaceMain({
     });
   }, [
     experience.scheduledTasksOpen,
+    experience.pluginsOpen,
     selectedProject,
     selectedSession,
     setPluginWorkspaceContext,
@@ -191,6 +194,17 @@ function WorkspaceMain({
   // Stable arguments keep usePaletteOpsRegister's effect from tearing down and
   // rewriting the whole palette registry on every render.
   usePaletteOpsRegister({ openFile, openFileInEditor, openDirectory });
+
+  if (experience.pluginsOpen) {
+    return <div className="workspace-main flex h-full min-w-0 overflow-hidden">
+      <PluginsPage currentProjects={projects} menuButton={isMobile ? <MobileMenuButton onMenuClick={onMenuClick} /> : null}
+        browserMinimized={tools.minimized.browser}
+        onOpenBrowser={() => { tools.openBrowser(); setInspectorView('browser'); setInspectorOpen(true); }} />
+      <WorkspaceInspectorDock mobile={isMobile} open={inspectorOpen && inspectorView === 'browser'} wide>
+        <WorkspaceContextInspector view="browser" project={selectedProject} session={selectedSession} onBack={() => setInspectorOpen(false)} onFileOpen={handleFileOpen} />
+      </WorkspaceInspectorDock>
+    </div>;
+  }
 
   if (isLoading) {
     return <WorkspaceStateView mode="loading" isMobile={isMobile} onMenuClick={onMenuClick} />;

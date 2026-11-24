@@ -12,6 +12,8 @@ import IntegratedSidebar from '@/modules/sidebar/IntegratedSidebar';
 import SidebarModals from '@/modules/sidebar/SidebarModals';
 
 type SidebarProps = {
+  /** Closes the mobile drawer after choosing a main-area page, including the current page. */
+  onNavigatePage?: () => void;
   projects: Project[];
   selectedProject: Project | null;
   selectedSession: ProjectSession | null;
@@ -59,6 +61,7 @@ function Sidebar({
   settingsInitialTab,
   onCloseSettings,
   isMobile,
+  onNavigatePage,
 }: SidebarProps) {
   const { t } = useTranslation(['sidebar', 'common']);
   const { isPWA } = useDeviceSettings({ trackMobile: false });
@@ -243,6 +246,7 @@ function Sidebar({
       />
 
       <IntegratedSidebar
+        onNavigatePage={onNavigatePage}
         list={projectListProps}
         collapsed={isSidebarCollapsed}
         onCollapse={handleCollapseSidebar}

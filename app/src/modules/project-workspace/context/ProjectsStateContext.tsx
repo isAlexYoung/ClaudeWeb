@@ -14,6 +14,7 @@ type ProjectSidebarState = Pick<
 
 type ProjectMainState = Pick<
   ProjectsState,
+  | 'projects'
   | 'selectedProject'
   | 'selectedSession'
   | 'activeTab'
@@ -86,6 +87,7 @@ export function ProjectsStateProvider({
 
   const mainState = useMemo<ProjectMainState>(
     () => ({
+      projects: state.projects,
       selectedProject: state.selectedProject,
       selectedSession: state.selectedSession,
       activeTab: state.activeTab,
@@ -101,6 +103,7 @@ export function ProjectsStateProvider({
       renameSession: state.renameSession,
     }),
     [
+      state.projects,
       state.activeTab,
       state.externalMessageUpdate,
       state.handleProjectSelect,

@@ -31,8 +31,10 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
   const [mode, setMode] = useState<WorkspaceMode>('chat');
   // Only the New Chat entry shows the landing experience, never a project's new-session action.
   const [home, setHome] = useState(() => !location.pathname.includes('/session/'));
-  // The Scheduled tasks page replaces the chat until a chat or session is opened again.
-  const [scheduledTasksOpen, setScheduledTasksOpen] = useState(false);
+  // Main-area pages are mutually exclusive and leave the last conversation available to resume.
+  const [mainPage, setMainPage] = useState<'workspace' | 'scheduled-tasks' | 'plugins'>('workspace');
+  const scheduledTasksOpen = mainPage === 'scheduled-tasks';
+  const pluginsOpen = mainPage === 'plugins';
   // Reopening New Chat must reset an existing draft even when the mode is unchanged.
   const [homeRequest, setHomeRequest] = useState(0);
   // A failed chat-workspace preparation stays visible until a new attempt is requested.
@@ -60,7 +62,7 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     selectHomeProject(null);
     setMode(nextMode);
     setHome(true);
-    setScheduledTasksOpen(false);
+    setMainPage('workspace');
     setHomeRequest((value) => value + 1);
     setContextUsage(null);
     setContextDetails(null);
@@ -68,23 +70,23 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
   }, []);
 
   const switchMode = useCallback((nextMode: WorkspaceMode) => {
-    if (nextMode === mode && !scheduledTasksOpen) return;
+    if (nextMode === mode && mainPage === 'workspace') return;
     const session = lastSessions.current[nextMode];
     if (!session) { openHome(nextMode); return; }
     setMode(nextMode);
     setHome(false);
-    setScheduledTasksOpen(false);
+    setMainPage('workspace');
     setResumeSessionId(session);
     setContextUsage(null);
     setContextDetails(null);
-  }, [mode, openHome, scheduledTasksOpen]);
+  }, [mode, openHome, mainPage]);
 
   const enterProject = useCallback(() => {
     lastSessions.current.project = null;
     setResumeSessionId(null);
     setMode('project');
     setHome(false);
-    setScheduledTasksOpen(false);
+    setMainPage('workspace');
     setContextUsage(null);
     setContextDetails(null);
   }, []);
@@ -100,7 +102,7 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setResumeSessionId(null);
     setMode(sessionMode);
     setHome(false);
-    setScheduledTasksOpen(false);
+    setMainPage('workspace');
     setContextUsage(null);
     setContextDetails(null);
   }, []);
@@ -116,7 +118,13 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
   }, [mode]);
 
   const openScheduledTasks = useCallback(() => {
-    setScheduledTasksOpen(true);
+    setMainPage('scheduled-tasks');
+    setContextUsage(null);
+    setContextDetails(null);
+  }, []);
+
+  const openPlugins = useCallback(() => {
+    setMainPage('plugins');
     setContextUsage(null);
     setContextDetails(null);
   }, []);
@@ -136,6 +144,8 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     home,
     scheduledTasksOpen,
     openScheduledTasks,
+    pluginsOpen,
+    openPlugins,
     homeRequest,
     homeError,
     contextUsage,
@@ -156,8 +166,8 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setHomeError,
     setTranscriptActions,
   }), [
-    mode, home, scheduledTasksOpen, homeRequest, homeError, contextUsage, contextDetails, transcriptActions, sessions,
-    openHome, switchMode, resumeSessionId, homeProject, openScheduledTasks, enterProject, enterSession, rememberSession, toggleSessionPin,
+    mode, home, scheduledTasksOpen, pluginsOpen, homeRequest, homeError, contextUsage, contextDetails, transcriptActions, sessions,
+    openHome, switchMode, resumeSessionId, homeProject, openScheduledTasks, openPlugins, enterProject, enterSession, rememberSession, toggleSessionPin,
   ]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

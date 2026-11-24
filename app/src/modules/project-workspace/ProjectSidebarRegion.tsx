@@ -168,7 +168,7 @@ function ProjectSidebarRegion({
         onClick={(event) => event.stopPropagation()}
         onTouchStart={(event) => event.stopPropagation()}
       >
-        <Sidebar {...sidebarSharedProps} />
+        <Sidebar {...sidebarSharedProps} onNavigatePage={() => setSidebarOpen(false)} />
       </div>
     </div>
   );
