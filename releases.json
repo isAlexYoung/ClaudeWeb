@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.2.8",
+   "channel": "stable",
+   "published_at": "2026-11-24T12:55:12Z",
+   "notes": "\u66f4\u6539\u4e86 UI \u5e03\u5c40\u3002",
+   "package": {
+    "name": "claudeweb-2.2.8-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.2.8/claudeweb-2.2.8-linux-x64.tar.xz",
+    "bytes": 71682472,
+    "sha256": "3c6f11f72ca38ec9b7d041703c844c493eb962518d43e8ce4aeb5b0ca9342b5a"
+   }
+  },
+  {
    "version": "2.2.7",
    "channel": "stable",
    "published_at": "2026-11-24T10:15:13Z",
@@ -170,5 +182,5 @@
    }
   }
  ],
- "generated_at": "2026-11-24T10:15:14Z"
+ "generated_at": "2026-11-24T12:55:12Z"
 }
