@@ -1952,10 +1952,10 @@ export type WorkspaceExperience = WorkspaceSessionPreferences & {
   /** The Artefacts page (or one artefact's editor) fills the main area. */
   artefactsOpen: boolean;
   openArtefacts: () => void;
-  /** The artefact whose editor is open on the Artefacts page; null shows the list. */
+  /** The artefact whose editor is open in split view; null shows normal Chat. */
   openArtefactId: string | null;
-  openArtefact: (id: string) => void;
-  /** Leaves the editor for the Artefacts list. */
+  openArtefact: (id: string, sessionId?: string | null) => void;
+  /** Closes the artefact split view back to full-width Chat. */
   closeArtefact: () => void;
   homeRequest: number;
   homeError: WorkspaceHomeError | null;
@@ -1982,7 +1982,7 @@ export type WorkspaceExperience = WorkspaceSessionPreferences & {
   homeProject: Project | null;
   selectHomeProject: (project: Project | null) => void;
   enterProject: () => void;
-  enterSession: (sessionId: string, modeHint?: WorkspaceMode) => void;
+  enterSession: (sessionId: string, modeHint?: WorkspaceMode, options?: { keepArtefact?: boolean }) => void;
   rememberSession: (sessionId: string) => void;
   toggleSessionPin: (sessionId: string) => void;
   setContextUsage: (usage: Record<string, unknown> | null) => void;

@@ -1098,7 +1098,7 @@ export function useProjectsState({
     if (!sessionId) { resolvedRouteRef.current = null; return; }
     if (!routeMode || resolvedRouteRef.current === sessionId) return;
     resolvedRouteRef.current = sessionId;
-    enterSession(sessionId, routeMode);
+    enterSession(sessionId, routeMode, { keepArtefact: true });
   }, [enterSession, sessionId, routeMode]);
 
   const handleProjectSelect = useCallback(

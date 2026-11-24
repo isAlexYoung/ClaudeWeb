@@ -41,6 +41,7 @@ import {
 import ChatMessagesPane from '@/modules/chat/transcript/ChatMessagesPane';
 import ChatTurnNavigator from '@/modules/chat/transcript/ChatTurnNavigator';
 import ChatComposer from '@/modules/chat/composer/ChatComposer';
+import PermissionRequestsBanner from '@/modules/chat/composer/PermissionRequestsBanner';
 import { ChatHomeGreeting } from '@/modules/chat/ChatHomeGreeting';
 import { usePromptSuggestion } from '@/modules/chat/hooks/usePromptSuggestion';
 import CommandResultModal from '@/modules/chat/modals/CommandResultModal';
@@ -75,6 +76,18 @@ type ChatInterfaceProps = {
   transcriptHeader?: ReactNode;
   /** Optional composer placeholder override for specialised conversations (e.g. spreadsheets). */
   composerPlaceholder?: string;
+  /** Hides the bottom composer when a paired split-pane editor provides the prompt input. */
+  hideComposer?: boolean;
+  /** Enables narrow split-pane transcript styling and hides the side turn rail. */
+  compactLayout?: boolean;
+  /** Custom empty-state shown inside the transcript pane when there are no messages yet. */
+  emptyState?: ReactNode;
+  /** Exposes the live composer submission function to a paired split-pane editor. */
+  onRegisterSubmit?: (submit: ((text: string) => Promise<boolean>) | null) => void;
+  /** Mirrors the live session processing state to a paired split-pane editor. */
+  onProcessingChange?: (processing: boolean) => void;
+  /** Reports transcript vertical scrollTop so the workspace header can animate scroll-linked items. */
+  onTranscriptScrollTop?: (scrollTop: number) => void;
 };
 
 /**
@@ -104,6 +117,12 @@ function ChatInterface({
   composerLeading,
   transcriptHeader,
   composerPlaceholder,
+  hideComposer = false,
+  compactLayout = false,
+  emptyState,
+  onRegisterSubmit,
+  onProcessingChange,
+  onTranscriptScrollTop,
 }: ChatInterfaceProps) {
   const experience = useWorkspaceExperience();
   // Keep the SDK limit event visible without clearing the conversation or inventing quota.
@@ -315,6 +334,7 @@ function ChatInterface({
     isDragActive,
     openAttachmentPicker,
     handleSubmit,
+    submitPromptText,
     queuedDraft,
     editQueuedDraft,
     deleteQueuedDraft,
@@ -390,6 +410,43 @@ function ChatInterface({
     dismissSuggestion();
     requestAnimationFrame(() => textareaRef.current?.focus());
   };
+
+  // Expose live prompt submission and processing state to a paired split-view editor.
+  useEffect(() => {
+    if (!onRegisterSubmit) return undefined;
+    onRegisterSubmit(isConnected ? submitPromptText : null);
+    return () => onRegisterSubmit(null);
+  }, [isConnected, onRegisterSubmit, submitPromptText]);
+
+  useEffect(() => {
+    onProcessingChange?.(isProcessing);
+  }, [isProcessing, onProcessingChange]);
+
+  // Report transcript scroll position so WorkspaceMain can smoothly dock the
+  // session artefact card into the top header bar and restore it on scroll up.
+  useEffect(() => {
+    if (!onTranscriptScrollTop) return undefined;
+    const container = scrollContainerRef.current;
+    if (!container) {
+      onTranscriptScrollTop(0);
+      return undefined;
+    }
+    let frame: number | null = null;
+    const emit = () => {
+      frame = null;
+      onTranscriptScrollTop(container.scrollTop);
+    };
+    const schedule = () => {
+      if (frame !== null) return;
+      frame = requestAnimationFrame(emit);
+    };
+    onTranscriptScrollTop(container.scrollTop);
+    container.addEventListener('scroll', schedule, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', schedule);
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [chatMessages.length, isActive, onTranscriptScrollTop, scrollContainerRef, selectedSession?.id]);
 
   // On WebSocket reconnect, request a bounded persisted-tail sync (deferred
   // while Chat is hidden), then re-subscribe — the
@@ -643,7 +700,7 @@ function ChatInterface({
 
   return (
     <PermissionContext.Provider value={permissionContextValue}>
-      <div className={`workspace-chat flex h-full min-h-0 flex-col ${isChatHome ? 'workspace-chat-home' : ''} ${isCodeHome ? 'workspace-code-home' : ''}`}>
+      <div className={`workspace-chat flex h-full min-h-0 flex-col ${isChatHome ? 'workspace-chat-home' : ''} ${isCodeHome ? 'workspace-code-home' : ''} ${compactLayout ? 'workspace-chat-compact' : ''}`}>
         {isChatHome && <ChatHomeGreeting key={experience.homeRequest} />}
         {isCodeHome && <div className="workspace-code-home-content">{homeContent}</div>}
         {usageLimit?.status === 'rejected' && !usageLimit.isUsingOverage && usageLimit.overageStatus !== 'allowed' && usageLimit.overageStatus !== 'allowed_warning' && <div className="workspace-limit-notice" role="alert">
@@ -656,6 +713,8 @@ function ChatInterface({
             <div className="workspace-transcript-region relative flex min-h-0 flex-1">
             <ChatMessagesPane
               hideEmptyState
+              emptyState={emptyState}
+              hideExportMenu={compactLayout}
               scrollContainerRef={scrollContainerRef}
               // Not redundant with the `scroll` listener. A first page is 20 rows,
               // tool results fold into their calls, and the "load earlier" link is
@@ -715,14 +774,16 @@ function ChatInterface({
               transcriptHeader={transcriptHeader}
               onLoadFullTranscript={loadFullTranscript}
             />
-              <ChatTurnNavigator
-                key={`${selectedProject.projectId}:${selectedSession?.id || currentSessionId || newSessionTrigger || 'draft'}`}
-                messages={chatMessages}
-                scrollContainerRef={scrollContainerRef}
-                hasOlderMessages={hasMoreMessages && !allMessagesLoaded}
-                loadHistory={loadFullTranscript}
-                onReveal={revealMessage}
-              />
+              {!compactLayout && (
+                <ChatTurnNavigator
+                  key={`${selectedProject.projectId}:${selectedSession?.id || currentSessionId || newSessionTrigger || 'draft'}`}
+                  messages={chatMessages}
+                  scrollContainerRef={scrollContainerRef}
+                  hasOlderMessages={hasMoreMessages && !allMessagesLoaded}
+                  loadHistory={loadFullTranscript}
+                  onReveal={revealMessage}
+                />
+              )}
             </div>
           </TranscriptSessionContext.Provider>
         </MarkdownWorkspaceContext.Provider>
@@ -743,8 +804,23 @@ function ChatInterface({
             </div>
           )}
 
-          <QuoteDrafts quotes={quoteDraft.quotes} onRemove={quoteDraft.removeQuotes} />
-          <ChatComposer
+          {hideComposer ? (
+            pendingPermissionRequests.length > 0 && (
+              <div className="chat-composer-shell relative flex-shrink-0 px-3 pb-3 pt-1">
+                <div className="mx-auto max-w-[54.25rem]">
+                  <PermissionRequestsBanner
+                    pendingPermissionRequests={pendingPermissionRequests}
+                    providerLabel={selectedProviderLabel}
+                    handlePermissionDecision={handlePermissionDecision}
+                    handleGrantToolPermission={handleGrantToolPermission}
+                  />
+                </div>
+              </div>
+            )
+          ) : (
+            <>
+              <QuoteDrafts quotes={quoteDraft.quotes} onRemove={quoteDraft.removeQuotes} />
+              <ChatComposer
             suggestion={suggestion}
             onAcceptSuggestion={acceptSuggestion}
             isChatHome={isChatHome}
@@ -837,6 +913,8 @@ function ChatInterface({
           sendByCtrlEnter={sendByCtrlEnter}
           taskMenu={composerTaskMenu}
         />
+            </>
+          )}
         {taskMasterSetupDialog}
         </div>
       </div>

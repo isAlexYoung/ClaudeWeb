@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Asterisk,
@@ -39,6 +40,12 @@ type IntegratedWorkspaceHeaderProps = {
   onOpenPluginTab?: (pluginName: string) => void;
   /** Renames the open conversation; absent when there is none. */
   onRenameSession?: (summary: string) => Promise<boolean>;
+  /** Optional scroll-docked artefact pill displayed next to the conversation title. */
+  headerArtefact?: ReactNode;
+  /** Compact header layout used when Chat is paired in split view alongside a spreadsheet. */
+  compact?: boolean;
+  /** Heading displayed in compact split mode (e.g. "Conversation"). */
+  compactTitle?: string;
 };
 
 const EXPORT_FORMATS: Array<{ format: TranscriptExportFormat; icon: typeof FileText }> = [
@@ -119,51 +126,62 @@ export default function IntegratedWorkspaceHeader(props: IntegratedWorkspaceHead
   };
 
   return (
-    <header className="workspace-header">
-      {props.mobile && (
+    <header className={`workspace-header ${props.compact ? 'workspace-header-compact' : ''}`}>
+      {props.mobile && !props.compact && (
         <button className="workspace-icon-button" aria-label={t('workspace.header.openNavigation')} onClick={props.onMenu}>
           <PanelLeftOpen size={19} />
         </button>
       )}
-      <div className="workspace-header-title">
-        {renaming !== null ? (
-          <input
-            className="workspace-header-rename"
-            aria-label={t('workspace.header.renameLabel')}
-            value={renaming}
-            autoFocus
-            maxLength={200}
-            onChange={(event) => setRenaming(event.target.value)}
-            onBlur={() => void saveRename()}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') { event.preventDefault(); void saveRename(); }
-              if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); }
-            }}
-          />
-        ) : canRename ? (
-          <button type="button" className="workspace-header-title-button" title={t('workspace.header.renameHint')} onClick={() => setRenaming(sessionTitle)}>
-            {title}
-          </button>
-        ) : <span>{title}</span>}
-        {projectName && <span className="workspace-header-project">· {projectName}</span>}
-      </div>
+      {props.compact ? (
+        <div className="workspace-header-title">
+          <span>{props.compactTitle || title}</span>
+        </div>
+      ) : (
+        <div className="workspace-header-title">
+          {renaming !== null ? (
+            <input
+              className="workspace-header-rename"
+              aria-label={t('workspace.header.renameLabel')}
+              value={renaming}
+              autoFocus
+              maxLength={200}
+              onChange={(event) => setRenaming(event.target.value)}
+              onBlur={() => void saveRename()}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') { event.preventDefault(); void saveRename(); }
+                if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); }
+              }}
+            />
+          ) : canRename ? (
+            <button type="button" className="workspace-header-title-button" title={t('workspace.header.renameHint')} onClick={() => setRenaming(sessionTitle)}>
+              {title}
+            </button>
+          ) : <span>{title}</span>}
+          {projectName && <span className="workspace-header-project">· {projectName}</span>}
+        </div>
+      )}
+      {!props.compact && props.headerArtefact}
       <div className="workspace-header-tools">
         {notice && <span className="workspace-header-notice" role="status">{notice}</span>}
-        <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.desktop')} title={t('workspace.header.desktop')} onClick={props.onDesktop}>
-          <Asterisk size={19} />
-          {props.minimizedTools?.desktop && <span className="workspace-tool-running-dot" data-testid="desktop-running-dot" />}
-        </button>
-        <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.terminal')} title={t('workspace.header.terminal')} onClick={() => props.onTool('shell')}>
-          <TerminalSquare size={19} />
-          {props.minimizedTools?.terminal && <span className="workspace-tool-running-dot" data-testid="terminal-running-dot" />}
-        </button>
-        <button className="workspace-icon-button" aria-label={t('workspace.header.files')} title={t('workspace.header.files')} onClick={() => props.onTool('files')}>
-          <Folder size={19} />
-        </button>
-        <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.browser')} title={t('workspace.header.browser')} onClick={() => props.onTool('browser')}>
-          <Globe size={19} />
-          {props.minimizedTools?.browser && <span className="workspace-tool-running-dot" data-testid="browser-running-dot" />}
-        </button>
+        {!props.compact && (
+          <>
+            <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.desktop')} title={t('workspace.header.desktop')} onClick={props.onDesktop}>
+              <Asterisk size={19} />
+              {props.minimizedTools?.desktop && <span className="workspace-tool-running-dot" data-testid="desktop-running-dot" />}
+            </button>
+            <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.terminal')} title={t('workspace.header.terminal')} onClick={() => props.onTool('shell')}>
+              <TerminalSquare size={19} />
+              {props.minimizedTools?.terminal && <span className="workspace-tool-running-dot" data-testid="terminal-running-dot" />}
+            </button>
+            <button className="workspace-icon-button" aria-label={t('workspace.header.files')} title={t('workspace.header.files')} onClick={() => props.onTool('files')}>
+              <Folder size={19} />
+            </button>
+            <button className="workspace-icon-button workspace-tool-button" aria-label={t('workspace.header.browser')} title={t('workspace.header.browser')} onClick={() => props.onTool('browser')}>
+              <Globe size={19} />
+              {props.minimizedTools?.browser && <span className="workspace-tool-running-dot" data-testid="browser-running-dot" />}
+            </button>
+          </>
+        )}
         <div className="workspace-more-anchor" ref={menuRef}>
           <button
             className="workspace-icon-button"
@@ -227,14 +245,16 @@ export default function IntegratedWorkspaceHeader(props: IntegratedWorkspaceHead
             </div>
           )}
         </div>
-        <button
-          className="workspace-icon-button"
-          aria-label={props.inspectorOpen ? t('workspace.header.hideInspector') : t('workspace.header.showInspector')}
-          aria-expanded={props.inspectorOpen}
-          onClick={props.onInspectorToggle}
-        >
-          {props.inspectorOpen ? <PanelRightClose size={19} /> : <PanelRightOpen size={19} />}
-        </button>
+        {!props.compact && (
+          <button
+            className="workspace-icon-button"
+            aria-label={props.inspectorOpen ? t('workspace.header.hideInspector') : t('workspace.header.showInspector')}
+            aria-expanded={props.inspectorOpen}
+            onClick={props.onInspectorToggle}
+          >
+            {props.inspectorOpen ? <PanelRightClose size={19} /> : <PanelRightOpen size={19} />}
+          </button>
+        )}
       </div>
     </header>
   );

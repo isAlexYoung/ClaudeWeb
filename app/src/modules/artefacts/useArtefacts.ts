@@ -9,9 +9,18 @@ type ArtefactChangeEvent = {
 };
 type ArtefactsListener = (event?: ArtefactChangeEvent) => void;
 const artefactsListeners = new Set<ArtefactsListener>();
+const cachedArtefactsById = new Map<string, ArtefactSummary>();
+
+/** Synchronous lookup of the latest known artefact metadata (e.g. its linked sessionId). */
+export function getCachedArtefact(id: string | null | undefined): ArtefactSummary | null {
+  if (!id) return null;
+  return cachedArtefactsById.get(id) ?? null;
+}
 
 /** Tells every mounted artefacts consumer (page, sidebar, chat card) to update immediately and refresh. */
 export function notifyArtefactsChanged(event?: ArtefactChangeEvent): void {
+  if (event?.removeId) cachedArtefactsById.delete(event.removeId);
+  if (event?.upsert?.id) cachedArtefactsById.set(event.upsert.id, event.upsert);
   for (const listener of artefactsListeners) listener(event);
 }
 
@@ -66,6 +75,8 @@ export function useArtefacts() {
     }
     try {
       const list = await readArtefactResponse<ArtefactSummary[]>(await api.artefacts.list());
+      cachedArtefactsById.clear();
+      for (const item of list) cachedArtefactsById.set(item.id, item);
       setArtefacts(list);
       setError(null);
     } catch (caught) {

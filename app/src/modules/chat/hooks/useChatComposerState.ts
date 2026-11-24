@@ -1236,6 +1236,35 @@ export function useChatComposerState({
     handleSubmitRef.current = handleSubmit;
   }, [handleSubmit]);
 
+  // Sends a plain-text prompt through the same live composer pipeline (used by
+  // the spreadsheet split-view composer so turns stream directly in the paired
+  // ChatInterface without duplicating a second chat client).
+  const submitPromptText = useCallback(
+    async (text: string): Promise<boolean> => {
+      const trimmed = text.trim();
+      const scope = draftScopeRef.current ?? '';
+      if (
+        !trimmed
+        || !selectedProject
+        || isLoading
+        || editingAnchorId
+        || !(selectedSession?.id || currentSessionId)
+        || submittingScopesRef.current.has(scope)
+      ) {
+        return false;
+      }
+      const syntheticEvent = { preventDefault: () => {} } as FormEvent<HTMLFormElement>;
+      await handleSubmit(syntheticEvent, {
+        content: trimmed,
+        attachments: [],
+        uploadedAttachments: [],
+        options: buildSendOptions(trimmed),
+      });
+      return true;
+    },
+    [buildSendOptions, currentSessionId, editingAnchorId, handleSubmit, isLoading, selectedProject, selectedSession?.id],
+  );
+
   // The VPS dispatcher owns sending. Reconcile the open session even after an
   // immediate-send claim: a failed start may restore it, or another device may queue a turn.
   useEffect(() => {
@@ -1671,6 +1700,7 @@ export function useChatComposerState({
     isDragActive,
     openAttachmentPicker: open,
     handleSubmit,
+    submitPromptText,
     queuedDraft,
     editQueuedDraft,
     deleteQueuedDraft,

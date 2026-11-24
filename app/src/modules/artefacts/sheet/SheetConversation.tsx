@@ -50,9 +50,45 @@ async function fetchConversation(sessionId: string): Promise<NormalizedMessage[]
   }
 }
 
+type SheetConversationEmptyStateProps = {
+  /** Places a prompt suggestion into the editor's composer without sending it. */
+  onSelectSuggestion: (prompt: string) => void;
+  /** Optional error notice shown above the illustration when the last run failed. */
+  error?: string | null;
+};
+
+/** Illustrated prompt picker shown in an empty spreadsheet conversation. */
+export function SheetConversationEmptyState({ onSelectSuggestion, error }: SheetConversationEmptyStateProps) {
+  const { t } = useTranslation('sidebar');
+  return (
+    <div className="sheet-conversation-empty-shell artefact-kind-sheet">
+      <div className="sheet-conversation-empty-state">
+        {error && <p role="alert" className="sheet-conversation-error">{t('artefacts.editor.failed', { error })}</p>}
+        <EmptySheetSketch />
+        <h3 className="sheet-conversation-empty-title">{t('artefacts.editor.conversation.emptyTitle')}</h3>
+        <div className="sheet-conversation-suggestions">
+          {SUGGESTION_KEYS.map((key) => {
+            const prompt = t(`artefacts.editor.conversation.suggestions.${key}`);
+            return (
+              <button
+                key={key}
+                type="button"
+                className="sheet-conversation-suggestion"
+                onClick={() => onSelectSuggestion(prompt)}
+              >
+                {prompt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
- * Rendered by SpreadsheetEditor when the conversation drawer is open: shows an
- * illustrated prompt picker before any turns exist, or the conversation's
+ * Rendered by SpreadsheetEditor when standalone (without an external split ChatInterface):
+ * shows an illustrated prompt picker before any turns exist, or the conversation's
  * messages with a link to continue in full chat once turns exist.
  */
 export default function SheetConversation({ sessionId, running, error, onSelectSuggestion, onOpenInChat }: SheetConversationProps) {
@@ -85,26 +121,7 @@ export default function SheetConversation({ sessionId, running, error, onSelectS
       </div>
       <div className={`sheet-conversation-body ${isEmpty ? 'is-empty' : ''}`}>
         {isEmpty ? (
-          <div className="sheet-conversation-empty-state">
-            {error && <p role="alert" className="sheet-conversation-error">{t('artefacts.editor.failed', { error })}</p>}
-            <EmptySheetSketch />
-            <h3 className="sheet-conversation-empty-title">{t('artefacts.editor.conversation.emptyTitle')}</h3>
-            <div className="sheet-conversation-suggestions">
-              {SUGGESTION_KEYS.map((key) => {
-                const prompt = t(`artefacts.editor.conversation.suggestions.${key}`);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    className="sheet-conversation-suggestion"
-                    onClick={() => onSelectSuggestion(prompt)}
-                  >
-                    {prompt}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <SheetConversationEmptyState onSelectSuggestion={onSelectSuggestion} error={error} />
         ) : (
           <>
             {entries.map((entry) => (entry.kind === 'tools' ? (

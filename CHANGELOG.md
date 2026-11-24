@@ -5,6 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.3 - 2026-11-25 (stable)
+
+- Spreadsheet scrolling & panning: replace the blocking `.sheet-editor-lock` overlay with FortuneSheet's native `allowEdit` read-only mode so wheel scrolling (vertical and `Shift`+wheel horizontal) and panning continue working smoothly both while idle and while Claude is editing.
+- Smooth split view reusing the live main Chat window: opening a spreadsheet from Chat or 「作品 / Artefacts」 smoothly glides the real `ChatInterface` to the right (`left spreadsheet + right live chat`, hiding the duplicate bottom composer while keeping full Markdown, interactive SVG charts, right-aligned user bubbles, thinking/tool groups, and permission prompts), with the floating spreadsheet composer wired directly into the live Chat submission pipeline and smooth reverse glide on close or panel toggle.
+- Scroll-linked spreadsheet card transition: when scrolling down in a spreadsheet's Chat conversation, the top spreadsheet card smoothly fades/lifts out while a compact clickable spreadsheet pill smoothly transitions into the header bar next to the conversation title, reversing smoothly on scroll back up.
+
 ## 2.3.2 - 2026-11-24 (stable)
 
 - Database migration & session resume: stop `addProviderSessionIdMapping` from backfilling `provider_session_id = session_id` on every restart for pending app sessions with no transcript yet (which caused newly created spreadsheet/chat sessions to fail after an upgrade/restart with `No conversation found with session ID`), and automatically heal already-affected rows on startup.

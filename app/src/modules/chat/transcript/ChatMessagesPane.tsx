@@ -40,6 +40,10 @@ const INITIAL_MOUNTED_TAIL_ROWS = 30;
 
 type ChatMessagesPaneProps = {
   hideEmptyState?: boolean;
+  /** Custom empty-state content shown when the session has no messages yet (e.g. spreadsheet prompt suggestions). */
+  emptyState?: ReactNode;
+  /** Omits the floating export menu in narrow split-pane layouts. */
+  hideExportMenu?: boolean;
   scrollContainerRef: RefObject<HTMLDivElement>;
   onWheel: () => void;
   onTouchMove: () => void;
@@ -170,6 +174,8 @@ function ChatMessagesPane({
   showThinking,
   selectedProject,
   hideEmptyState = false,
+  emptyState,
+  hideExportMenu = false,
 }: ChatMessagesPaneProps) {
   const { t } = useTranslation('chat');
   const lazyRows = useLazyRowObserver(scrollContainerRef);
@@ -259,7 +265,7 @@ function ChatMessagesPane({
               onLoadAll={loadAllMessages}
             />
           </div>
-          {!exportsFromWorkspaceHeader && (
+          {!exportsFromWorkspaceHeader && !hideExportMenu && (
             <div className="pointer-events-auto">
               <ChatExportMenu
                 messages={chatMessages}
@@ -282,7 +288,9 @@ function ChatMessagesPane({
             <p>{t('session.loading.sessionMessages')}</p>
           </div>
         </div>
-      ) : chatMessages.length === 0 ? (hideEmptyState ? null :
+      ) : chatMessages.length === 0 ? (emptyState ? (
+        <div className="sheet-conversation-empty-shell">{emptyState}</div>
+      ) : hideEmptyState ? null :
         <ProviderSelectionEmptyState
           selectedSession={selectedSession}
           currentSessionId={currentSessionId}

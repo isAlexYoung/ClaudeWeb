@@ -1122,7 +1122,7 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 
 /* ---------- Spreadsheet editor ---------- */
 .sheet-editor { overflow: hidden; background: hsl(var(--background)); }
-.sheet-editor-head { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 8px 14px 8px 18px; border-bottom: 1px solid var(--workspace-line); }
+.sheet-editor-head { display: flex; align-items: center; gap: 8px; height: 58px; min-height: 58px; padding: 8px 14px 8px 18px; border-bottom: 1px solid var(--workspace-line); }
 .sheet-editor-title { display: inline-flex; align-items: center; gap: 6px; max-width: 360px; padding: 6px 10px; border-radius: 8px; color: hsl(var(--foreground)); font-size: 15.5px; }
 .sheet-editor-title span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .sheet-editor-title:hover, .sheet-editor-title[data-open="true"] { background: var(--workspace-hover); }
@@ -1133,8 +1133,8 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 .sheet-editor-head-button:hover, .sheet-editor-head-button.active { background: var(--workspace-hover); }
 .sheet-editor-body { position: relative; display: flex; flex: 1; min-height: 0; overflow: hidden; }
 .sheet-editor-grid { position: relative; flex: 1; min-width: 0; overflow: hidden; isolation: isolate; }
+.sheet-editor-grid[data-panning="true"], .sheet-editor-grid[data-panning="true"] * { cursor: grabbing !important; user-select: none; }
 .sheet-editor-grid .fortune-container { font-family: var(--workspace-ui-font, inherit); }
-.sheet-editor-lock { position: absolute; inset: 0; z-index: 1008; background: hsl(var(--background) / .12); cursor: progress; }
 .sheet-editor-floating { position: absolute; left: 50%; bottom: 58px; z-index: 1010; display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(820px, calc(100% - 32px)); transform: translateX(-50%); pointer-events: none; }
 .sheet-editor-floating > * { pointer-events: auto; }
 .sheet-editor-notice { margin: 0; padding: 8px 14px; border-radius: 10px; background: hsl(var(--foreground)); color: hsl(var(--background)); font-size: 13px; box-shadow: 0 6px 20px rgb(0 0 0 / .14); }
@@ -1175,8 +1175,108 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 .sheet-conversation-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin: 12px; padding: 9px; border-radius: 10px; background: var(--workspace-bubble); color: hsl(var(--foreground)); font-size: 13.5px; }
 .sheet-conversation-open:hover { background: var(--workspace-hover); }
 
-/* Minimized artefact card shown at the top of its dedicated Chat conversation. */
-.artefact-session-banner { display: flex; justify-content: center; padding-top: 10px; }
+/* ---------- Split-view workspace stage (left spreadsheet + live right main ChatInterface) ---------- */
+.workspace-split-stage {
+  --sheet-chat-width: clamp(360px, 34vw, 460px);
+  --sheet-split-ease: 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.workspace-sheet-pane {
+  flex: 0 0 auto;
+  width: 0%;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  opacity: 0;
+  border-right: 0 solid var(--workspace-line);
+  transition: width var(--sheet-split-ease), opacity 220ms ease, border-right-width 180ms ease;
+  will-change: width;
+}
+.workspace-sheet-pane[data-open="true"] {
+  width: calc(100% - var(--sheet-chat-width));
+  opacity: 1;
+  border-right-width: 1px;
+}
+.workspace-split-stage.is-chat-collapsed .workspace-sheet-pane[data-open="true"] {
+  width: 100%;
+  border-right-width: 0;
+}
+.workspace-sheet-pane-inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+.workspace-chat-stage {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  transition: opacity 220ms ease;
+}
+.workspace-chat-stage[data-chat-visible="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+.workspace-chat-stage-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+/* Hold the narrowed column width while sliding chat off/on screen so transcript text never re-wraps mid-slide. */
+.workspace-chat-stage[data-chat-visible="false"] .workspace-chat-stage-inner,
+.workspace-split-stage.is-chat-toggling .workspace-chat-stage-inner {
+  min-width: var(--sheet-chat-width);
+}
+.workspace-header-compact {
+  padding: 0 12px 0 18px;
+}
+.workspace-chat-compact .chat-messages-pane > div.mx-auto {
+  max-width: none;
+  padding: 14px 16px 24px;
+}
+.workspace-chat-compact .chat-messages-pane > div.mx-auto:has(.sheet-conversation-empty-shell) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.workspace-chat-compact .prose {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.workspace-chat-compact .workspace-user-bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+}
+.workspace-chat-compact .workspace-user-bubble .prose {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.workspace-chat-compact .chat-composer-shell {
+  padding: 8px 14px 14px;
+}
+.sheet-conversation-empty-shell {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 12px;
+}
+
+/* Minimized artefact card shown at the top of its dedicated Chat conversation, and docked into the header on scroll. */
+.artefact-session-banner {
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+  transform-origin: center top;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+  will-change: opacity, transform;
+}
 .artefact-session-card { display: flex; align-items: center; gap: 6px; width: min(440px, 100%); padding: 10px 12px; border: 1px solid var(--workspace-line); border-radius: 14px; background: var(--workspace-bubble); transition: background-color .15s ease, box-shadow .15s ease; }
 .artefact-session-card:hover { box-shadow: 0 4px 16px rgb(0 0 0 / .06); }
 .artefact-session-card-open { display: flex; flex: 1; min-width: 0; align-items: center; gap: 12px; text-align: left; }
@@ -1187,6 +1287,79 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 .artefact-session-card-action { flex-shrink: 0; color: hsl(var(--muted-foreground)); }
 .artefact-session-card-action:hover { color: hsl(var(--foreground)); }
 
+.artefact-header-dock {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin-left: 8px;
+  transform-origin: left center;
+  transition: opacity 160ms ease-out, transform 160ms ease-out;
+  will-change: opacity, transform;
+}
+.artefact-header-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(300px, 34vw);
+  height: 36px;
+  padding: 3px 6px 3px 5px;
+  border: 1px solid var(--workspace-line);
+  border-radius: 10px;
+  background: var(--workspace-bubble);
+  transition: background-color .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.artefact-header-pill:hover {
+  background: var(--workspace-hover);
+  box-shadow: 0 3px 12px rgb(0 0 0 / .06);
+}
+.artefact-header-pill-open {
+  display: inline-flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 0 0;
+  text-align: left;
+}
+.artefact-header-pill-icon {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--kind-bg);
+  color: var(--kind-fg);
+}
+.artefact-header-pill-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.artefact-header-pill-text strong {
+  overflow: hidden;
+  color: hsl(var(--foreground));
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.artefact-header-pill-text small {
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+.artefact-header-pill-action {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  color: hsl(var(--muted-foreground));
+}
+.artefact-header-pill-action:hover {
+  color: hsl(var(--foreground));
+}
+
 /* The sidebar's entries and list, animated as one block when the mode changes. */
 .workspace-sidebar-body { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 /* The Chat/Code switch: the selected background slides between the two buttons. */
@@ -1196,7 +1369,16 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 .workspace-mode-tabs button { position: relative; z-index: 1; transition: color .18s ease; }
 .workspace-mode-tabs button[aria-selected="true"] { background: transparent; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
-  .workspace-mode-tabs::before { transition: none; }
+  .workspace-mode-tabs::before,
+  .workspace-sheet-pane,
+  .workspace-chat-stage,
+  .artefact-session-banner,
+  .artefact-header-dock { transition: none; }
+}
+
+@media (max-width: 900px) {
+  .workspace-split-stage { --sheet-chat-width: min(340px, 46vw); }
+  .artefact-header-pill-text small { display: none; }
 }
 
 @media (max-width: 640px) {
@@ -1210,4 +1392,6 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
   .artefact-row-meta { display: none; }
   .sheet-conversation { position: absolute; inset: 0 0 0 auto; z-index: 30; width: 100%; max-width: none; }
   .sheet-editor-title { max-width: 180px; }
+  .workspace-split-stage { --sheet-chat-width: 100%; }
+  .artefact-header-pill { max-width: 160px; }
 }

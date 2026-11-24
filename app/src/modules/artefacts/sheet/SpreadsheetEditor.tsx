@@ -20,12 +20,28 @@ type SpreadsheetEditorProps = {
   artefactId: string;
   /** The mobile menu button, shown before the title on small screens. */
   menuButton?: ReactNode;
-  /** Back to the Artefacts list. */
+  /** Back to the Artefacts list or closes the split pane back to full Chat. */
   onClose: () => void;
   /** Minimizes the spreadsheet into its dedicated Chat conversation (showing the card at the top). */
   onMinimize?: (sessionId: string) => void;
   /** Opens the spreadsheet's conversation in the full chat. */
   onOpenSession: (sessionId: string) => void;
+  /** Mounted inside WorkspaceMain's split view alongside the real main ChatInterface. */
+  embeddedSplit?: boolean;
+  /** External split conversation visibility (when embeddedSplit is true). */
+  chatOpen?: boolean;
+  /** Toggles the external split ChatInterface panel (when embeddedSplit is true). */
+  onToggleChat?: () => void;
+  /** True while the split-pane width transition is animating (defers FortuneSheet canvas resize until settled). */
+  splitAnimating?: boolean;
+  /** Live processing state from the paired main ChatInterface. */
+  externalRunning?: boolean;
+  /** Sends a prompt directly through the paired live ChatInterface so it streams immediately on the right. */
+  onSendChatMessage?: (text: string) => Promise<boolean>;
+  /** Registers a callback so empty-state prompt pills in the paired ChatInterface can fill this composer. */
+  registerFillComposer?: (fill: ((prompt: string) => void) | null) => void;
+  /** Notifies WorkspaceMain once the spreadsheet's linked sessionId is loaded. */
+  onSessionResolved?: (sessionId: string) => void;
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -60,7 +76,21 @@ function gridLanguage(language: string): string {
  * Claude has changed it. While Claude works, the grid is read-only so the two
  * never write over each other.
  */
-export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onMinimize, onOpenSession }: SpreadsheetEditorProps) {
+export default function SpreadsheetEditor({
+  artefactId,
+  menuButton,
+  onClose,
+  onMinimize,
+  onOpenSession,
+  embeddedSplit = false,
+  chatOpen,
+  onToggleChat,
+  splitAnimating = false,
+  externalRunning = false,
+  onSendChatMessage,
+  registerFillComposer,
+  onSessionResolved,
+}: SpreadsheetEditorProps) {
   const { t, i18n } = useTranslation('sidebar');
   const [detail, setDetail] = useState<ArtefactDetail | null>(null);
   // The workbook handed to FortuneSheet; replaced (with a new key) when the file is reloaded.
@@ -74,7 +104,9 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
   const [running, setRunning] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(true);
-  const [conversationOpen, setConversationOpen] = useState(false);
+  const [localConversationOpen, setLocalConversationOpen] = useState(false);
+  const conversationOpen = embeddedSplit ? Boolean(chatOpen) : localConversationOpen;
+  const effectiveRunning = running || externalRunning;
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
@@ -90,7 +122,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savingRef = useRef<Promise<void> | null>(null);
   const runningRef = useRef(false);
-  useEffect(() => { runningRef.current = running; }, [running]);
+  useEffect(() => { runningRef.current = effectiveRunning; }, [effectiveRunning]);
 
   const noticeDurationRef = useRef(NOTICE_MS);
   const showNotice = useCallback((text: string, durationMs = NOTICE_MS) => {
@@ -106,6 +138,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
   const applyDetail = useCallback((next: ArtefactDetail) => {
     setDetail(next);
     setSessionId(next.sessionId);
+    if (next.sessionId) onSessionResolved?.(next.sessionId);
     notifyArtefactsChanged({ upsert: next });
     revisionRef.current = next.revision;
     if (next.content) {
@@ -118,7 +151,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
       showNotice(t('artefacts.editor.invalidFile', { error: next.contentError }));
       setGridData((current) => current ?? toGridSheets({ format: 'claudeweb-sheet@1', sheets: [{ name: 'Sheet1', cells: {} }] }));
     }
-  }, [showNotice, t]);
+  }, [onSessionResolved, showNotice, t]);
 
   const reload = useCallback(async () => {
     try {
@@ -206,12 +239,24 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
   }, [gridData, gridKey]);
 
   // FortuneSheet only recalculates canvas dimensions on window resize, not when a
-  // flex sibling (the conversation drawer or sidebar) changes the grid container's width.
+  // flex sibling (the split chat panel or sidebar) changes the grid container's
+  // width. Pause resize dispatch while the split transition is mid-flight so the
+  // animation stays 60fps, then fire one clean resize once settled.
+  const splitAnimatingRef = useRef(splitAnimating);
+  useEffect(() => {
+    const wasAnimating = splitAnimatingRef.current;
+    splitAnimatingRef.current = splitAnimating;
+    if (wasAnimating && !splitAnimating) {
+      requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+    }
+  }, [splitAnimating]);
+
   useEffect(() => {
     const element = gridContainerRef.current;
     if (!element || typeof ResizeObserver === 'undefined') return undefined;
     let frame: number | null = null;
     const notifyResize = () => {
+      if (splitAnimatingRef.current) return;
       if (frame !== null) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         frame = null;
@@ -223,6 +268,120 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
     return () => {
       observer.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // FortuneSheet 1.0.4's own wheel handler moves only 1 row per tick via
+  // sortedIndex on scrollbarY.scrollTop (which can stall under fractional DPI
+  // scaling or frozen rows) and ignores Shift+wheel horizontal scrolling.
+  // Driving FortuneSheet's own scrollbars directly in capture phase keeps
+  // wheel scrolling and drag panning smooth both when idle and while Claude edits.
+  useEffect(() => {
+    const element = gridContainerRef.current;
+    if (!element) return undefined;
+
+    const normalizeDelta = (delta: number, mode: number) => {
+      if (mode === 1) return delta * 24;
+      if (mode === 2) return delta * Math.max(240, element.clientHeight);
+      return delta;
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('.sheet-editor-floating, .fortune-context-menu, .fortune-dialog, .luckysheet-formula-search-c')) {
+        return;
+      }
+      const scrollY = element.querySelector<HTMLElement>('.luckysheet-scrollbar-y');
+      const scrollX = element.querySelector<HTMLElement>('.luckysheet-scrollbar-x');
+      if (!scrollY && !scrollX) return;
+
+      const rawDx = normalizeDelta(event.deltaX, event.deltaMode);
+      const rawDy = normalizeDelta(event.deltaY, event.deltaMode);
+      const dx = event.shiftKey && rawDx === 0 ? rawDy : rawDx;
+      const dy = event.shiftKey && rawDx === 0 ? 0 : rawDy;
+      let handled = false;
+
+      if (scrollY && dy !== 0) {
+        const maxY = Math.max(0, scrollY.scrollHeight - scrollY.clientHeight);
+        const nextY = Math.min(maxY, Math.max(0, scrollY.scrollTop + dy));
+        if (nextY !== scrollY.scrollTop) {
+          scrollY.scrollTop = nextY;
+          scrollY.dispatchEvent(new Event('scroll'));
+        }
+        handled = true;
+      }
+      if (scrollX && dx !== 0) {
+        const maxX = Math.max(0, scrollX.scrollWidth - scrollX.clientWidth);
+        const nextX = Math.min(maxX, Math.max(0, scrollX.scrollLeft + dx));
+        if (nextX !== scrollX.scrollLeft) {
+          scrollX.scrollLeft = nextX;
+          scrollX.dispatchEvent(new Event('scroll'));
+        }
+        handled = true;
+      }
+      if (handled) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    // Middle-button drag (or primary drag while Claude edits read-only) pans both axes.
+    let pan: { x: number; y: number; scrollLeft: number; scrollTop: number; scrollX: HTMLElement | null; scrollY: HTMLElement | null } | null = null;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target || target.closest('.sheet-editor-floating, .luckysheet-scrollbars, .fortune-context-menu, .fortune-dialog, input, button')) {
+        return;
+      }
+      const wantsPan = event.button === 1 || (event.button === 0 && runningRef.current && Boolean(target.closest('.fortune-sheet-container')));
+      if (!wantsPan) return;
+      const scrollY = element.querySelector<HTMLElement>('.luckysheet-scrollbar-y');
+      const scrollX = element.querySelector<HTMLElement>('.luckysheet-scrollbar-x');
+      if (!scrollY && !scrollX) return;
+      pan = {
+        x: event.clientX,
+        y: event.clientY,
+        scrollLeft: scrollX?.scrollLeft ?? 0,
+        scrollTop: scrollY?.scrollTop ?? 0,
+        scrollX,
+        scrollY,
+      };
+      element.dataset.panning = 'true';
+      if (event.button === 1) event.preventDefault();
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!pan) return;
+      const dx = event.clientX - pan.x;
+      const dy = event.clientY - pan.y;
+      if (pan.scrollX) {
+        const maxX = Math.max(0, pan.scrollX.scrollWidth - pan.scrollX.clientWidth);
+        pan.scrollX.scrollLeft = Math.min(maxX, Math.max(0, pan.scrollLeft - dx));
+        pan.scrollX.dispatchEvent(new Event('scroll'));
+      }
+      if (pan.scrollY) {
+        const maxY = Math.max(0, pan.scrollY.scrollHeight - pan.scrollY.clientHeight);
+        pan.scrollY.scrollTop = Math.min(maxY, Math.max(0, pan.scrollTop - dy));
+        pan.scrollY.dispatchEvent(new Event('scroll'));
+      }
+    };
+    const stopPan = () => {
+      if (!pan) return;
+      pan = null;
+      delete element.dataset.panning;
+    };
+
+    element.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    element.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', stopPan);
+    window.addEventListener('pointercancel', stopPan);
+    return () => {
+      element.removeEventListener('wheel', onWheel, true);
+      element.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', stopPan);
+      window.removeEventListener('pointercancel', stopPan);
+      delete element.dataset.panning;
     };
   }, []);
 
@@ -254,20 +413,55 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
         // The next poll tries again.
       }
     };
-    const timer = setInterval(() => void poll(), running ? POLL_RUNNING_MS : POLL_IDLE_MS);
+    const timer = setInterval(() => void poll(), effectiveRunning ? POLL_RUNNING_MS : POLL_IDLE_MS);
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [artefactId, reload, running, save, showNotice, t]);
+  }, [artefactId, effectiveRunning, reload, save, showNotice, t]);
+
+  // Reload promptly as soon as the paired ChatInterface finishes a turn so
+  // Claude's spreadsheet changes appear without waiting for the next poll tick.
+  const prevExternalRunningRef = useRef(externalRunning);
+  useEffect(() => {
+    const wasRunning = prevExternalRunningRef.current;
+    prevExternalRunningRef.current = externalRunning;
+    if (!wasRunning || externalRunning) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const state = await readArtefactResponse<ArtefactState>(await api.artefacts.state(artefactId));
+        if (cancelled) return;
+        setRunning(state.running);
+        setSessionId(state.sessionId);
+        setLastError(state.running ? null : state.lastError);
+        const changed = Boolean(revisionRef.current) && state.revision !== revisionRef.current;
+        if (changed) await reload();
+      } catch {
+        // The regular poll loop will retry.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [artefactId, externalRunning, reload]);
 
   const send = async (event: FormEvent) => {
     event.preventDefault();
     const text = message.trim();
-    if (!text || sending || running || !detail) return;
+    if (!text || sending || effectiveRunning || !detail) return;
     setSending(true);
     try {
       await save();
+      if (onSendChatMessage) {
+        const sent = await onSendChatMessage(text);
+        if (sent) {
+          setLastError(null);
+          // Set now, not after the next render: a grid change in between must not be saved over Claude's run.
+          runningRef.current = true;
+          setRunning(true);
+          setMessage('');
+          return;
+        }
+      }
       const model = readStoredPreferenceValue('claude-model');
       const effort = readStoredPreferenceValue('claude-effort');
       const mcpEnabled = readStoredUiPreferences().chatMcpEnabled;
@@ -331,6 +525,10 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
 
   const minimize = async () => {
     await save();
+    if (embeddedSplit) {
+      onClose();
+      return;
+    }
     if (sessionId && onMinimize) onMinimize(sessionId);
     else onClose();
   };
@@ -345,6 +543,12 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
       input.setSelectionRange(prompt.length, prompt.length);
     });
   }, []);
+
+  useEffect(() => {
+    if (!registerFillComposer) return undefined;
+    registerFillComposer(selectSuggestion);
+    return () => registerFillComposer(null);
+  }, [registerFillComposer, selectSuggestion]);
 
   if (loadError && !detail) {
     return (
@@ -400,7 +604,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
             data-open={conversationOpen ? 'true' : undefined}
             aria-label={conversationOpen ? t('artefacts.editor.hideConversation') : t('artefacts.editor.showConversation')}
             title={conversationOpen ? t('artefacts.editor.hideConversation') : t('artefacts.editor.showConversation')}
-            onClick={() => setConversationOpen((value) => !value)}
+            onClick={() => (embeddedSplit && onToggleChat ? onToggleChat() : setLocalConversationOpen((value) => !value))}
           >
             {conversationOpen ? <Maximize2 size={17} /> : <Minimize2 size={17} />}
           </button>
@@ -417,13 +621,14 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
       </div>
 
       <div className="sheet-editor-body">
-        <div ref={gridContainerRef} className="sheet-editor-grid">
+        <div ref={gridContainerRef} className="sheet-editor-grid" data-readonly={effectiveRunning ? 'true' : undefined}>
           {gridData ? (
             <Workbook
               key={gridKey}
               ref={workbookRef as never}
               data={gridData as never}
               onChange={onGridChange as never}
+              allowEdit={!effectiveRunning}
               showToolbar={false}
               showFormulaBar
               showSheetTabs
@@ -431,10 +636,6 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
             />
           ) : (
             <p role="status" className="artefacts-status">{t('artefacts.loading')}</p>
-          )}
-          {running && (
-            // Claude owns the file until its run ends; the grid only shows it.
-            <div className="sheet-editor-lock" aria-hidden="true" />
           )}
 
           <div className="sheet-editor-floating">
@@ -447,7 +648,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
                   <span>{t('artefacts.kinds.sheet')}</span>
                 </span>
                 <div className="sheet-composer-row">
-                  {running ? (
+                  {effectiveRunning ? (
                     <p className="sheet-composer-working" role="status"><Loader2 size={15} className="animate-spin" />{t('artefacts.editor.working')}</p>
                   ) : (
                     <input
@@ -460,7 +661,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
                     />
                   )}
                   <button type="submit" className="sheet-composer-send" aria-label={t('artefacts.editor.send')} title={t('artefacts.editor.send')}
-                    disabled={!message.trim() || sending || running}>
+                    disabled={!message.trim() || sending || effectiveRunning}>
                     <ArrowUp size={16} />
                   </button>
                 </div>
@@ -468,16 +669,16 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
             )}
             <SheetToolbar
               getWorkbook={() => workbookRef.current}
-              disabled={running}
+              disabled={effectiveRunning}
               composerOpen={composerOpen}
               onToggleComposer={() => setComposerOpen((value) => !value)}
             />
           </div>
         </div>
-        {conversationOpen && (
+        {!embeddedSplit && conversationOpen && (
           <SheetConversation
             sessionId={sessionId}
-            running={running}
+            running={effectiveRunning}
             error={lastError}
             onSelectSuggestion={selectSuggestion}
             onOpenInChat={(id) => { void save().then(() => onOpenSession(id)); }}

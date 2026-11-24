@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback, useEffect, type Dispatch, type SetStateAction, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ChatInterface } from '@/modules/chat';
@@ -23,7 +23,14 @@ import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceCont
 import WorkspaceStateView from '@/modules/project-workspace/WorkspaceStateView';
 import WorkspaceErrorBoundary from '@/modules/project-workspace/WorkspaceErrorBoundary';
 import { ScheduledTasksPage } from '@/modules/scheduled-tasks';
-import { ArtefactSessionCard, ArtefactsPage, SpreadsheetEditor, useArtefactBySessionId } from '@/modules/artefacts';
+import {
+  ArtefactSessionCard,
+  ArtefactsPage,
+  SheetConversationEmptyState,
+  SpreadsheetEditor,
+  getCachedArtefact,
+  useArtefactBySessionId,
+} from '@/modules/artefacts';
 import MobileMenuButton from '@/modules/project-workspace/MobileMenuButton';
 import { useWorkspaceTools } from '@/modules/project-workspace/context/WorkspaceToolsContext';
 
@@ -50,6 +57,17 @@ type WorkspaceMainProps = {
   /** Persists a new title for a session; resolves false when the backend refuses it. Used by the header's inline rename. */
   onRenameSession: (sessionId: string, summary: string) => Promise<boolean>;
 };
+
+const SPLIT_TRANSITION_MS = 320;
+const CARD_DOCK_SCROLL_PX = 96;
+
+function computeChatPaneWidth(stageWidth: number): number {
+  return Math.round(Math.min(460, Math.max(360, stageWidth * 0.34)));
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+}
 
 /** Rendered by ProjectMainRegion to show the selected project's active tab: chat, files, shell, git, tasks or a plugin. */
 function WorkspaceMain({
@@ -197,6 +215,228 @@ function WorkspaceMain({
   // rewriting the whole palette registry on every render.
   usePaletteOpsRegister({ openFile, openFileInEditor, openDirectory });
 
+  // Split-view spreadsheet + real main ChatInterface state and smooth open/close transition.
+  const splitStageRef = useRef<HTMLDivElement>(null);
+  const sheetPaneRef = useRef<HTMLDivElement>(null);
+  const splitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const splitRafRef = useRef<number | null>(null);
+  const splitRaf2Ref = useRef<number | null>(null);
+  const [mountedArtefactId, setMountedArtefactId] = useState<string | null>(() => experience.openArtefactId);
+  const [splitVisible, setSplitVisible] = useState<boolean>(() => Boolean(experience.openArtefactId));
+  const [splitChatOpen, setSplitChatOpen] = useState<boolean>(true);
+  const [splitAnimating, setSplitAnimating] = useState<boolean>(false);
+  const [chatToggling, setChatToggling] = useState<boolean>(false);
+  const [sheetLockWidth, setSheetLockWidth] = useState<number | null>(null);
+  const activeArtefactSessionRef = useRef<string | null>(null);
+  const chatSubmitRef = useRef<((text: string) => Promise<boolean>) | null>(null);
+  const fillSheetComposerRef = useRef<((prompt: string) => void) | null>(null);
+  const [chatProcessing, setChatProcessing] = useState(false);
+  const [cardScrollState, setCardScrollState] = useState<{ sessionId: string | null; progress: number }>({
+    sessionId: null,
+    progress: 0,
+  });
+  const cardScrollProgress = !splitVisible && cardScrollState.sessionId === (selectedSession?.id ?? null)
+    ? cardScrollState.progress
+    : 0;
+
+  const clearSplitTimers = useCallback(() => {
+    if (splitTimerRef.current) {
+      clearTimeout(splitTimerRef.current);
+      splitTimerRef.current = null;
+    }
+    if (splitRafRef.current !== null) {
+      cancelAnimationFrame(splitRafRef.current);
+      splitRafRef.current = null;
+    }
+    if (splitRaf2Ref.current !== null) {
+      cancelAnimationFrame(splitRaf2Ref.current);
+      splitRaf2Ref.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearSplitTimers(), [clearSplitTimers]);
+
+  // Keep the mounted artefact and animated width in sync with experience.openArtefactId.
+  const prevOpenArtefactIdRef = useRef<string | null>(experience.openArtefactId);
+  useEffect(() => {
+    const nextId = experience.openArtefactId;
+    const prevId = prevOpenArtefactIdRef.current;
+    prevOpenArtefactIdRef.current = nextId;
+    if (nextId === prevId) return;
+
+    clearSplitTimers();
+    if (nextId) {
+      setInspectorOpen(false);
+      setActiveTab('chat');
+      setChatToggling(false);
+      // Already open on another artefact: swap content directly without collapsing.
+      if (prevId && mountedArtefactId) {
+        setMountedArtefactId(nextId);
+        setSplitChatOpen(true);
+        setSplitVisible(true);
+        return;
+      }
+      if (prefersReducedMotion()) {
+        setMountedArtefactId(nextId);
+        setSplitChatOpen(true);
+        setSplitVisible(true);
+        setSplitAnimating(false);
+        setSheetLockWidth(null);
+        return;
+      }
+      const stageWidth = splitStageRef.current?.clientWidth ?? 0;
+      if (stageWidth > 0) {
+        setSheetLockWidth(Math.max(320, stageWidth - computeChatPaneWidth(stageWidth)));
+      }
+      setMountedArtefactId(nextId);
+      setSplitChatOpen(true);
+      setSplitVisible(false);
+      setSplitAnimating(true);
+      // Wait two frames so the 0-width initial state paints before transitioning open.
+      splitRafRef.current = requestAnimationFrame(() => {
+        splitRafRef.current = null;
+        splitRaf2Ref.current = requestAnimationFrame(() => {
+          splitRaf2Ref.current = null;
+          setSplitVisible(true);
+        });
+      });
+      splitTimerRef.current = setTimeout(() => {
+        splitTimerRef.current = null;
+        setSplitAnimating(false);
+        setSheetLockWidth(null);
+      }, SPLIT_TRANSITION_MS + 40);
+      return;
+    }
+
+    // Closing the spreadsheet: smoothly glide Chat back left to 100%, then unmount the grid.
+    activeArtefactSessionRef.current = null;
+    setChatToggling(false);
+    if (
+      !mountedArtefactId
+      || experience.artefactsOpen
+      || experience.pluginsOpen
+      || experience.scheduledTasksOpen
+      || prefersReducedMotion()
+    ) {
+      setSplitVisible(false);
+      setMountedArtefactId(null);
+      setSplitAnimating(false);
+      setSheetLockWidth(null);
+      return;
+    }
+    const currentWidth = sheetPaneRef.current?.getBoundingClientRect().width ?? 0;
+    if (currentWidth > 0) setSheetLockWidth(Math.round(currentWidth));
+    setSplitAnimating(true);
+    setSplitVisible(false);
+    splitTimerRef.current = setTimeout(() => {
+      splitTimerRef.current = null;
+      setMountedArtefactId(null);
+      setSplitAnimating(false);
+      setSheetLockWidth(null);
+    }, SPLIT_TRANSITION_MS + 40);
+  }, [
+    clearSplitTimers,
+    experience.artefactsOpen,
+    experience.openArtefactId,
+    experience.pluginsOpen,
+    experience.scheduledTasksOpen,
+    mountedArtefactId,
+    setActiveTab,
+  ]);
+
+  // Close any open code editor sidebar when entering spreadsheet split view.
+  useEffect(() => {
+    if (experience.openArtefactId && editingFile) {
+      handleCloseEditor();
+    }
+  }, [editingFile, experience.openArtefactId, handleCloseEditor]);
+
+  const handleOpenArtefact = useCallback((artefactId: string) => {
+    const cachedSessionId = getCachedArtefact(artefactId)?.sessionId
+      ?? (sessionArtefact?.id === artefactId ? sessionArtefact.sessionId : null);
+    activeArtefactSessionRef.current = cachedSessionId;
+    experience.openArtefact(artefactId, cachedSessionId);
+    if (cachedSessionId && cachedSessionId !== selectedSession?.id) {
+      onNavigateToSession(cachedSessionId);
+    }
+  }, [experience, onNavigateToSession, selectedSession?.id, sessionArtefact]);
+
+  const handleArtefactSessionResolved = useCallback((resolvedSessionId: string) => {
+    activeArtefactSessionRef.current = resolvedSessionId;
+    if (experience.openArtefactId) {
+      experience.openArtefact(experience.openArtefactId, resolvedSessionId);
+    }
+    if (resolvedSessionId !== selectedSession?.id) {
+      onNavigateToSession(resolvedSessionId);
+    }
+  }, [experience, onNavigateToSession, selectedSession?.id]);
+
+  const handleToggleSplitChat = useCallback(() => {
+    clearSplitTimers();
+    const nextOpen = !splitChatOpen;
+    if (prefersReducedMotion()) {
+      setSplitChatOpen(nextOpen);
+      return;
+    }
+    const currentWidth = sheetPaneRef.current?.getBoundingClientRect().width ?? 0;
+    const stageWidth = splitStageRef.current?.clientWidth ?? 0;
+    const targetWidth = stageWidth > 0
+      ? (nextOpen ? Math.max(320, stageWidth - computeChatPaneWidth(stageWidth)) : stageWidth)
+      : currentWidth;
+    const lock = Math.round(Math.max(currentWidth, targetWidth));
+    if (lock > 0) setSheetLockWidth(lock);
+    setChatToggling(true);
+    setSplitAnimating(true);
+    setSplitChatOpen(nextOpen);
+    splitTimerRef.current = setTimeout(() => {
+      splitTimerRef.current = null;
+      setSplitAnimating(false);
+      setChatToggling(false);
+      setSheetLockWidth(null);
+    }, SPLIT_TRANSITION_MS + 40);
+  }, [clearSplitTimers, splitChatOpen]);
+
+  const registerChatSubmit = useCallback((submit: ((text: string) => Promise<boolean>) | null) => {
+    chatSubmitRef.current = submit;
+  }, []);
+
+  const registerFillSheetComposer = useCallback((fill: ((prompt: string) => void) | null) => {
+    fillSheetComposerRef.current = fill;
+  }, []);
+
+  const handleSendFromSheet = useCallback(async (text: string): Promise<boolean> => {
+    const submit = chatSubmitRef.current;
+    const expectedSessionId = activeArtefactSessionRef.current;
+    if (!submit) return false;
+    if (expectedSessionId && selectedSession?.id !== expectedSessionId) {
+      return false;
+    }
+    if (!splitChatOpen) {
+      handleToggleSplitChat();
+    }
+    return submit(text);
+  }, [handleToggleSplitChat, selectedSession?.id, splitChatOpen]);
+
+  const handleSelectSheetSuggestion = useCallback((prompt: string) => {
+    fillSheetComposerRef.current?.(prompt);
+  }, []);
+
+  const handleTranscriptScrollTop = useCallback((scrollTop: number) => {
+    const raw = Math.max(0, Math.min(1, scrollTop / CARD_DOCK_SCROLL_PX));
+    const quantized = Math.round(raw * 50) / 50;
+    const sessionKey = selectedSession?.id ?? null;
+    setCardScrollState((prev) => (
+      prev.sessionId === sessionKey && prev.progress === quantized
+        ? prev
+        : { sessionId: sessionKey, progress: quantized }
+    ));
+  }, [selectedSession?.id]);
+
+  const sheetEmptyState = useMemo(
+    () => <SheetConversationEmptyState onSelectSuggestion={handleSelectSheetSuggestion} />,
+    [handleSelectSheetSuggestion],
+  );
+
   if (experience.pluginsOpen) {
     return <div className="workspace-main flex h-full min-w-0 overflow-hidden">
       <PluginsPage currentProjects={projects} menuButton={isMobile ? <MobileMenuButton onMenuClick={onMenuClick} /> : null}
@@ -219,21 +459,10 @@ function WorkspaceMain({
       experience.enterSession(sessionId, 'chat');
       onNavigateToSession(sessionId);
     };
-    return experience.openArtefactId ? (
-      <Suspense fallback={<WorkspaceStateView mode="loading" isMobile={isMobile} onMenuClick={onMenuClick} />}>
-        <SpreadsheetEditor
-          key={experience.openArtefactId}
-          artefactId={experience.openArtefactId}
-          menuButton={menuButton}
-          onClose={experience.closeArtefact}
-          onMinimize={openSession}
-          onOpenSession={openSession}
-        />
-      </Suspense>
-    ) : (
+    return (
       <ArtefactsPage
         menuButton={menuButton}
-        onOpenArtefact={experience.openArtefact}
+        onOpenArtefact={handleOpenArtefact}
         onArtefactCreated={() => onProjectsRefresh()}
         onOpenSession={openSession}
         onNewChat={() => experience.openHome('chat')}
@@ -254,12 +483,26 @@ function WorkspaceMain({
     );
   }
 
+  const isSheetSplit = Boolean(mountedArtefactId);
+  const splitOpen = Boolean(mountedArtefactId && splitVisible);
+  const showRightChat = !splitOpen || splitChatOpen;
+
   const header = (
     <IntegratedWorkspaceHeader
       project={selectedProject}
       session={selectedSession}
       mobile={isMobile}
       inspectorOpen={inspectorOpen}
+      compact={splitOpen}
+      compactTitle={t('sidebar:artefacts.editor.conversation')}
+      headerArtefact={sessionArtefact && !splitOpen ? (
+        <ArtefactSessionCard
+          variant="header"
+          artefact={sessionArtefact}
+          onOpen={handleOpenArtefact}
+          scrollProgress={cardScrollProgress}
+        />
+      ) : null}
       onDesktop={tools.openDesktop}
       minimizedTools={tools.minimized}
       onMenu={onMenuClick}
@@ -277,7 +520,7 @@ function WorkspaceMain({
     />
   );
 
-  if (!selectedProject && !isCodeHome) {
+  if (!selectedProject && !isCodeHome && !mountedArtefactId) {
     return (
       <div ref={viewRef} className="workspace-main flex h-full flex-col">
         {header}
@@ -295,124 +538,179 @@ function WorkspaceMain({
   }
 
   return (
-    <div ref={viewRef} className="workspace-main flex h-full flex-col">
-      {header}
-
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className={`flex min-h-0 min-w-[200px] flex-col overflow-hidden ${editorExpanded ? 'hidden' : ''} flex-1`}>
-          <div className={`h-full ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
-            <WorkspaceErrorBoundary showDetails>
-              <ChatInterface
-                homeContent={isCodeHome ? <UsageDashboard /> : undefined}
-                composerLeading={isCodeHome ? <WorkspaceProjectPicker /> : undefined}
-                transcriptHeader={sessionArtefact ? (
-                  <ArtefactSessionCard artefact={sessionArtefact} onOpen={experience.openArtefact} />
-                ) : undefined}
-                composerPlaceholder={sessionArtefact?.kind === 'sheet'
-                  ? t('sidebar:artefacts.editor.composerPlaceholder')
-                  : undefined}
-                isActive={activeTab === 'chat'}
-                selectedProject={selectedProject}
-                selectedSession={selectedSession}
-                ws={ws}
-                sendMessage={sendMessage}
-                onFileOpen={handleFileOpen}
-                onNavigateToSession={onNavigateToSession}
-                onSessionEstablished={onSessionEstablished}
-                onShowSettings={onShowSettings}
-                showRawParameters={showRawParameters}
-                showThinking={showThinking}
-                showChangeSummary={changeSummaryEnabled}
-                onOpenChanges={openChanges}
-                sendByCtrlEnter={sendByCtrlEnter}
-                externalMessageUpdate={externalMessageUpdate}
-                newSessionTrigger={newSessionTrigger}
-                onShowAllTasks={tasksEnabled ? showAllTasks : null}
-              />
-            </WorkspaceErrorBoundary>
-          </div>
-
-          {activeTab === 'files' && (
-            <div className="h-full overflow-hidden">
-              <FileTree
-                selectedProject={selectedProject}
-                onFileOpen={handleFileOpen}
-                revealDirectory={revealDirectory}
-              />
-            </div>
-          )}
-
-          {activeTab === 'shell' && (
-            <div className="h-full w-full overflow-hidden">
-              <StandaloneShell
-                project={selectedProject}
-                session={selectedSession}
-                showHeader={false}
-                isActive={activeTab === 'shell'}
-              />
-            </div>
-          )}
-
-          {activeTab === 'git' && (
-            <div className="h-full overflow-hidden">
-              <GitPanel
-                selectedProject={selectedProject}
-                isMobile={isMobile}
-                onFileOpen={handleFileOpen}
-                onProjectSelect={onProjectSelect}
-                onProjectsRefresh={onProjectsRefresh}
-              />
-            </div>
-          )}
-
-          {shouldShowTasksTab && <TaskMasterPanel isVisible={activeTab === 'tasks'} onBack={() => setActiveTab('chat')} />}
-
-          {activeTab.startsWith('plugin:') && (
-            <div className="flex h-full flex-col overflow-hidden">
-              <div className="workspace-taskmaster-bar border-b border-border/60 pb-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('chat')}
-                  className="workspace-taskmaster-back"
-                >
-                  ← {t('commandPalette.navChat', { defaultValue: 'Back to chat' })}
-                </button>
-              </div>
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <PluginTabContent
-                  pluginName={activeTab.replace('plugin:', '')}
-                  selectedProject={selectedProject}
-                  selectedSession={selectedSession}
+    <div ref={viewRef} className="workspace-main flex h-full flex-col overflow-hidden">
+      <div
+        ref={splitStageRef}
+        className={`workspace-split-stage ${splitOpen ? 'is-split-open' : ''} ${splitOpen && !splitChatOpen ? 'is-chat-collapsed' : ''} ${splitAnimating ? 'is-split-animating' : ''} ${chatToggling ? 'is-chat-toggling' : ''}`}
+      >
+        {mountedArtefactId && (
+          <div
+            ref={sheetPaneRef}
+            className="workspace-sheet-pane"
+            data-open={splitOpen ? 'true' : 'false'}
+          >
+            <div
+              className="workspace-sheet-pane-inner"
+              style={sheetLockWidth ? { width: `${sheetLockWidth}px` } : undefined}
+            >
+              <Suspense fallback={<WorkspaceStateView mode="loading" isMobile={isMobile} onMenuClick={onMenuClick} />}>
+                <SpreadsheetEditor
+                  key={mountedArtefactId}
+                  artefactId={mountedArtefactId}
+                  menuButton={isMobile ? <MobileMenuButton onMenuClick={onMenuClick} /> : null}
+                  embeddedSplit
+                  chatOpen={splitChatOpen}
+                  onToggleChat={handleToggleSplitChat}
+                  splitAnimating={splitAnimating}
+                  externalRunning={chatProcessing}
+                  onSendChatMessage={handleSendFromSheet}
+                  registerFillComposer={registerFillSheetComposer}
+                  onSessionResolved={handleArtefactSessionResolved}
+                  onClose={experience.closeArtefact}
+                  onOpenSession={experience.closeArtefact}
                 />
-              </div>
+              </Suspense>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        <WorkspaceInspectorDock open={inspectorOpen && !editingFile} mobile={isMobile} wide={inspectorView === 'browser' || inspectorView === 'changes'}>
-          <WorkspaceContextInspector view={inspectorView} project={selectedProject} session={selectedSession}
-            onBack={() => setInspectorView('context')} onFileOpen={handleFileOpen}
-            changes={openedChanges} onSelectChange={(path) => setOpenedChanges((current) => current && { ...current, path })} />
-        </WorkspaceInspectorDock>
-        <EditorSidebar
-          onContinueEditing={(path) => {
-            setActiveTab('chat');
-            paletteOps.insertComposerText(t('workspace.files.continuePrompt', { path }));
-          }}
-          onOpenSource={(path) => { handleFileOpen(path); }}
-          editingFile={editingFile}
-          isMobile={isMobile}
-          editorExpanded={editorExpanded}
-          editorWidth={editorWidth}
-          hasManualWidth={hasManualWidth}
-          resizeHandleRef={resizeHandleRef}
-          onResizeStart={handleResizeStart}
-          onCloseEditor={handleCloseEditor}
-          onToggleEditorExpand={handleToggleEditorExpand}
-          onUnsavedChangesChange={handleUnsavedChangesChange}
-          projectPath={selectedProject?.path}
-          fillSpace={activeTab === 'files'}
-        />
+        <div
+          className="workspace-chat-stage"
+          data-split={splitOpen ? 'true' : 'false'}
+          data-chat-visible={showRightChat ? 'true' : 'false'}
+          aria-hidden={!showRightChat || undefined}
+        >
+          <div className="workspace-chat-stage-inner">
+            {header}
+
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <div className={`flex min-h-0 min-w-[200px] flex-col overflow-hidden ${editorExpanded ? 'hidden' : ''} flex-1`}>
+                <div className={`h-full ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
+                  <WorkspaceErrorBoundary showDetails>
+                    <ChatInterface
+                      homeContent={isCodeHome ? <UsageDashboard /> : undefined}
+                      composerLeading={isCodeHome ? <WorkspaceProjectPicker /> : undefined}
+                      hideComposer={splitOpen}
+                      compactLayout={splitOpen}
+                      emptyState={splitOpen ? sheetEmptyState : undefined}
+                      onRegisterSubmit={isSheetSplit ? registerChatSubmit : undefined}
+                      onProcessingChange={isSheetSplit ? setChatProcessing : undefined}
+                      onTranscriptScrollTop={sessionArtefact && !splitOpen ? handleTranscriptScrollTop : undefined}
+                      transcriptHeader={sessionArtefact && !splitOpen ? (
+                        <ArtefactSessionCard
+                          artefact={sessionArtefact}
+                          onOpen={handleOpenArtefact}
+                          scrollProgress={cardScrollProgress}
+                        />
+                      ) : undefined}
+                      composerPlaceholder={sessionArtefact?.kind === 'sheet'
+                        ? t('sidebar:artefacts.editor.composerPlaceholder')
+                        : undefined}
+                      isActive={activeTab === 'chat'}
+                      selectedProject={selectedProject}
+                      selectedSession={selectedSession}
+                      ws={ws}
+                      sendMessage={sendMessage}
+                      onFileOpen={handleFileOpen}
+                      onNavigateToSession={onNavigateToSession}
+                      onSessionEstablished={onSessionEstablished}
+                      onShowSettings={onShowSettings}
+                      showRawParameters={showRawParameters}
+                      showThinking={showThinking}
+                      showChangeSummary={changeSummaryEnabled}
+                      onOpenChanges={openChanges}
+                      sendByCtrlEnter={sendByCtrlEnter}
+                      externalMessageUpdate={externalMessageUpdate}
+                      newSessionTrigger={newSessionTrigger}
+                      onShowAllTasks={tasksEnabled ? showAllTasks : null}
+                    />
+                  </WorkspaceErrorBoundary>
+                </div>
+
+                {activeTab === 'files' && (
+                  <div className="h-full overflow-hidden">
+                    <FileTree
+                      selectedProject={selectedProject}
+                      onFileOpen={handleFileOpen}
+                      revealDirectory={revealDirectory}
+                    />
+                  </div>
+                )}
+
+                {activeTab === 'shell' && (
+                  <div className="h-full w-full overflow-hidden">
+                    <StandaloneShell
+                      project={selectedProject}
+                      session={selectedSession}
+                      showHeader={false}
+                      isActive={activeTab === 'shell'}
+                    />
+                  </div>
+                )}
+
+                {activeTab === 'git' && (
+                  <div className="h-full overflow-hidden">
+                    <GitPanel
+                      selectedProject={selectedProject}
+                      isMobile={isMobile}
+                      onFileOpen={handleFileOpen}
+                      onProjectSelect={onProjectSelect}
+                      onProjectsRefresh={onProjectsRefresh}
+                    />
+                  </div>
+                )}
+
+                {shouldShowTasksTab && <TaskMasterPanel isVisible={activeTab === 'tasks'} onBack={() => setActiveTab('chat')} />}
+
+                {activeTab.startsWith('plugin:') && (
+                  <div className="flex h-full flex-col overflow-hidden">
+                    <div className="workspace-taskmaster-bar border-b border-border/60 pb-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('chat')}
+                        className="workspace-taskmaster-back"
+                      >
+                        ← {t('commandPalette.navChat', { defaultValue: 'Back to chat' })}
+                      </button>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-hidden">
+                      <PluginTabContent
+                        pluginName={activeTab.replace('plugin:', '')}
+                        selectedProject={selectedProject}
+                        selectedSession={selectedSession}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <WorkspaceInspectorDock open={inspectorOpen && !editingFile && !splitOpen} mobile={isMobile} wide={inspectorView === 'browser' || inspectorView === 'changes'}>
+                <WorkspaceContextInspector view={inspectorView} project={selectedProject} session={selectedSession}
+                  onBack={() => setInspectorView('context')} onFileOpen={handleFileOpen}
+                  changes={openedChanges} onSelectChange={(path) => setOpenedChanges((current) => current && { ...current, path })} />
+              </WorkspaceInspectorDock>
+              <EditorSidebar
+                onContinueEditing={(path) => {
+                  setActiveTab('chat');
+                  paletteOps.insertComposerText(t('workspace.files.continuePrompt', { path }));
+                }}
+                onOpenSource={(path) => { handleFileOpen(path); }}
+                editingFile={editingFile}
+                isMobile={isMobile}
+                editorExpanded={editorExpanded}
+                editorWidth={editorWidth}
+                hasManualWidth={hasManualWidth}
+                resizeHandleRef={resizeHandleRef}
+                onResizeStart={handleResizeStart}
+                onCloseEditor={handleCloseEditor}
+                onToggleEditorExpand={handleToggleEditorExpand}
+                onUnsavedChangesChange={handleUnsavedChangesChange}
+                projectPath={selectedProject?.path}
+                fillSpace={activeTab === 'files'}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

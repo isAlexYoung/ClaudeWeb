@@ -36,8 +36,10 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
   const scheduledTasksOpen = mainPage === 'scheduled-tasks';
   const pluginsOpen = mainPage === 'plugins';
   const artefactsOpen = mainPage === 'artefacts';
-  // The artefact whose editor fills the Artefacts page; null shows the list.
+  // The artefact currently open in split view alongside its Chat conversation; null shows normal Chat.
   const [openArtefactId, setOpenArtefactId] = useState<string | null>(null);
+  // Session bound to the open artefact so passive URL-to-session sync keeps the split pane mounted.
+  const openArtefactSessionRef = useRef<string | null>(null);
   // Reopening New Chat must reset an existing draft even when the mode is unchanged.
   const [homeRequest, setHomeRequest] = useState(0);
   // A failed chat-workspace preparation stays visible until a new attempt is requested.
@@ -69,6 +71,8 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setMode(nextMode);
     setHome(true);
     setMainPage('workspace');
+    openArtefactSessionRef.current = null;
+    setOpenArtefactId(null);
     setHomeRequest((value) => value + 1);
     setContextUsage(null);
     setContextDetails(null);
@@ -92,6 +96,8 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setMode(nextMode);
     setHome(false);
     setMainPage('workspace');
+    openArtefactSessionRef.current = null;
+    setOpenArtefactId(null);
     setResumeSessionId(session);
     setContextUsage(null);
     setContextDetails(null);
@@ -103,11 +109,13 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setMode('project');
     setHome(false);
     setMainPage('workspace');
+    openArtefactSessionRef.current = null;
+    setOpenArtefactId(null);
     setContextUsage(null);
     setContextDetails(null);
   }, []);
 
-  const enterSession = useCallback((id: string, modeHint?: WorkspaceMode) => {
+  const enterSession = useCallback((id: string, modeHint?: WorkspaceMode, options?: { keepArtefact?: boolean }) => {
     const saved = readSessions();
     const sessionMode = modeHint ?? (saved.chatSessionIds.includes(id) ? 'chat' : 'project');
     // Persist a directory-derived classification before a subsequent URL change resolves the same session.
@@ -119,6 +127,10 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setMode(sessionMode);
     setHome(false);
     setMainPage('workspace');
+    if (!(options?.keepArtefact && openArtefactSessionRef.current === id)) {
+      openArtefactSessionRef.current = null;
+      setOpenArtefactId(null);
+    }
     setContextUsage(null);
     setContextDetails(null);
   }, []);
@@ -135,31 +147,50 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
 
   const openScheduledTasks = useCallback(() => {
     setMainPage('scheduled-tasks');
+    openArtefactSessionRef.current = null;
+    setOpenArtefactId(null);
     setContextUsage(null);
     setContextDetails(null);
   }, []);
 
   const openPlugins = useCallback(() => {
     setMainPage('plugins');
+    openArtefactSessionRef.current = null;
+    setOpenArtefactId(null);
     setContextUsage(null);
     setContextDetails(null);
   }, []);
 
   const openArtefacts = useCallback(() => {
     setMainPage('artefacts');
+    openArtefactSessionRef.current = null;
     setOpenArtefactId(null);
     setContextUsage(null);
     setContextDetails(null);
   }, []);
 
-  const openArtefact = useCallback((id: string) => {
-    setMainPage('artefacts');
+  // Keeps the workspace mounted so the main ChatInterface slides smoothly to
+  // the right as the spreadsheet opens on the left (left sheet + right chat).
+  const openArtefact = useCallback((id: string, sessionId?: string | null) => {
+    openArtefactSessionRef.current = sessionId ?? null;
+    if (sessionId) {
+      const saved = readSessions();
+      if (!saved.chatSessionIds.includes(sessionId)) {
+        writeUserPreference('workspaceSessions', { ...saved, chatSessionIds: [...saved.chatSessionIds, sessionId] });
+      }
+      lastSessions.current.chat = sessionId;
+    }
+    setResumeSessionId(null);
+    setMainPage('workspace');
+    setHome(false);
+    setMode('chat');
     setOpenArtefactId(id);
-    setContextUsage(null);
-    setContextDetails(null);
   }, []);
 
-  const closeArtefact = useCallback(() => setOpenArtefactId(null), []);
+  const closeArtefact = useCallback(() => {
+    openArtefactSessionRef.current = null;
+    setOpenArtefactId(null);
+  }, []);
 
   const toggleSessionPin = useCallback((id: string) => {
     const saved = readSessions();
