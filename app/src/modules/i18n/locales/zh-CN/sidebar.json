@@ -469,7 +469,7 @@
     "moreTypes": "更多类型",
     "beta": "测试版",
     "comingSoon": "{{name}}即将推出。",
-    "createFailed": "无法新建电子表格：{{error}}",
+    "createFailed": "无法新建：{{error}}",
     "tileActions": "{{name}}选项",
     "newBlank": "新建空白",
     "kinds": {
@@ -555,6 +555,60 @@
         "you": "你",
         "tools": "使用了 {{count}} 个工具",
         "openInChat": "在聊天中打开"
+      }
+    },
+    "docEditor": {
+      "titleMenu": "文档选项",
+      "downloadMarkdown": "下载 Markdown",
+      "reloaded": "文档已被更新，已载入最新内容。",
+      "loadFailed": "无法打开文档：{{error}}",
+      "composerPlaceholder": "描述你需要的文档",
+      "working": "Claude 正在编辑文档…",
+      "sessionTitle": "文档：{{title}}",
+      "placeholder": "开始书写，或在下方让 Claude 起草…",
+      "toolbar": {
+        "textStyle": "文本样式",
+        "paragraph": "正文",
+        "heading1": "标题 1",
+        "heading2": "标题 2",
+        "heading3": "标题 3",
+        "strike": "删除线",
+        "code": "行内代码",
+        "link": "链接",
+        "linkPrompt": "链接地址（留空则移除链接）",
+        "bulletList": "无序列表",
+        "orderedList": "有序列表",
+        "taskList": "待办清单",
+        "quote": "引用",
+        "codeBlock": "代码块",
+        "table": "插入表格",
+        "divider": "分隔线"
+      },
+      "conversation": {
+        "emptyTitle": "您需要什么样的文档？",
+        "suggestions": {
+          "brief": "一页纸项目简报，包含目标、范围和里程碑",
+          "notes": "会议纪要，列出决定和待办事项",
+          "plan": "一份周计划，每天附带待办清单"
+        }
+      }
+    },
+    "whiteboardEditor": {
+      "titleMenu": "白板选项",
+      "downloadPng": "下载 PNG",
+      "downloadFile": "下载 .excalidraw",
+      "reloaded": "白板已被更新，已载入最新内容。",
+      "loadFailed": "无法打开白板：{{error}}",
+      "composerPlaceholder": "描述你想画的内容",
+      "working": "Claude 正在绘制白板…",
+      "sessionTitle": "白板：{{title}}",
+      "conversation": {
+        "emptyTitle": "想画点什么？",
+        "suggestions": {
+          "flow": "用户注册与登录的流程图",
+          "architecture": "一个 Web 应用的系统架构图",
+          "mindmap": "规划产品发布的思维导图"
+        }
       }
     }
   }

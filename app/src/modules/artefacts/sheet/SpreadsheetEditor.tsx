@@ -141,10 +141,10 @@ export default function SpreadsheetEditor({
     if (next.sessionId) onSessionResolved?.(next.sessionId);
     notifyArtefactsChanged({ upsert: next });
     revisionRef.current = next.revision;
-    if (next.content) {
+    if (next.content && typeof next.content === 'object') {
       savedTextRef.current = JSON.stringify(next.content);
       pendingTextRef.current = null;
-      setGridData(toGridSheets(next.content));
+      setGridData(toGridSheets(next.content as SheetDocument));
       setGridKey((key) => key + 1);
     } else if (next.contentError) {
       // The grid keeps the last good contents; the next save repairs the file.

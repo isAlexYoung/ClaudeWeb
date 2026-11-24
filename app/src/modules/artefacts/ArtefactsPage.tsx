@@ -13,7 +13,7 @@ import { useNow } from '@/shared/hooks/useNow';
 import { formatRelativeTime } from '@/shared/timeFormat';
 import type { ArtefactKind, ArtefactSummary } from '@/shared/types';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui';
-import { ARTEFACT_KINDS, CREATABLE_KINDS, artefactKind } from '@/modules/artefacts/artefactKinds';
+import { ARTEFACT_KINDS, CREATABLE_KINDS, artefactKind, isEditableKind } from '@/modules/artefacts/artefactKinds';
 import { useArtefacts } from '@/modules/artefacts/useArtefacts';
 
 type ArtefactsPageProps = {
@@ -86,8 +86,30 @@ function EmptyIllustration() {
   );
 }
 
-/** A spreadsheet or document sketched as the card's preview. */
+/** A whiteboard's preview: a few hand-drawn boxes joined by arrows. */
+function WhiteboardSketch() {
+  return (
+    <svg className="artefact-card-board" viewBox="0 0 160 92" fill="none" aria-hidden="true">
+      <path d="M8 14.5c11-1 23-.6 34 .4.8 7 .6 14-.3 21-11 .8-22 .6-33-.3-.9-7-.9-14-.7-21.1Z" fill="var(--kind-soft)" stroke="var(--kind-fg)" strokeWidth="1.8" strokeLinejoin="round" />
+      <ellipse cx="92" cy="25" rx="21" ry="13" fill="var(--kind-bg)" stroke="var(--kind-fg)" strokeWidth="1.8" />
+      <path d="M118 58.5c10-.8 21-.5 32 .3.6 7 .4 14-.4 20-10.6.7-21 .5-31.4-.4-.6-6.6-.7-13.3-.2-19.9Z" fill="var(--kind-soft)" stroke="var(--kind-fg)" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M43 25.5c8-.4 16-.3 25-.2M64 21.5l5 3.8-5 4.1" stroke="var(--kind-fg)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M108 35c6 6 10 13 15 21M117.5 54l5.8 2.4.4-6.2" stroke="var(--kind-fg)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 64c9-4 16 5 24 0s14-5 22 1" stroke="var(--kind-fg)" strokeWidth="1.6" strokeLinecap="round" opacity=".55" />
+    </svg>
+  );
+}
+
+/** A spreadsheet, document or whiteboard sketched as the card's preview. */
 function ArtefactPreview({ artefact }: { artefact: ArtefactSummary }) {
+  if (artefact.kind === 'whiteboard') {
+    return (
+      <div className="artefact-card-preview" aria-hidden="true">
+        <div className="artefact-card-paper artefact-card-paper-back" />
+        <div className="artefact-card-paper artefact-card-paper-board"><WhiteboardSketch /></div>
+      </div>
+    );
+  }
   const isSheet = artefact.kind === 'sheet';
   return (
     <div className="artefact-card-preview" aria-hidden="true">
@@ -100,6 +122,11 @@ function ArtefactPreview({ artefact }: { artefact: ArtefactSummary }) {
               {Array.from({ length: 16 }, (_, index) => <i key={index} />)}
             </div>
           </>
+        ) : artefact.kind === 'doc' ? (
+          <>
+            <span className="artefact-card-paper-title">{artefact.title}</span>
+            <div className="artefact-card-lines"><i /><i /><i /><i /><b /></div>
+          </>
         ) : (
           <div className="artefact-card-lines"><i /><i /><i /><i /><i /><b /></div>
         )}
@@ -111,13 +138,13 @@ function ArtefactPreview({ artefact }: { artefact: ArtefactSummary }) {
 /**
  * Rendered by WorkspaceMain when the sidebar's Artefacts entry is open. Lists
  * the user's artefacts with search, filters, a grid/list view and the New
- * menu; only spreadsheets can be created and opened so far, the other kinds
- * show their picture and say they are coming.
+ * menu; spreadsheets, documents and whiteboards can be created and opened so
+ * far, the other kinds show their picture and say they are coming.
  */
 export default function ArtefactsPage({ menuButton, onOpenArtefact, onArtefactCreated, onOpenSession, onNewChat }: ArtefactsPageProps) {
   const { t, i18n } = useTranslation('sidebar');
   const now = useNow();
-  const { artefacts, error, createSheet, update, remove } = useArtefacts();
+  const { artefacts, error, createArtefact, update, remove } = useArtefacts();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -174,14 +201,14 @@ export default function ArtefactsPage({ menuButton, onOpenArtefact, onArtefactCr
   const filtersActive = kinds.size > 0 || openedWithin !== 'any' || pinnedOnly || sort !== 'opened';
 
   const create = async (kind: ArtefactKind) => {
-    if (kind !== 'sheet') {
+    if (!isEditableKind(kind)) {
       setNotice(t('artefacts.comingSoon', { name: kindLabel(kind) }));
       return;
     }
     if (creating) return;
     setCreating(true);
     try {
-      const created = await createSheet(t('artefacts.untitled'));
+      const created = await createArtefact(kind, t('artefacts.untitled'));
       onArtefactCreated?.(created);
       onOpenArtefact(created.id);
     } catch (caught) {
@@ -431,7 +458,7 @@ export default function ArtefactsPage({ menuButton, onOpenArtefact, onArtefactCr
                     <button
                       type="button"
                       className="artefacts-tile-face"
-                      disabled={creating && definition.kind === 'sheet'}
+                      disabled={creating && isEditableKind(definition.kind)}
                       onClick={() => void create(definition.kind)}
                     >
                       <TileTexture />

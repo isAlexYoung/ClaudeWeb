@@ -96,9 +96,10 @@ test('a new spreadsheet is an empty sheet on disk with its own conversation, lis
   });
 });
 
-test('only spreadsheets can be created, and only by their owner can they be read', async () => {
+test('only the editable kinds can be created, and only by their owner can they be read', async () => {
   await withArtefacts((userId) => {
-    expectAppError(() => artefactsService.create(userId, { kind: 'doc' }), 'ARTEFACT_KIND_UNSUPPORTED');
+    expectAppError(() => artefactsService.create(userId, { kind: 'slides' }), 'ARTEFACT_KIND_UNSUPPORTED');
+    expectAppError(() => artefactsService.create(userId, {}), 'ARTEFACT_KIND_UNSUPPORTED');
     const created = artefactsService.create(userId, { kind: 'sheet' });
     const other = Number(userDb.createUser('someone-else', 'hash').id);
     expectAppError(() => artefactsService.open(other, created.id), 'ARTEFACT_NOT_FOUND');
@@ -123,6 +124,68 @@ test('saving needs the revision the editor loaded, so Claude\'s edits are never 
       () => artefactsService.saveContent(userId, created.id, { content: { format: 'csv' }, baseRevision: saved.revision }),
       'ARTEFACT_INVALID_CONTENT',
     );
+  });
+});
+
+test('a new document is an empty Markdown file; it saves text and tells Claude to write Markdown', async () => {
+  await withArtefacts((userId, directory) => {
+    const created = artefactsService.create(userId, { kind: 'doc', title: '周报' });
+    assert.equal(created.kind, 'doc');
+    const file = path.join(directory, `${created.id}.md`);
+    assert.equal(fs.readFileSync(file, 'utf8'), '');
+
+    const opened = artefactsService.open(userId, created.id);
+    assert.equal(opened.content, '');
+    assert.equal(opened.contentError, null);
+    const markdown = '# 周报\n\n- [x] 发布 2.3.4\n- [ ] 写测试\n';
+    const saved = artefactsService.saveContent(userId, created.id, { content: markdown, baseRevision: opened.revision });
+    assert.equal(fs.readFileSync(file, 'utf8'), markdown);
+    assert.equal(artefactsService.open(userId, created.id).content, markdown);
+
+    expectAppError(
+      () => artefactsService.saveContent(userId, created.id, { content: { text: markdown }, baseRevision: saved.revision }),
+      'ARTEFACT_INVALID_CONTENT',
+    );
+    expectAppError(
+      () => artefactsService.saveContent(userId, created.id, { content: 'stale', baseRevision: opened.revision }),
+      'ARTEFACT_CHANGED',
+    );
+
+    const instructions = resolveArtefactTurnContext(created.sessionId!)?.systemPromptAppend ?? '';
+    assert.ok(instructions.includes(file));
+    assert.match(instructions, /Markdown/);
+  });
+});
+
+test('a new whiteboard is an empty Excalidraw scene; elements must at least name their type', async () => {
+  await withArtefacts(async (userId, directory) => {
+    const created = artefactsService.create(userId, { kind: 'whiteboard', title: '架构图' });
+    assert.equal(created.kind, 'whiteboard');
+    const file = path.join(directory, `${created.id}.excalidraw`);
+    const blank = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.equal(blank.type, 'excalidraw');
+    assert.deepEqual(blank.elements, []);
+
+    const opened = artefactsService.open(userId, created.id);
+    assert.deepEqual(opened.content, blank);
+    const scene = { ...blank, elements: [{ type: 'rectangle', id: 'box', x: 0, y: 0, width: 100, height: 60, label: { text: 'API' } }] };
+    artefactsService.saveContent(userId, created.id, { content: scene, baseRevision: opened.revision });
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), scene);
+
+    const { revision } = artefactsService.open(userId, created.id);
+    expectAppError(
+      () => artefactsService.saveContent(userId, created.id, { content: { ...blank, elements: [{ x: 1 }] }, baseRevision: revision }),
+      'ARTEFACT_INVALID_CONTENT',
+    );
+    fs.writeFileSync(file, JSON.stringify({ type: 'tldraw', elements: [] }));
+    assert.equal(artefactsService.open(userId, created.id).contentError, '"type" must be "excalidraw".');
+
+    const runs: RunCall[] = [];
+    artefactsService.sendMessage(userId, created.id, { text: '画一张登录流程图' }, createRuntime(runs));
+    await waitForIdle(userId, created.id);
+    const instructions = String(runs[0].options.systemPromptAppend);
+    assert.ok(instructions.includes(file));
+    assert.match(instructions, /Excalidraw/);
   });
 });
 

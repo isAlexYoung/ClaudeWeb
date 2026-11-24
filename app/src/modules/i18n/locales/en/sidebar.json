@@ -472,7 +472,7 @@
     "moreTypes": "More types",
     "beta": "Beta",
     "comingSoon": "{{name}} is coming soon.",
-    "createFailed": "Could not create the spreadsheet: {{error}}",
+    "createFailed": "Could not create it: {{error}}",
     "tileActions": "{{name}} options",
     "newBlank": "New blank",
     "kinds": {
@@ -558,6 +558,60 @@
         "you": "You",
         "tools": "Used {{count}} tools",
         "openInChat": "Open in chat"
+      }
+    },
+    "docEditor": {
+      "titleMenu": "Document options",
+      "downloadMarkdown": "Download Markdown",
+      "reloaded": "The document was updated; the latest version is shown.",
+      "loadFailed": "Could not open the document: {{error}}",
+      "composerPlaceholder": "Describe the document you need",
+      "working": "Claude is editing the document…",
+      "sessionTitle": "Document: {{title}}",
+      "placeholder": "Start writing, or ask Claude below to draft it…",
+      "toolbar": {
+        "textStyle": "Text style",
+        "paragraph": "Text",
+        "heading1": "Heading 1",
+        "heading2": "Heading 2",
+        "heading3": "Heading 3",
+        "strike": "Strikethrough",
+        "code": "Inline code",
+        "link": "Link",
+        "linkPrompt": "Link address (leave empty to remove the link)",
+        "bulletList": "Bulleted list",
+        "orderedList": "Numbered list",
+        "taskList": "Checklist",
+        "quote": "Quote",
+        "codeBlock": "Code block",
+        "table": "Insert table",
+        "divider": "Divider"
+      },
+      "conversation": {
+        "emptyTitle": "What should this document say?",
+        "suggestions": {
+          "brief": "A one-page project brief with goals, scope and milestones",
+          "notes": "Meeting notes with decisions and action items",
+          "plan": "A weekly plan with a checklist for each day"
+        }
+      }
+    },
+    "whiteboardEditor": {
+      "titleMenu": "Whiteboard options",
+      "downloadPng": "Download PNG",
+      "downloadFile": "Download .excalidraw",
+      "reloaded": "The whiteboard was updated; the latest version is shown.",
+      "loadFailed": "Could not open the whiteboard: {{error}}",
+      "composerPlaceholder": "Describe what to draw",
+      "working": "Claude is drawing on the whiteboard…",
+      "sessionTitle": "Whiteboard: {{title}}",
+      "conversation": {
+        "emptyTitle": "What should we draw?",
+        "suggestions": {
+          "flow": "A flowchart of a user signing up and logging in",
+          "architecture": "A system architecture diagram for a web app",
+          "mindmap": "A mind map for planning a product launch"
+        }
       }
     }
   }

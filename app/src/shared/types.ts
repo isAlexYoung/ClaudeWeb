@@ -1990,7 +1990,7 @@ export type WorkspaceExperience = WorkspaceSessionPreferences & {
   setTranscriptActions: (actions: TranscriptActions | null) => void;
 };
 
-/** The kinds of artefact the Artefacts page shows; only `sheet` can be created so far. */
+/** The kinds of artefact the Artefacts page shows; `sheet`, `doc` and `whiteboard` can be created so far. */
 export type ArtefactKind = 'doc' | 'slides' | 'sheet' | 'design' | 'design-system' | 'data' | 'whiteboard' | 'other';
 
 /** One artefact as `GET /api/artefacts` lists it. Times are ISO strings. */
@@ -2043,9 +2043,25 @@ export type SheetDocument = {
   sheets: SheetData[];
 };
 
+/**
+ * A whiteboard file: an Excalidraw scene. `elements` may hold Excalidraw's
+ * simplified "skeleton" elements written by Claude next to full ones.
+ */
+export type WhiteboardDocument = {
+  type: 'excalidraw';
+  version: number;
+  source?: string;
+  elements: Array<Record<string, unknown>>;
+  appState?: Record<string, unknown>;
+  files?: Record<string, unknown>;
+};
+
+/** What an artefact's file holds: a spreadsheet, a whiteboard scene, or a document's Markdown. */
+export type ArtefactContent = SheetDocument | WhiteboardDocument | string;
+
 /** One artefact as its editor opens it; `content` is null when the file is missing or invalid. */
 export type ArtefactDetail = ArtefactSummary & {
-  content: SheetDocument | null;
+  content: ArtefactContent | null;
   contentError: string | null;
   /** Changes whenever the file does, whoever wrote it. */
   revision: string;

@@ -17,17 +17,22 @@ export type ArtefactKindDefinition = {
 
 /** Every kind, in the order the tiles, New menu and filter show them. */
 export const ARTEFACT_KINDS: ArtefactKindDefinition[] = [
-  { kind: 'doc', icon: File, available: false, creatable: true },
+  { kind: 'doc', icon: File, available: true, creatable: true },
   { kind: 'slides', icon: Presentation, available: false, creatable: true },
   { kind: 'sheet', icon: Sheet, beta: true, available: true, creatable: true },
   { kind: 'design', icon: Palette, available: false, creatable: true },
   { kind: 'design-system', icon: Component, available: false, creatable: false },
   { kind: 'data', icon: ChartColumnBig, available: false, creatable: true },
-  { kind: 'whiteboard', icon: Shapes, beta: true, available: false, creatable: true },
+  { kind: 'whiteboard', icon: Shapes, beta: true, available: true, creatable: true },
   { kind: 'other', icon: Sparkles, available: false, creatable: false },
 ];
 
 export const CREATABLE_KINDS = ARTEFACT_KINDS.filter((definition) => definition.creatable);
+
+/** The kinds that have an editor: they can be created and opened. */
+export function isEditableKind(kind: string): kind is 'sheet' | 'doc' | 'whiteboard' {
+  return kind === 'sheet' || kind === 'doc' || kind === 'whiteboard';
+}
 
 const BY_KIND = new Map(ARTEFACT_KINDS.map((definition) => [definition.kind, definition]));
 

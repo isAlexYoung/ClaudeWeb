@@ -4,9 +4,16 @@ import { Download } from 'lucide-react';
 
 import { api } from '@/shared/api';
 import type { ArtefactDetail, ArtefactSummary } from '@/shared/types';
-import { artefactKind } from '@/modules/artefacts/artefactKinds';
-import { sheetToCsv } from '@/modules/artefacts/sheet/sheetFormat';
+import { artefactKind, isEditableKind } from '@/modules/artefacts/artefactKinds';
+import { artefactDownload, downloadBlob } from '@/modules/artefacts/editor/download';
 import { readArtefactResponse } from '@/modules/artefacts/useArtefacts';
+
+/** The download button's label for each kind that has a file to save. */
+const DOWNLOAD_LABEL_KEYS = {
+  sheet: 'artefacts.editor.downloadCsv',
+  doc: 'artefacts.docEditor.downloadMarkdown',
+  whiteboard: 'artefacts.whiteboardEditor.downloadFile',
+} as const;
 
 type ArtefactSessionCardProps = {
   artefact: ArtefactSummary;
@@ -25,7 +32,8 @@ function clamp01(value: number): number {
 /**
  * Shown at the top of an artefact's own Chat conversation (and smoothly docked
  * into the workspace header bar as the user scrolls down). Clicking opens the
- * spreadsheet in split view; the action on the right downloads CSV.
+ * artefact in split view; the action on the right downloads its file (CSV for a
+ * spreadsheet, Markdown for a document, .excalidraw for a whiteboard).
  */
 export default function ArtefactSessionCard({
   artefact,
@@ -39,18 +47,15 @@ export default function ArtefactSessionCard({
   const Icon = definition.icon;
   const progress = clamp01(scrollProgress);
 
-  const downloadCsv = async () => {
-    if (downloading || artefact.kind !== 'sheet') return;
+  const downloadLabel = isEditableKind(artefact.kind) ? t(DOWNLOAD_LABEL_KEYS[artefact.kind]) : null;
+
+  const downloadFile = async () => {
+    if (downloading || !downloadLabel) return;
     setDownloading(true);
     try {
       const detail = await readArtefactResponse<ArtefactDetail>(await api.artefacts.open(artefact.id));
-      const firstSheet = detail.content?.sheets?.[0];
-      if (!firstSheet) return;
-      const blob = new Blob([`\uFEFF${sheetToCsv(firstSheet)}`], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = Object.assign(window.document.createElement('a'), { href: url, download: `${detail.title}.csv` });
-      link.click();
-      URL.revokeObjectURL(url);
+      const file = artefactDownload(detail);
+      if (file) downloadBlob(file.blob, file.filename);
     } finally {
       setDownloading(false);
     }
@@ -85,15 +90,15 @@ export default function ArtefactSessionCard({
               <small>{t(`artefacts.kinds.${artefact.kind}`)}</small>
             </span>
           </button>
-          {artefact.kind === 'sheet' && (
+          {downloadLabel && (
             <button
               type="button"
               className="artefact-icon-button artefact-header-pill-action"
-              aria-label={t('artefacts.editor.downloadCsv')}
-              title={t('artefacts.editor.downloadCsv')}
+              aria-label={downloadLabel}
+              title={downloadLabel}
               tabIndex={visible ? 0 : -1}
               disabled={downloading}
-              onClick={() => void downloadCsv()}
+              onClick={() => void downloadFile()}
             >
               <Download size={14} />
             </button>
@@ -134,15 +139,15 @@ export default function ArtefactSessionCard({
             <small>{t(`artefacts.kinds.${artefact.kind}`)}</small>
           </span>
         </button>
-        {artefact.kind === 'sheet' && (
+        {downloadLabel && (
           <button
             type="button"
             className="artefact-icon-button artefact-session-card-action"
-            aria-label={t('artefacts.editor.downloadCsv')}
-            title={t('artefacts.editor.downloadCsv')}
+            aria-label={downloadLabel}
+            title={downloadLabel}
             tabIndex={hidden ? -1 : undefined}
             disabled={downloading}
-            onClick={() => void downloadCsv()}
+            onClick={() => void downloadFile()}
           >
             <Download size={16} />
           </button>

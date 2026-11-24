@@ -1,7 +1,7 @@
 import { getConnection } from '@/modules/database/connection.js';
 
-/** The kinds an artefact row can name. Only `sheet` can be created so far. */
-export type ArtefactKind = 'sheet';
+/** The kinds an artefact row can name: the ones that can be created and edited so far. */
+export type ArtefactKind = 'sheet' | 'doc' | 'whiteboard';
 
 /** One artefact as stored: the content lives in `file_path`, everything shown about it here. */
 export type ArtefactRow = {

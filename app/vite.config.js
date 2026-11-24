@@ -1,4 +1,6 @@
+import fs from 'node:fs'
 import { createRequire } from 'node:module'
+import path from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -8,6 +10,40 @@ import { getConnectableHost, normalizeLoopbackHost } from './shared/networkHosts
 // version the server process is actually running. Reading package.json here and
 // injecting it keeps the frontend free of imports that reach outside src/.
 const pkg = createRequire(import.meta.url)('./package.json')
+
+// Excalidraw (the whiteboard editor) loads its hand-drawn and CJK fonts from
+// `<EXCALIDRAW_ASSET_PATH>/fonts/...`, falling back to the esm.sh CDN. They are
+// served from ClaudeWeb itself instead, so whiteboards work offline and where
+// the CDN is unreachable: from node_modules while developing, copied into
+// dist/excalidraw-assets on build. src/modules/artefacts/whiteboard/assetPath.ts
+// points Excalidraw at them.
+const EXCALIDRAW_FONTS = fileURLToPath(new URL('./node_modules/@excalidraw/excalidraw/dist/prod/fonts', import.meta.url))
+
+function excalidrawAssets() {
+  let outDir = 'dist'
+  return {
+    name: 'claudeweb-excalidraw-assets',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir)
+    },
+    configureServer(server) {
+      const prefix = `${(server.config.base || '/').replace(/\/?$/, '/')}excalidraw-assets/fonts/`
+      server.middlewares.use((req, res, next) => {
+        if (!req.url || !req.url.startsWith(prefix)) return next()
+        const relative = decodeURIComponent(req.url.slice(prefix.length).split('?')[0])
+        const file = path.resolve(EXCALIDRAW_FONTS, relative)
+        if (!file.startsWith(EXCALIDRAW_FONTS + path.sep) || !fs.existsSync(file)) return next()
+        res.setHeader('Content-Type', file.endsWith('.woff2') ? 'font/woff2' : 'application/octet-stream')
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+        fs.createReadStream(file).pipe(res)
+      })
+    },
+    closeBundle() {
+      if (!fs.existsSync(EXCALIDRAW_FONTS)) return
+      fs.cpSync(EXCALIDRAW_FONTS, path.join(outDir, 'excalidraw-assets', 'fonts'), { recursive: true })
+    }
+  }
+}
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
@@ -27,7 +63,7 @@ export default defineConfig(({ mode }) => {
   return {
     // The UI can be served under a sub-path such as /claude/.
     base: env.VITE_BASE_PATH || '/',
-    plugins: [react()],
+    plugins: [react(), excalidrawAssets()],
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version)
     },

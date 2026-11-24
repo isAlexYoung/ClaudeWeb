@@ -6,6 +6,10 @@ export { default as ArtefactsPage } from '@/modules/artefacts/ArtefactsPage';
 // ArtefactSessionCard: rendered at the top of an artefact's Chat conversation.
 export { default as ArtefactSessionCard } from '@/modules/artefacts/ArtefactSessionCard';
 
+// ArtefactEditor: rendered by WorkspaceMain in the split view; picks the
+// spreadsheet, document or whiteboard editor (each loaded on demand).
+export { default as ArtefactEditor } from '@/modules/artefacts/ArtefactEditor';
+
 // Shared hooks for sidebar icon tagging and Chat conversation artefact lookup.
 export {
   getCachedArtefact,
@@ -14,9 +18,13 @@ export {
   useArtefactSessionIds,
 } from '@/modules/artefacts/useArtefacts';
 
-// Empty-state prompt suggestions shared by the split-view ChatInterface when a spreadsheet has no messages yet.
+// Empty-state prompt suggestions shared by the split-view ChatInterface when an artefact has no messages yet.
 export { SheetConversationEmptyState } from '@/modules/artefacts/sheet/SheetConversation';
 
-// SpreadsheetEditor: rendered by WorkspaceMain for an opened spreadsheet. Loaded on
+// The i18n key of a string that differs by artefact kind (e.g. the Chat composer's placeholder).
+export { kindTextKey } from '@/modules/artefacts/editor/kindText';
+export { isEditableKind } from '@/modules/artefacts/artefactKinds';
+
+// SpreadsheetEditor: kept for callers that open a spreadsheet directly. Loaded on
 // demand, so FortuneSheet (and its styles) only download when a spreadsheet opens.
 export const SpreadsheetEditor = lazy(() => import('@/modules/artefacts/sheet/SpreadsheetEditor'));

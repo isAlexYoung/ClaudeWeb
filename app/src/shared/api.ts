@@ -380,10 +380,10 @@ export const api = {
     runNow: (id: string) => post(`/api/scheduled-tasks/${encodeURIComponent(id)}/run`),
   },
 
-  // Artefacts: spreadsheets kept as files that Claude edits in a conversation of their own.
+  // Artefacts: spreadsheets, documents and whiteboards kept as files that Claude edits in a conversation of their own.
   artefacts: {
     list: () => get('/api/artefacts'),
-    create: (body: { kind: 'sheet'; title?: string }) => post('/api/artefacts', body),
+    create: (body: { kind: 'sheet' | 'doc' | 'whiteboard'; title?: string }) => post('/api/artefacts', body),
     open: (id: string) => get(`/api/artefacts/${encodeURIComponent(id)}`),
     saveContent: (id: string, body: { content: unknown; baseRevision: string }) =>
       put(`/api/artefacts/${encodeURIComponent(id)}/content`, body),

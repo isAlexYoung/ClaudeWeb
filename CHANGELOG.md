@@ -5,6 +5,10 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.4 - 2026-11-25 (stable)
+
+- Artefacts: documents and whiteboards can now be created and edited, with the same split view, minimize card, scroll-docked header pill, floating composer, empty-state sketch with suggestions, read-only while Claude works, 800ms autosave and conflict reload as spreadsheets. Documents use Tiptap and are stored as Markdown (`~/Artefacts/<id>.md`) with a formatting toolbar and Markdown download; whiteboards use Excalidraw and are stored as `.excalidraw` scenes, follow the dark theme and interface language, download as PNG or `.excalidraw`, and ship their fonts with ClaudeWeb instead of loading them from a CDN. Claude may write simplified whiteboard shapes and arrows; arrows joined to shapes by id are drawn edge to edge and are not clipped by frames.
+
 ## 2.3.3 - 2026-11-25 (stable)
 
 - Spreadsheet scrolling & panning: replace the blocking `.sheet-editor-lock` overlay with FortuneSheet's native `allowEdit` read-only mode so wheel scrolling (vertical and `Shift`+wheel horizontal) and panning continue working smoothly both while idle and while Claude is editing.

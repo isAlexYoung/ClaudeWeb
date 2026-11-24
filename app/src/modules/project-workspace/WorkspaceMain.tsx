@@ -24,11 +24,13 @@ import WorkspaceStateView from '@/modules/project-workspace/WorkspaceStateView';
 import WorkspaceErrorBoundary from '@/modules/project-workspace/WorkspaceErrorBoundary';
 import { ScheduledTasksPage } from '@/modules/scheduled-tasks';
 import {
+  ArtefactEditor,
   ArtefactSessionCard,
   ArtefactsPage,
   SheetConversationEmptyState,
-  SpreadsheetEditor,
   getCachedArtefact,
+  isEditableKind,
+  kindTextKey,
   useArtefactBySessionId,
 } from '@/modules/artefacts';
 import MobileMenuButton from '@/modules/project-workspace/MobileMenuButton';
@@ -432,9 +434,13 @@ function WorkspaceMain({
     ));
   }, [selectedSession?.id]);
 
+  // The open artefact's kind picks the split view's editor, empty-state sketch and suggestions.
+  const mountedArtefactKind = (mountedArtefactId ? getCachedArtefact(mountedArtefactId)?.kind : null)
+    ?? (sessionArtefact && sessionArtefact.id === mountedArtefactId ? sessionArtefact.kind : null);
+  const splitEmptyKind = mountedArtefactKind && isEditableKind(mountedArtefactKind) ? mountedArtefactKind : 'sheet';
   const sheetEmptyState = useMemo(
-    () => <SheetConversationEmptyState onSelectSuggestion={handleSelectSheetSuggestion} />,
-    [handleSelectSheetSuggestion],
+    () => <SheetConversationEmptyState kind={splitEmptyKind} onSelectSuggestion={handleSelectSheetSuggestion} />,
+    [handleSelectSheetSuggestion, splitEmptyKind],
   );
 
   if (experience.pluginsOpen) {
@@ -554,9 +560,10 @@ function WorkspaceMain({
               style={sheetLockWidth ? { width: `${sheetLockWidth}px` } : undefined}
             >
               <Suspense fallback={<WorkspaceStateView mode="loading" isMobile={isMobile} onMenuClick={onMenuClick} />}>
-                <SpreadsheetEditor
+                <ArtefactEditor
                   key={mountedArtefactId}
                   artefactId={mountedArtefactId}
+                  kind={mountedArtefactKind}
                   menuButton={isMobile ? <MobileMenuButton onMenuClick={onMenuClick} /> : null}
                   embeddedSplit
                   chatOpen={splitChatOpen}
@@ -603,8 +610,8 @@ function WorkspaceMain({
                           scrollProgress={cardScrollProgress}
                         />
                       ) : undefined}
-                      composerPlaceholder={sessionArtefact?.kind === 'sheet'
-                        ? t('sidebar:artefacts.editor.composerPlaceholder')
+                      composerPlaceholder={sessionArtefact && isEditableKind(sessionArtefact.kind)
+                        ? t(`sidebar:${kindTextKey(sessionArtefact.kind, 'composerPlaceholder')}`)
                         : undefined}
                       isActive={activeTab === 'chat'}
                       selectedProject={selectedProject}

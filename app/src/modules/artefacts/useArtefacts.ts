@@ -3,6 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, readApiErrorMessage } from '@/shared/api';
 import type { ArtefactSummary } from '@/shared/types';
 
+/** The kinds that can be created and opened in an editor. */
+export type EditableArtefactKind = 'sheet' | 'doc' | 'whiteboard';
+
 type ArtefactChangeEvent = {
   upsert?: ArtefactSummary;
   removeId?: string;
@@ -94,8 +97,8 @@ export function useArtefacts() {
     });
   }, [reload]);
 
-  const createSheet = useCallback(async (title: string) => {
-    const created = await readArtefactResponse<ArtefactSummary>(await api.artefacts.create({ kind: 'sheet', title }));
+  const createArtefact = useCallback(async (kind: EditableArtefactKind, title: string) => {
+    const created = await readArtefactResponse<ArtefactSummary>(await api.artefacts.create({ kind, title }));
     notifyArtefactsChanged({ upsert: created });
     await reload();
     return created;
@@ -122,7 +125,7 @@ export function useArtefacts() {
     await reload();
   }, [reload]);
 
-  return { artefacts, error, reload, createSheet, update, remove };
+  return { artefacts, error, reload, createArtefact, update, remove };
 }
 
 /** Used by the sidebar to mark conversations owned by an artefact with the Artefacts icon. */

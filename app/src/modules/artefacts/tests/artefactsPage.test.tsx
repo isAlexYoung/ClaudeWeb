@@ -156,15 +156,23 @@ test('the list view is remembered for the next visit', async () => {
   assert.notEqual(second.view.queryByRole('button', { name: 'Grid view' }), null);
 });
 
-test('New → Spreadsheet creates an untitled spreadsheet and opens it; the other kinds are coming soon', async () => {
-  harness.api.create.mockImplementation(async () => json(summary({ id: 'new-sheet', title: 'Untitled' })));
+test('New creates an untitled spreadsheet, document or whiteboard and opens it; the other kinds are coming soon', async () => {
+  harness.api.create.mockImplementation(async ({ kind }: { kind: string }) => json(summary({ id: `new-${kind}`, kind: kind as ArtefactSummary['kind'], title: 'Untitled' })));
   const { view, props } = renderPage();
   await view.findByRole('list', { name: 'Artefacts' });
 
   fireEvent.click(view.getByRole('button', { name: 'New' }));
-  fireEvent.click(view.getByRole('menuitem', { name: /^Document/ }));
-  assert.equal((await view.findByRole('status')).textContent, 'Document is coming soon.');
+  fireEvent.click(view.getByRole('menuitem', { name: /^Slides/ }));
+  assert.equal((await view.findByRole('status')).textContent, 'Slides is coming soon.');
   assert.equal(harness.api.create.mock.calls.length, 0);
+
+  fireEvent.click(view.getByRole('button', { name: 'New' }));
+  fireEvent.click(view.getByRole('menuitem', { name: /^Document/ }));
+  await waitFor(() => assert.deepEqual(props.onOpenArtefact.mock.calls, [['new-doc']]));
+
+  fireEvent.click(view.getByRole('button', { name: 'New' }));
+  fireEvent.click(view.getByRole('menuitem', { name: /^Whiteboard/ }));
+  await waitFor(() => assert.deepEqual(props.onOpenArtefact.mock.calls.at(-1), ['new-whiteboard']));
 
   fireEvent.click(view.getByRole('button', { name: 'New' }));
   fireEvent.click(view.getByRole('menuitem', { name: 'Chat' }));
@@ -172,8 +180,12 @@ test('New → Spreadsheet creates an untitled spreadsheet and opens it; the othe
 
   fireEvent.click(view.getByRole('button', { name: 'New' }));
   fireEvent.click(view.getByRole('menuitem', { name: /^Spreadsheet/ }));
-  await waitFor(() => assert.deepEqual(props.onOpenArtefact.mock.calls, [['new-sheet']]));
-  assert.deepEqual(harness.api.create.mock.calls, [[{ kind: 'sheet', title: 'Untitled' }]]);
+  await waitFor(() => assert.deepEqual(props.onOpenArtefact.mock.calls.at(-1), ['new-sheet']));
+  assert.deepEqual(harness.api.create.mock.calls, [
+    [{ kind: 'doc', title: 'Untitled' }],
+    [{ kind: 'whiteboard', title: 'Untitled' }],
+    [{ kind: 'sheet', title: 'Untitled' }],
+  ]);
 });
 
 test('a card can be opened, pinned, renamed, followed to its conversation and deleted', async () => {

@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUpRight } from 'lucide-react';
 
 import { api } from '@/shared/api';
 import type { NormalizedMessage } from '@/shared/types';
+import { kindTextKey } from '@/modules/artefacts/editor/kindText';
 import { toConversationEntries } from '@/modules/artefacts/sheet/conversationEntries';
+import type { EditableArtefactKind } from '@/modules/artefacts/useArtefacts';
 
 type SheetConversationProps = {
+  /** Which editor the drawer belongs to; picks the empty state's sketch and suggestions. */
+  kind?: EditableArtefactKind;
   /** The spreadsheet's conversation; null before the first request to Claude. */
   sessionId: string | null;
   /** Claude is working: the drawer refreshes until it stops. */
@@ -20,7 +25,11 @@ type SheetConversationProps = {
 
 const REFRESH_MS = 2000;
 const MESSAGE_LIMIT = 80;
-const SUGGESTION_KEYS = ['tracker', 'budget', 'pipeline'] as const;
+const SUGGESTION_KEYS: Record<EditableArtefactKind, readonly string[]> = {
+  sheet: ['tracker', 'budget', 'pipeline'],
+  doc: ['brief', 'notes', 'plan'],
+  whiteboard: ['flow', 'architecture', 'mindmap'],
+};
 
 /** Hand-drawn green grid sketch shown in the empty conversation panel. */
 function EmptySheetSketch() {
@@ -38,6 +47,39 @@ function EmptySheetSketch() {
   );
 }
 
+/** Hand-drawn page with a heading and text lines, shown in an empty document conversation. */
+function EmptyDocSketch() {
+  return (
+    <svg className="sheet-conversation-sketch" width="96" height="74" viewBox="0 0 96 74" fill="none" aria-hidden="true">
+      <path d="M24 6c16-.8 32-.6 48 .3 1 20 .8 41-.2 62-16 .7-32 .5-48-.4-.8-20.6-.7-41.2.2-61.9Z" fill="var(--kind-soft)" />
+      <path d="M23.5 6.2c16.4-.9 32.6-.5 48.8.2.8 20.4.7 41.2-.4 61.8-16.2.6-32.4.4-48.6-.5-.7-20.5-.6-41 .2-61.5Z" stroke="var(--kind-fg)" strokeWidth="2.2" strokeLinejoin="round" opacity="0.72" />
+      <path d="M32 18c9-.6 18-.4 27 .2" stroke="var(--kind-bg)" strokeWidth="7" strokeLinecap="round" />
+      <path d="M32 17.5c9-.5 18-.3 27 .3" stroke="var(--kind-fg)" strokeWidth="2.6" strokeLinecap="round" opacity="0.8" />
+      <path d="M32 31c11-.4 22 .3 32-.1M32 40.5c10 .3 21-.4 32 .2M32 50c8-.2 16 .4 22 0" stroke="var(--kind-fg)" strokeWidth="2" strokeLinecap="round" opacity="0.55" />
+    </svg>
+  );
+}
+
+/** Hand-drawn boxes and an arrow, shown in an empty whiteboard conversation. */
+function EmptyWhiteboardSketch() {
+  return (
+    <svg className="sheet-conversation-sketch" width="96" height="74" viewBox="0 0 96 74" fill="none" aria-hidden="true">
+      <path d="M6 10c10-.8 20-.5 30 .3.7 7.6.5 15-.3 22.6-10 .6-20 .4-29.8-.4-.6-7.5-.6-15 .1-22.5Z" fill="var(--kind-bg)" stroke="var(--kind-fg)" strokeWidth="2.2" strokeLinejoin="round" opacity="0.85" />
+      <ellipse cx="70" cy="20" rx="18" ry="11.5" fill="var(--kind-soft)" stroke="var(--kind-fg)" strokeWidth="2.2" opacity="0.85" />
+      <path d="M52 50.5c11-.8 23-.5 34 .3.6 6.6.4 13-.4 19.5-11.2.6-22.4.4-33.4-.4-.6-6.4-.7-12.9-.2-19.4Z" fill="var(--kind-soft)" stroke="var(--kind-fg)" strokeWidth="2.2" strokeLinejoin="round" opacity="0.85" />
+      <path d="M37 21.5c4.5-.5 9-.4 13.5-.2M47 17.6l4.4 3.6-4.6 3.8" stroke="var(--kind-fg)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+      <path d="M70 32.5c-.4 5.5-.1 11 .2 16M66.2 45.4l4 4.2 3.8-4.4" stroke="var(--kind-fg)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+      <path d="M10 50c6-3 10 3 15 0s9-3 14 .5" stroke="var(--kind-fg)" strokeWidth="1.6" strokeLinecap="round" opacity="0.4" />
+    </svg>
+  );
+}
+
+const SKETCHES: Record<EditableArtefactKind, () => ReactElement> = {
+  sheet: EmptySheetSketch,
+  doc: EmptyDocSketch,
+  whiteboard: EmptyWhiteboardSketch,
+};
+
 /** The latest page of a conversation, or null when it could not be read. */
 async function fetchConversation(sessionId: string): Promise<NormalizedMessage[] | null> {
   try {
@@ -51,24 +93,27 @@ async function fetchConversation(sessionId: string): Promise<NormalizedMessage[]
 }
 
 type SheetConversationEmptyStateProps = {
+  /** Which editor the empty state belongs to: picks the sketch, heading and suggestions. */
+  kind?: EditableArtefactKind;
   /** Places a prompt suggestion into the editor's composer without sending it. */
   onSelectSuggestion: (prompt: string) => void;
   /** Optional error notice shown above the illustration when the last run failed. */
   error?: string | null;
 };
 
-/** Illustrated prompt picker shown in an empty spreadsheet conversation. */
-export function SheetConversationEmptyState({ onSelectSuggestion, error }: SheetConversationEmptyStateProps) {
+/** Illustrated prompt picker shown in an empty artefact conversation (spreadsheet, document or whiteboard). */
+export function SheetConversationEmptyState({ kind = 'sheet', onSelectSuggestion, error }: SheetConversationEmptyStateProps) {
   const { t } = useTranslation('sidebar');
+  const Sketch = SKETCHES[kind];
   return (
-    <div className="sheet-conversation-empty-shell artefact-kind-sheet">
+    <div className={`sheet-conversation-empty-shell artefact-kind-${kind}`}>
       <div className="sheet-conversation-empty-state">
         {error && <p role="alert" className="sheet-conversation-error">{t('artefacts.editor.failed', { error })}</p>}
-        <EmptySheetSketch />
-        <h3 className="sheet-conversation-empty-title">{t('artefacts.editor.conversation.emptyTitle')}</h3>
+        <Sketch />
+        <h3 className="sheet-conversation-empty-title">{t(kindTextKey(kind, 'conversation.emptyTitle'))}</h3>
         <div className="sheet-conversation-suggestions">
-          {SUGGESTION_KEYS.map((key) => {
-            const prompt = t(`artefacts.editor.conversation.suggestions.${key}`);
+          {SUGGESTION_KEYS[kind].map((key) => {
+            const prompt = t(kindTextKey(kind, `conversation.suggestions.${key}`));
             return (
               <button
                 key={key}
@@ -91,7 +136,7 @@ export function SheetConversationEmptyState({ onSelectSuggestion, error }: Sheet
  * shows an illustrated prompt picker before any turns exist, or the conversation's
  * messages with a link to continue in full chat once turns exist.
  */
-export default function SheetConversation({ sessionId, running, error, onSelectSuggestion, onOpenInChat }: SheetConversationProps) {
+export default function SheetConversation({ kind = 'sheet', sessionId, running, error, onSelectSuggestion, onOpenInChat }: SheetConversationProps) {
   const { t } = useTranslation('sidebar');
   // The latest page of the conversation; null until it has been read once.
   const [messages, setMessages] = useState<NormalizedMessage[] | null>(null);
@@ -115,13 +160,13 @@ export default function SheetConversation({ sessionId, running, error, onSelectS
   const isEmpty = !running && (!sessionId || (messages !== null && entries.length === 0));
 
   return (
-    <aside className="sheet-conversation artefact-kind-sheet" aria-label={t('artefacts.editor.conversation.title')}>
+    <aside className={`sheet-conversation artefact-kind-${kind}`} aria-label={t('artefacts.editor.conversation.title')}>
       <div className="sheet-conversation-head">
         <h2>{t('artefacts.editor.conversation.title')}</h2>
       </div>
       <div className={`sheet-conversation-body ${isEmpty ? 'is-empty' : ''}`}>
         {isEmpty ? (
-          <SheetConversationEmptyState onSelectSuggestion={onSelectSuggestion} error={error} />
+          <SheetConversationEmptyState kind={kind} onSelectSuggestion={onSelectSuggestion} error={error} />
         ) : (
           <>
             {entries.map((entry) => (entry.kind === 'tools' ? (
@@ -134,7 +179,7 @@ export default function SheetConversation({ sessionId, running, error, onSelectS
                 <p>{entry.text}</p>
               </div>
             )))}
-            {running && <p className="sheet-conversation-tools" role="status">{t('artefacts.editor.working')}</p>}
+            {running && <p className="sheet-conversation-tools" role="status">{t(kindTextKey(kind, 'working'))}</p>}
             {!running && error && <p role="alert" className="sheet-conversation-error">{t('artefacts.editor.failed', { error })}</p>}
           </>
         )}

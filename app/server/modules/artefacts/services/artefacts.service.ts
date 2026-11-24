@@ -5,13 +5,8 @@ import path from 'node:path';
 
 import { artefactsDb, sessionsDb } from '@/modules/database/index.js';
 import type { ArtefactRow } from '@/modules/database/index.js';
-import {
-  MAX_SHEET_BYTES,
-  blankSheetDocument,
-  sheetEditingInstructions,
-  validateSheetDocument,
-} from '@/modules/artefacts/sheet-format.js';
-import type { SheetDocument } from '@/modules/artefacts/sheet-format.js';
+import { getArtefactFormat, isEditableKind } from '@/modules/artefacts/formats.js';
+import type { ArtefactFormat } from '@/modules/artefacts/formats.js';
 import { broadcastSessionUpserted, chatRunRegistry, runDetachedChatTurn, setSessionTurnHook } from '@/modules/websocket/index.js';
 import type { ProviderRuntimeGateway, SessionTurnHookResult } from '@/modules/websocket/index.js';
 import { AppError } from '@/shared/utils.js';
@@ -28,9 +23,13 @@ export type ArtefactSummary = {
   openedAt: string;
 };
 
-/** One artefact as the editor opens it. `content` is null when the file is missing or not valid. */
+/**
+ * One artefact as the editor opens it. `content` is the kind's own content (a
+ * spreadsheet or whiteboard object, a document's Markdown), or null when the
+ * file is missing or not valid.
+ */
 export type ArtefactDetail = ArtefactSummary & {
-  content: SheetDocument | null;
+  content: unknown;
   contentError: string | null;
   revision: string;
 };
@@ -105,11 +104,22 @@ function readTitle(value: unknown, fallback?: string): string {
   return value.trim().slice(0, MAX_TITLE_LENGTH);
 }
 
-function writeDocument(filePath: string, document: SheetDocument): void {
+function megabytes(bytes: number): string {
+  return `${Math.round(bytes / (1024 * 1024))} MB`;
+}
+
+function formatOf(row: ArtefactRow): ArtefactFormat {
+  if (!isEditableKind(row.kind)) {
+    throw new AppError('This kind of artefact cannot be opened yet.', { code: 'ARTEFACT_KIND_UNSUPPORTED', statusCode: 400 });
+  }
+  return getArtefactFormat(row.kind);
+}
+
+function writeDocument(filePath: string, format: ArtefactFormat, content: unknown): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const text = `${JSON.stringify(document, null, 2)}\n`;
-  if (Buffer.byteLength(text) > MAX_SHEET_BYTES) {
-    throw new AppError('The spreadsheet is larger than 5 MB.', { code: 'ARTEFACT_TOO_LARGE', statusCode: 413 });
+  const text = format.serialize(content);
+  if (Buffer.byteLength(text) > format.maxBytes) {
+    throw new AppError(`The ${format.noun} is larger than ${megabytes(format.maxBytes)}.`, { code: 'ARTEFACT_TOO_LARGE', statusCode: 413 });
   }
   // Written beside the file and renamed over it, so a reader never sees half of it.
   const temporary = `${filePath}.${process.pid}.tmp`;
@@ -117,23 +127,16 @@ function writeDocument(filePath: string, document: SheetDocument): void {
   fs.renameSync(temporary, filePath);
 }
 
-function readDocument(filePath: string): { content: SheetDocument | null; error: string | null } {
+function readDocument(filePath: string, format: ArtefactFormat): { content: unknown; error: string | null } {
   let text: string;
   try {
     const stat = fs.statSync(filePath);
-    if (stat.size > MAX_SHEET_BYTES) return { content: null, error: 'The file is larger than 5 MB.' };
+    if (stat.size > format.maxBytes) return { content: null, error: `The file is larger than ${megabytes(format.maxBytes)}.` };
     text = fs.readFileSync(filePath, 'utf8');
   } catch {
     return { content: null, error: 'The file no longer exists.' };
   }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return { content: null, error: 'The file is not valid JSON.' };
-  }
-  const problem = validateSheetDocument(parsed);
-  return problem ? { content: null, error: problem } : { content: parsed as SheetDocument, error: null };
+  return format.parse(text);
 }
 
 function ensureLinkedSession(userId: number, row: ArtefactRow, preferredTitle?: string): string {
@@ -154,20 +157,21 @@ export const artefactsService = {
   },
 
   create(userId: number, body: Record<string, unknown>): ArtefactSummary {
-    if (body.kind !== 'sheet') {
-      throw new AppError('Only spreadsheets can be created.', { code: 'ARTEFACT_KIND_UNSUPPORTED', statusCode: 400 });
+    if (!isEditableKind(body.kind)) {
+      throw new AppError('Only spreadsheets, documents and whiteboards can be created.', { code: 'ARTEFACT_KIND_UNSUPPORTED', statusCode: 400 });
     }
+    const format = getArtefactFormat(body.kind);
     const id = randomUUID();
     const sessionId = randomUUID();
     const now = new Date().toISOString();
     const title = readTitle(body.title, 'Untitled');
-    const filePath = path.join(getArtefactsDirectory(), `${id}.sheet.json`);
-    writeDocument(filePath, blankSheetDocument());
+    const filePath = path.join(getArtefactsDirectory(), `${id}${format.extension}`);
+    writeDocument(filePath, format, format.blank());
     sessionsDb.createAppSession(sessionId, 'claude', getArtefactWorkspace(), title);
     artefactsDb.insert({
       id,
       user_id: userId,
-      kind: 'sheet',
+      kind: format.kind,
       title,
       file_path: filePath,
       session_id: sessionId,
@@ -185,7 +189,7 @@ export const artefactsService = {
     ensureLinkedSession(userId, existing);
     artefactsDb.touchOpened(userId, id, new Date().toISOString());
     const row = requireRow(userId, id);
-    const { content, error } = readDocument(row.file_path);
+    const { content, error } = readDocument(row.file_path, formatOf(row));
     return { ...toSummary(row), content, contentError: error, revision: readRevision(row.file_path) };
   },
 
@@ -196,15 +200,16 @@ export const artefactsService = {
    */
   saveContent(userId: number, id: string, body: Record<string, unknown>): { revision: string } {
     const row = requireRow(userId, id);
-    const problem = validateSheetDocument(body.content);
+    const format = formatOf(row);
+    const problem = format.validate(body.content);
     if (problem) throw new AppError(problem, { code: 'ARTEFACT_INVALID_CONTENT', statusCode: 400 });
     if (typeof body.baseRevision !== 'string' || body.baseRevision !== readRevision(row.file_path)) {
-      throw new AppError('The spreadsheet changed since it was loaded.', { code: 'ARTEFACT_CHANGED', statusCode: 409 });
+      throw new AppError(`The ${format.noun} changed since it was loaded.`, { code: 'ARTEFACT_CHANGED', statusCode: 409 });
     }
     if (pendingRuns.has(id)) {
-      throw new AppError('Claude is editing this spreadsheet.', { code: 'ARTEFACT_BUSY', statusCode: 409 });
+      throw new AppError(`Claude is editing this ${format.noun}.`, { code: 'ARTEFACT_BUSY', statusCode: 409 });
     }
-    writeDocument(row.file_path, body.content as SheetDocument);
+    writeDocument(row.file_path, format, body.content);
     artefactsDb.touchUpdated(userId, id, new Date().toISOString());
     return { revision: readRevision(row.file_path) };
   },
@@ -242,7 +247,7 @@ export const artefactsService = {
   },
 
   /**
-   * Asks Claude to change the spreadsheet. The first request creates the
+   * Asks Claude to change the artefact. The first request creates the
    * artefact's conversation in the Chat workspace; later ones continue it, so
    * Claude keeps the context of earlier requests. Returns once the run is on
    * its way; the editor follows it through `state`.
@@ -255,13 +260,14 @@ export const artefactsService = {
   ): { sessionId: string } {
     if (!runtime) throw new AppError('Chat runtime is unavailable.', { code: 'RUNTIME_UNAVAILABLE', statusCode: 503 });
     const row = requireRow(userId, id);
+    const format = formatOf(row);
     const text = typeof body.text === 'string' ? body.text.trim() : '';
     if (!text) throw new AppError('A message is required.', { code: 'INVALID_REQUEST_BODY', statusCode: 400 });
     if (text.length > MAX_MESSAGE_LENGTH) {
       throw new AppError('The message is too long.', { code: 'INVALID_REQUEST_BODY', statusCode: 400 });
     }
     if (this.state(userId, id).running) {
-      throw new AppError('Claude is already editing this spreadsheet.', { code: 'ARTEFACT_BUSY', statusCode: 409 });
+      throw new AppError(`Claude is already editing this ${format.noun}.`, { code: 'ARTEFACT_BUSY', statusCode: 409 });
     }
 
     const preferredTitle = typeof body.sessionTitle === 'string' && body.sessionTitle.trim()
@@ -291,7 +297,7 @@ export const artefactsService = {
           unattended: true,
           sessionSummary: row.title,
         },
-        systemPromptAppend: sheetEditingInstructions(row.file_path, row.title),
+        systemPromptAppend: format.instructions(row.file_path, row.title),
       },
       { runtime },
     ).then((result) => {
@@ -309,9 +315,9 @@ export const artefactsService = {
 /** Enriches interactive Chat turns inside an artefact's conversation with its editing format. */
 export function resolveArtefactTurnContext(sessionId: string): SessionTurnHookResult | null {
   const row = artefactsDb.getBySessionId(sessionId);
-  if (!row || row.kind !== 'sheet') return null;
+  if (!row || !isEditableKind(row.kind)) return null;
   return {
-    systemPromptAppend: sheetEditingInstructions(row.file_path, row.title),
+    systemPromptAppend: getArtefactFormat(row.kind).instructions(row.file_path, row.title),
     onFinished: () => {
       if (artefactsDb.get(row.user_id, row.id)) {
         artefactsDb.touchUpdated(row.user_id, row.id, new Date().toISOString());
