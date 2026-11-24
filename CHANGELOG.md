@@ -5,6 +5,8 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.3 - 2026-11-24 (stable)
+
 - Unify Settings > Plugins into searchable, filterable extension cards grouped by enabled state, with installation on a separate page and animated state changes. Add persistent MCP/skill toggles and move the chat MCP preference to Tasks & sessions.
 
 ## 2.2.2 - 2026-11-23 (stable)
