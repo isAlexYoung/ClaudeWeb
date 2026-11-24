@@ -41,7 +41,7 @@ import type {
   BackupSessionRecord,
 } from '@/shared/types.js';
 import { normalizeTimeZone, readSchedule } from '@/modules/scheduled-tasks/index.js';
-import { AppError } from '@/shared/utils.js';
+import { AppError, normalizeScheduledTaskPermission } from '@/shared/utils.js';
 
 /**
  * Size of one upload piece. Requests through Cloudflare are capped at 100 MB
@@ -270,7 +270,7 @@ function parseSnapshot(raw: unknown): BackupDatabaseSnapshot {
         schedule: JSON.stringify(readSchedule(row.schedule as string)),
         timezone: normalizeTimeZone(row.timezone),
         model: stringOrNull(row.model),
-        permission: row.permission === 'all' ? 'all' as const : 'edits' as const,
+        permission: normalizeScheduledTaskPermission(row.permission),
         toolsSettings: (() => {
           try { return JSON.stringify(JSON.parse(row.toolsSettings as string)); } catch { return '{}'; }
         })(),

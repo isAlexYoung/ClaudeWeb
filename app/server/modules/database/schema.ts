@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (
     -- IANA zone the times in the schedule are read in, e.g. Asia/Shanghai.
     timezone TEXT NOT NULL DEFAULT 'UTC',
     model TEXT,
+    -- manual: nothing is approved automatically; only allow-listed tools run.
     -- edits: edits are allowed, anything else needing approval is refused.
     -- all: every tool is allowed without asking.
     permission TEXT NOT NULL DEFAULT 'edits',

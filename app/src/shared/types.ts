@@ -1956,6 +1956,16 @@ export type WorkspaceExperience = WorkspaceSessionPreferences & {
   setContextDetails: (details: ContextUsageDetails | null) => void;
   transcriptActions: TranscriptActions | null;
   openHome: (mode?: WorkspaceMode) => void;
+  /**
+   * A prompt another page asked the next Chat landing composer to start with
+   * (for example a scheduled-task template). Chat writes it into the landing
+   * draft once and then calls `consumeHomeDraft`; any later New Chat clears it.
+   */
+  homeDraft: string | null;
+  /** Opens a new Chat landing page with `text` already typed in its composer, ready to edit or send. */
+  startChatWithDraft: (text: string) => void;
+  /** Called by chat once `homeDraft` is in the composer, so it is not applied twice. */
+  consumeHomeDraft: () => void;
   /** Switches mode without starting a new conversation, restoring that mode's last session. */
   switchMode: (mode: WorkspaceMode) => void;
   /** A route intent consumed by project-workspace, cleared once the session opens. */
@@ -2324,8 +2334,14 @@ export type ScheduledTaskSchedule =
   | { kind: 'weekly'; time: string; days: number[] }
   | { kind: 'interval'; hours: number };
 
-/** edits: file edits allowed, anything else needing approval refused. all: every tool allowed. */
-export type ScheduledTaskPermission = 'edits' | 'all';
+/**
+ * How much an unattended scheduled run may do without asking. Nobody can approve
+ * anything during a scheduled run, so requests that would wait are refused.
+ * manual: nothing is approved automatically; only tools on the allow list run.
+ * edits (shown as "Auto"): file edits are approved automatically; other requests need the allow list.
+ * all: every tool runs without asking.
+ */
+export type ScheduledTaskPermission = 'manual' | 'edits' | 'all';
 
 export type ScheduledTaskRun = {
   id: string;

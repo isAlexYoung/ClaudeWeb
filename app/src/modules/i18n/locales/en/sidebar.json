@@ -297,7 +297,8 @@
       "everyHours_one": "Every hour",
       "everyHours_other": "Every {{count}} hours",
       "daySeparator": ", ",
-      "unreadable": "Schedule unreadable"
+      "unreadable": "Schedule unreadable",
+      "weekdaysAt": "Weekdays {{time}}"
     },
     "weekdays": {
       "0": "Sun",
@@ -309,22 +310,24 @@
       "6": "Sat"
     },
     "permission": {
-      "edits": "Allow file edits only",
-      "editsHint": "Edits are accepted automatically. Anything else that would ask for approval, such as running a command not on your allow list, is refused and noted in the conversation.",
+      "edits": "Auto",
+      "editsHint": "Runs without asking; file edits are allowed automatically.",
       "editsShort": "Edits only",
-      "all": "Allow everything",
-      "allHint": "Every tool runs without asking, including commands. More convenient, more risk.",
-      "allShort": "Allow everything"
+      "all": "Skip all approvals",
+      "allHint": "Claude will not stop to ask, even for unsafe actions.",
+      "allShort": "Allow everything",
+      "manual": "Manual",
+      "manualHint": "Claude needs your approval before using a new tool; with nobody there to approve, such requests are refused."
     },
     "editor": {
       "createTitle": "New scheduled task",
       "editTitle": "Edit scheduled task",
       "name": "Name",
-      "namePlaceholder": "e.g. Morning test report",
+      "namePlaceholder": "Daily briefing",
       "project": "Run in",
       "chatWorkspace": "Chat (no project)",
-      "prompt": "Prompt",
-      "promptPlaceholder": "What Claude should do each time",
+      "prompt": "Instructions",
+      "promptPlaceholder": "Describe how you want this task done",
       "frequency": "Repeat",
       "kinds": {
         "once": "Once",
@@ -338,11 +341,102 @@
       "days": "Days of the week",
       "pickDate": "Pick a date and time.",
       "model": "Model",
-      "defaultModel": "Default",
-      "permission": "When nobody is there to approve",
+      "defaultModel": "Default model",
+      "permission": "Permissions",
       "cancel": "Cancel",
       "save": "Save",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "useClaude": "Set up with Claude instead",
+      "close": "Close",
+      "trigger": "Trigger",
+      "triggerKinds": {
+        "schedule": "Scheduled",
+        "interval": "Interval",
+        "once": "Once"
+      },
+      "frequencies": {
+        "daily": "Every day",
+        "weekdays": "Weekdays",
+        "weekly": "Weekly"
+      },
+      "hoursPrefix": "Every",
+      "hoursSuffix": "hours",
+      "pickDays": "Pick at least one day.",
+      "moreModels": "More models",
+      "moreOptions": "More options",
+      "create": "Create",
+      "notice": {
+        "manual": "In this task, Claude only uses tools you have already allowed; anything that needs approval is refused, because nobody is there to confirm it.",
+        "edits": "In this task, Claude works directly and edits files without pausing for approval; commands you have not allowed are refused.",
+        "all": "In this task, Claude carries out every action, including running commands, without pausing for approval."
+      },
+      "safetyLink": "Safety tips",
+      "safetyTips": "Scheduled tasks run on the server, even with the browser closed. One task runs at a time, and a run missed while ClaudeWeb was stopped is made up once it is back. Nobody can confirm actions during a run, so give tasks clear instructions you trust, use \"Skip all approvals\" sparingly, and keep the allowed-tools list in Settings up to date."
+    },
+    "noMatches": "No scheduled tasks match.",
+    "newTaskWithClaude": "Create with Claude",
+    "manualSetup": "Set up manually",
+    "withClaudePrompt": "Help me set up a scheduled task. Ask me what it should do, how often it should run and at what time, then create it.",
+    "search": "Search scheduled tasks…",
+    "closeSearch": "Close search",
+    "tabs": {
+      "mine": "My tasks",
+      "templates": "Templates"
+    },
+    "filter": {
+      "title": "Filter",
+      "source": "Source",
+      "state": "Status",
+      "sources": {
+        "all": "All",
+        "chat": "Chat",
+        "project": "Projects"
+      },
+      "states": {
+        "all": "All",
+        "enabled": "Enabled",
+        "paused": "Paused",
+        "completed": "Turned off automatically",
+        "shelved": "Shelved"
+      }
+    },
+    "sort": {
+      "title": "Sort",
+      "next": "Next run",
+      "name": "Name",
+      "includeCompleted": "Include completed"
+    },
+    "templates": {
+      "dailyBriefing": {
+        "name": "Daily briefing",
+        "description": "What needs your attention today across your calendar, email and messages.",
+        "prompt": "Help me set up a scheduled task \"Daily briefing\" ({{when}}): summarise what needs my attention today across my calendar, email and messages. Ask me about anything missing, such as connectors, then create it."
+      },
+      "inboxTriage": {
+        "name": "Inbox triage",
+        "description": "Sort your inbox and draft replies to anything urgent.",
+        "prompt": "Help me set up a scheduled task \"Inbox triage\" ({{when}}): sort my inbox into categories and draft replies to every urgent email. Ask me about anything missing, such as connectors, then create it."
+      },
+      "meetingPrep": {
+        "name": "Meeting prep",
+        "description": "A short brief before every meeting on your calendar: attendees, background and agenda.",
+        "prompt": "Help me set up a scheduled task \"Meeting prep\" ({{when}}): for each meeting on my calendar that day, prepare a short brief covering attendees, background and agenda. Ask me about anything missing, such as connectors, then create it."
+      },
+      "weeklyReview": {
+        "name": "Weekly review",
+        "description": "A roundup of the week, sent every Friday.",
+        "prompt": "Help me set up a scheduled task \"Weekly review\" ({{when}}): put together a roundup of this week's activity and progress. Ask me which sources to include, then create it."
+      },
+      "contentIdeas": {
+        "name": "Content ideas",
+        "description": "A few post ideas each week, based on the latest news in your industry.",
+        "prompt": "Help me set up a scheduled task \"Content ideas\" ({{when}}): draft a few post ideas based on the latest news in my industry. Ask me about my industry and where I post, then create it."
+      },
+      "topicWatch": {
+        "name": "Topic watch",
+        "description": "Keep track of news and mentions about a topic, competitor or keyword.",
+        "prompt": "Help me set up a scheduled task \"Topic watch\" ({{when}}): look for new news and mentions about a topic, competitor or keyword and summarise them. Ask me which topics or keywords to follow, then create it."
+      }
     }
   }
 }

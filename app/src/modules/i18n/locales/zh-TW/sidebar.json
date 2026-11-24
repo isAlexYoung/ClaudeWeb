@@ -169,7 +169,7 @@
     "newTask": "新增任務",
     "intro": "到點後，ClaudeWeb 會在所選專案裡新開一個對話並送出提示詞。任務在伺服器上執行，關掉瀏覽器也會執行。同一時間只執行一個任務；ClaudeWeb 停止期間錯過的那次，會在恢復後補跑一次。",
     "loading": "正在讀取排程任務…",
-    "empty": "還沒有排程任務。",
+    "empty": "暫無排程任務。",
     "paused": "已暫停",
     "manual": "手動執行",
     "nextRun": "下次：{{when}}",
@@ -194,7 +194,8 @@
       "weeklyAt": "每週{{days}} {{time}}",
       "everyHours": "每 {{count}} 小時",
       "daySeparator": "、",
-      "unreadable": "排程無法讀取"
+      "unreadable": "排程無法讀取",
+      "weekdaysAt": "工作日 {{time}}"
     },
     "weekdays": {
       "0": "日",
@@ -206,22 +207,24 @@
       "6": "六"
     },
     "permission": {
-      "edits": "只自動允許改檔案",
-      "editsHint": "改檔案自動允許。其他需要確認的操作（例如執行不在允許清單裡的指令）直接拒絕，並記在對話裡。",
+      "edits": "自動",
+      "editsHint": "無需詢問即可執行，修改檔案自動允許。",
       "editsShort": "只允許改檔案",
-      "all": "全部自動允許",
-      "allHint": "所有工具都不再詢問，包括執行指令。更方便，風險也更大。",
-      "allShort": "全部自動允許"
+      "all": "略過所有核准",
+      "allHint": "即使是不安全的操作，Claude 也不會暫停詢問。",
+      "allShort": "全部自動允許",
+      "manual": "手動",
+      "manualHint": "Claude 使用新工具前需要取得您的同意；無人值守時，這類操作會被直接拒絕。"
     },
     "editor": {
       "createTitle": "新增排程任務",
       "editTitle": "編輯排程任務",
       "name": "名稱",
-      "namePlaceholder": "例如：每天早上的測試報告",
+      "namePlaceholder": "每日簡報",
       "project": "執行位置",
       "chatWorkspace": "聊天（不屬於專案）",
-      "prompt": "提示詞",
-      "promptPlaceholder": "每次要讓 Claude 做什麼",
+      "prompt": "指示",
+      "promptPlaceholder": "提供指示，說明您希望如何完成此任務",
       "frequency": "頻率",
       "kinds": {
         "once": "僅一次",
@@ -235,11 +238,102 @@
       "days": "星期",
       "pickDate": "請選擇日期和時間。",
       "model": "模型",
-      "defaultModel": "預設",
-      "permission": "無人確認時的權限",
+      "defaultModel": "預設模型",
+      "permission": "權限",
       "cancel": "取消",
       "save": "儲存",
-      "saving": "正在儲存…"
+      "saving": "正在儲存…",
+      "useClaude": "改用 Claude 設定",
+      "close": "關閉",
+      "trigger": "觸發方式",
+      "triggerKinds": {
+        "schedule": "定時",
+        "interval": "間隔",
+        "once": "一次"
+      },
+      "frequencies": {
+        "daily": "每天",
+        "weekdays": "工作日",
+        "weekly": "每週"
+      },
+      "hoursPrefix": "每",
+      "hoursSuffix": "小時",
+      "pickDays": "請至少選擇一天。",
+      "moreModels": "更多模型",
+      "moreOptions": "更多選項",
+      "create": "建立",
+      "notice": {
+        "manual": "在此任務中，Claude 只會使用您已允許的工具；需要核准的操作會被拒絕，因為執行時無人確認。",
+        "edits": "在此任務中，Claude 將直接工作並修改檔案，不會暫停等待核准；未獲允許的指令會被拒絕。",
+        "all": "在此任務中，Claude 將直接執行所有操作（包括執行指令），不會暫停等待核准。"
+      },
+      "safetyLink": "查看安全使用提示",
+      "safetyTips": "排程任務在伺服器上執行，關掉瀏覽器也會執行；同一時間只執行一個任務，ClaudeWeb 停止期間錯過的那次會在恢復後補跑一次。執行時沒有人能確認操作，請只給任務清楚、可信的指示，謹慎使用「略過所有核准」，並在設定中維護允許的工具清單。"
+    },
+    "noMatches": "沒有符合條件的排程任務。",
+    "newTaskWithClaude": "與 Claude 一起建立",
+    "manualSetup": "手動設定",
+    "withClaudePrompt": "幫我設定一個排程任務。問我它應該做什麼、多久執行一次以及在什麼時間執行，然後建立它。",
+    "search": "搜尋排程任務…",
+    "closeSearch": "關閉搜尋",
+    "tabs": {
+      "mine": "我的",
+      "templates": "範本"
+    },
+    "filter": {
+      "title": "篩選",
+      "source": "來源",
+      "state": "狀態",
+      "sources": {
+        "all": "全部",
+        "chat": "對話",
+        "project": "專案"
+      },
+      "states": {
+        "all": "全部",
+        "enabled": "已啟用",
+        "paused": "已暫停",
+        "completed": "已自動關閉",
+        "shelved": "已擱置"
+      }
+    },
+    "sort": {
+      "title": "排序",
+      "next": "下次執行",
+      "name": "名稱",
+      "includeCompleted": "包含已完成"
+    },
+    "templates": {
+      "dailyBriefing": {
+        "name": "每日簡報",
+        "description": "行事曆、郵件和訊息中今天需要您關注的內容。",
+        "prompt": "幫我設定一個排程任務「每日簡報」（{{when}}）：彙整我的行事曆、郵件和訊息中今天需要我關注的內容。如果缺少需要的資訊或連接器，先問我，然後建立它。"
+      },
+      "inboxTriage": {
+        "name": "收件匣整理",
+        "description": "為您的收件匣分類，並為所有緊急郵件草擬回覆。",
+        "prompt": "幫我設定一個排程任務「收件匣整理」（{{when}}）：為我的收件匣分類，並為所有緊急郵件草擬回覆。如果缺少需要的資訊或連接器，先問我，然後建立它。"
+      },
+      "meetingPrep": {
+        "name": "會議準備",
+        "description": "在您行事曆上的每場會議前提供一份簡短摘要，涵蓋與會者、背景和議程。",
+        "prompt": "幫我設定一個排程任務「會議準備」（{{when}}）：為我當天行事曆上的每場會議準備一份簡短摘要，涵蓋與會者、背景和議程。如果缺少需要的資訊或連接器，先問我，然後建立它。"
+      },
+      "weeklyReview": {
+        "name": "每週回顧",
+        "description": "每週五寄送的本週動態彙整。",
+        "prompt": "幫我設定一個排程任務「每週回顧」（{{when}}）：彙整本週的動態和進展，整理成一份週報。先問我要包含哪些來源，然後建立它。"
+      },
+      "contentIdeas": {
+        "name": "內容創意",
+        "description": "每週根據您所在產業的最新資訊擬定幾個貼文創意。",
+        "prompt": "幫我設定一個排程任務「內容創意」（{{when}}）：根據我所在產業的最新資訊擬定幾個貼文創意。先問我所在的產業和發布平台，然後建立它。"
+      },
+      "topicWatch": {
+        "name": "主題監測",
+        "description": "持續關注與某個主題、競爭對手或關鍵字相關的新聞或提及。",
+        "prompt": "幫我設定一個排程任務「主題監測」（{{when}}）：尋找與某個主題、競爭對手或關鍵字相關的新聞或提及，並彙整新的內容。先問我要關注哪些主題或關鍵字，然後建立它。"
+      }
     }
   },
   "workspace": {

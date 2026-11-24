@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChevronDown, Clock, FastForward, Hand, Plus, TriangleAlert, X } from 'lucide-react';
 
 import { api } from '@/shared/api';
 import { CHAT_WORKSPACE_PATH, PROVIDER_PERMISSION_PREFERENCE_KEYS } from '@/shared/constants';
@@ -14,9 +15,19 @@ import type {
   ScheduledTaskPermission,
   ScheduledTaskSchedule,
 } from '@/shared/types';
+import {
+  ScheduledTaskMenu,
+  ScheduledTaskMenuDivider,
+  ScheduledTaskMenuItem,
+  ScheduledTaskMenuLabel,
+  ScheduledTaskSubmenu,
+} from '@/modules/scheduled-tasks/ScheduledTaskMenu';
+import { WORKDAYS, isWorkdays } from '@/modules/scheduled-tasks/scheduleText';
 import { readApiError } from '@/modules/scheduled-tasks/useScheduledTasks';
 
-type ScheduleKind = ScheduledTaskSchedule['kind'];
+/** "At a time" (daily / weekdays / weekly), "every few hours", or "once". */
+type TriggerKind = 'schedule' | 'interval' | 'once';
+type Frequency = 'daily' | 'weekdays' | 'weekly';
 
 type ScheduledTaskEditorProps = {
   open: boolean;
@@ -24,6 +35,8 @@ type ScheduledTaskEditorProps = {
   task: ScheduledTask | null;
   onClose: () => void;
   onSaved: () => void;
+  /** "Set up with Claude instead": closes the form and opens a chat that asks for the details. */
+  onStartWithClaude: () => void;
 };
 
 /** `datetime-local` value for a Date, in the browser's zone. */
@@ -40,14 +53,28 @@ function inAnHour(): string {
 
 /** Week starts on Monday in the picker; values stay 0 = Sunday ... 6 = Saturday. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+/** Models listed before "More models"; the rest of the catalog goes in the side menu. */
+const PRIMARY_MODEL_COUNT = 4;
+/** The catalog's own "default" entry is what "Default model" (no model saved) already means. */
+const CATALOG_DEFAULT_MODEL = 'default';
+
+const PERMISSION_ICONS: Record<ScheduledTaskPermission, ReactNode> = {
+  manual: <Hand size={16} />,
+  edits: <FastForward size={16} />,
+  all: <TriangleAlert size={16} />,
+};
+const PERMISSION_ORDER: ScheduledTaskPermission[] = ['manual', 'edits', 'all'];
 
 /** Rendered by ScheduledTasksPage to create or edit one task. */
-export default function ScheduledTaskEditor({ open, task, onClose, onSaved }: ScheduledTaskEditorProps) {
+export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onStartWithClaude }: ScheduledTaskEditorProps) {
   const { t } = useTranslation('sidebar');
   const [name, setName] = useState('');
   const [projectPath, setProjectPath] = useState(CHAT_WORKSPACE_PATH);
   const [prompt, setPrompt] = useState('');
-  const [kind, setKind] = useState<ScheduleKind>('daily');
+  // The trigger menu's choice; together with frequency it decides which schedule is saved.
+  const [triggerKind, setTriggerKind] = useState<TriggerKind>('schedule');
+  // Daily, Monday-Friday, or chosen weekdays, for the "at a time" trigger.
+  const [frequency, setFrequency] = useState<Frequency>('daily');
   const [time, setTime] = useState('09:00');
   const [days, setDays] = useState<number[]>([1]);
   const [hours, setHours] = useState(6);
@@ -58,6 +85,10 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved }: Sc
   const [models, setModels] = useState<ProviderModelOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The "+" row with the project picker; open from the start when a task already runs in a project.
+  const [showLocation, setShowLocation] = useState(false);
+  // The expanded safety notes under the permission notice.
+  const [showSafety, setShowSafety] = useState(false);
 
   // The form starts from the task (or blank) each time it opens.
   useEffect(() => {
@@ -66,13 +97,16 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved }: Sc
     setName(task?.name ?? '');
     setProjectPath(task?.projectPath ?? CHAT_WORKSPACE_PATH);
     setPrompt(task?.prompt ?? '');
-    setKind(schedule?.kind ?? 'daily');
+    setTriggerKind(schedule?.kind === 'interval' ? 'interval' : schedule?.kind === 'once' ? 'once' : 'schedule');
+    setFrequency(schedule?.kind === 'weekly' ? (isWorkdays(schedule.days) ? 'weekdays' : 'weekly') : 'daily');
     setTime(schedule && 'time' in schedule ? schedule.time : '09:00');
     setDays(schedule?.kind === 'weekly' ? schedule.days : [1]);
     setHours(schedule?.kind === 'interval' ? schedule.hours : 6);
     setOnceAt(schedule?.kind === 'once' ? toLocalInput(new Date(schedule.at)) : inAnHour());
     setModel(task?.model ?? '');
     setPermission(task?.permission ?? 'edits');
+    setShowLocation(Boolean(task && task.projectPath !== CHAT_WORKSPACE_PATH));
+    setShowSafety(false);
     setError(null);
     setSaving(false);
   }, [open, task]);
@@ -99,19 +133,29 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved }: Sc
   const projectOptions = projects.filter((project) => project.fullPath && project.fullPath !== CHAT_WORKSPACE_PATH && !project.isArchived);
   const projectKnown = projectPath === CHAT_WORKSPACE_PATH || projectOptions.some((project) => project.fullPath === projectPath);
 
+  const catalog = models.filter((option) => option.value !== CATALOG_DEFAULT_MODEL);
+  const primaryModels = catalog.slice(0, PRIMARY_MODEL_COUNT);
+  const moreModels = catalog.slice(PRIMARY_MODEL_COUNT);
+  // A saved model the catalog no longer lists stays selectable instead of silently changing.
+  const unlistedModel = model && !catalog.some((option) => option.value === model) ? model : null;
+  const modelLabel = model ? (catalog.find((option) => option.value === model)?.label ?? model) : t('scheduledTasks.editor.defaultModel');
+
   const buildSchedule = (): ScheduledTaskSchedule => {
-    switch (kind) {
-      case 'once': return { kind, at: new Date(onceAt).toISOString() };
-      case 'daily': return { kind, time };
-      case 'weekly': return { kind, time, days };
-      case 'interval': return { kind, hours };
-    }
+    if (triggerKind === 'once') return { kind: 'once', at: new Date(onceAt).toISOString() };
+    if (triggerKind === 'interval') return { kind: 'interval', hours };
+    if (frequency === 'weekdays') return { kind: 'weekly', time, days: WORKDAYS };
+    if (frequency === 'weekly') return { kind: 'weekly', time, days };
+    return { kind: 'daily', time };
   };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (kind === 'once' && Number.isNaN(new Date(onceAt).getTime())) {
+    if (triggerKind === 'once' && Number.isNaN(new Date(onceAt).getTime())) {
       setError(t('scheduledTasks.editor.pickDate'));
+      return;
+    }
+    if (triggerKind === 'schedule' && frequency === 'weekly' && days.length === 0) {
+      setError(t('scheduledTasks.editor.pickDays'));
       return;
     }
     const tools = readUserPreference<{ allowedTools?: string[]; disallowedTools?: string[] }>(
@@ -128,7 +172,7 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved }: Sc
       permission,
       toolsSettings: { allowedTools: tools.allowedTools ?? [], disallowedTools: tools.disallowedTools ?? [] },
       // Saving a paused one-off task with a new time is how it is rescheduled.
-      enabled: task ? task.enabled || kind === 'once' : true,
+      enabled: task ? task.enabled || triggerKind === 'once' : true,
     };
     setSaving(true);
     setError(null);
@@ -147,97 +191,172 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved }: Sc
     setDays((current) => (current.includes(day) ? current.filter((value) => value !== day) : [...current, day]));
   };
 
+  const chevron = <ChevronDown size={14} className="scheduled-task-chevron" aria-hidden="true" />;
+
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
       <DialogContent className="scheduled-task-editor">
-        <DialogTitle>{task ? t('scheduledTasks.editor.editTitle') : t('scheduledTasks.editor.createTitle')}</DialogTitle>
+        <div className="scheduled-task-editor-head">
+          <DialogTitle className="scheduled-task-editor-title not-sr-only">
+            {task ? t('scheduledTasks.editor.editTitle') : t('scheduledTasks.editor.createTitle')}
+          </DialogTitle>
+          <button type="button" className="scheduled-task-editor-close" aria-label={t('scheduledTasks.editor.close')} onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+        {!task && (
+          <button type="button" className="scheduled-task-editor-switch" onClick={onStartWithClaude}>
+            {t('scheduledTasks.editor.useClaude')}
+          </button>
+        )}
         <form onSubmit={submit}>
-          <label>
-            <span>{t('scheduledTasks.editor.name')}</span>
-            <input value={name} maxLength={100} required onChange={(event) => setName(event.target.value)} placeholder={t('scheduledTasks.editor.namePlaceholder')} />
-          </label>
-          <label>
-            <span>{t('scheduledTasks.editor.project')}</span>
-            <select value={projectPath} onChange={(event) => setProjectPath(event.target.value)}>
-              <option value={CHAT_WORKSPACE_PATH}>{t('scheduledTasks.editor.chatWorkspace')}</option>
-              {projectOptions.map((project) => (
-                <option key={project.projectId} value={project.fullPath}>{project.displayName}</option>
-              ))}
-              {!projectKnown && <option value={projectPath}>{projectPath}</option>}
-            </select>
-          </label>
-          <label>
-            <span>{t('scheduledTasks.editor.prompt')}</span>
-            <textarea value={prompt} rows={5} required onChange={(event) => setPrompt(event.target.value)} placeholder={t('scheduledTasks.editor.promptPlaceholder')} />
-          </label>
-          <div className="scheduled-task-editor-row">
-            <label>
-              <span>{t('scheduledTasks.editor.frequency')}</span>
-              <select value={kind} onChange={(event) => setKind(event.target.value as ScheduleKind)}>
-                <option value="once">{t('scheduledTasks.editor.kinds.once')}</option>
-                <option value="daily">{t('scheduledTasks.editor.kinds.daily')}</option>
-                <option value="weekly">{t('scheduledTasks.editor.kinds.weekly')}</option>
-                <option value="interval">{t('scheduledTasks.editor.kinds.interval')}</option>
-              </select>
+          <div className="scheduled-task-editor-body">
+            <label className="scheduled-task-field">
+              <span>{t('scheduledTasks.editor.name')}</span>
+              <input value={name} maxLength={100} required onChange={(event) => setName(event.target.value)} placeholder={t('scheduledTasks.editor.namePlaceholder')} />
             </label>
-            {kind === 'once' && (
-              <label>
-                <span>{t('scheduledTasks.editor.when')}</span>
-                <input type="datetime-local" value={onceAt} required onChange={(event) => setOnceAt(event.target.value)} />
-              </label>
-            )}
-            {(kind === 'daily' || kind === 'weekly') && (
-              <label>
-                <span>{t('scheduledTasks.editor.time')}</span>
-                <input type="time" value={time} required onChange={(event) => setTime(event.target.value)} />
-              </label>
-            )}
-            {kind === 'interval' && (
-              <label>
-                <span>{t('scheduledTasks.editor.hours')}</span>
-                <input type="number" min={1} max={168} step={1} value={hours} required onChange={(event) => setHours(Number(event.target.value))} />
-              </label>
-            )}
-          </div>
-          {kind === 'weekly' && (
-            <div className="scheduled-task-days" role="group" aria-label={t('scheduledTasks.editor.days')}>
-              {WEEK_ORDER.map((day) => (
-                <button type="button" key={day} aria-pressed={days.includes(day)} onClick={() => toggleDay(day)}>
-                  {t(`scheduledTasks.weekdays.${day}`)}
-                </button>
-              ))}
+
+            <div className="scheduled-task-field">
+              <label htmlFor="scheduled-task-prompt">{t('scheduledTasks.editor.prompt')}</label>
+              <div className="scheduled-task-prompt-box">
+                <textarea id="scheduled-task-prompt" value={prompt} rows={3} required onChange={(event) => setPrompt(event.target.value)} placeholder={t('scheduledTasks.editor.promptPlaceholder')} />
+                <div className="scheduled-task-prompt-bar">
+                  <ScheduledTaskMenu
+                    triggerClassName="scheduled-task-chip"
+                    ariaLabel={t('scheduledTasks.editor.permission')}
+                    trigger={<>{PERMISSION_ICONS[permission]}<span>{t(`scheduledTasks.permission.${permission}`)}</span>{chevron}</>}
+                    panelClassName="scheduled-task-menu-wide"
+                  >
+                    {(close) => (
+                      <>
+                        <ScheduledTaskMenuLabel>{t('scheduledTasks.editor.permission')}</ScheduledTaskMenuLabel>
+                        {PERMISSION_ORDER.map((value) => (
+                          <ScheduledTaskMenuItem
+                            key={value}
+                            icon={PERMISSION_ICONS[value]}
+                            label={t(`scheduledTasks.permission.${value}`)}
+                            description={t(`scheduledTasks.permission.${value}Hint`)}
+                            selected={permission === value}
+                            danger={value === 'all'}
+                            onSelect={() => { setPermission(value); close(); }}
+                          />
+                        ))}
+                      </>
+                    )}
+                  </ScheduledTaskMenu>
+                  <ScheduledTaskMenu
+                    triggerClassName="scheduled-task-chip"
+                    ariaLabel={t('scheduledTasks.editor.model')}
+                    align="end"
+                    trigger={<><span>{modelLabel}</span>{chevron}</>}
+                  >
+                    {(close) => (
+                      <>
+                        <ScheduledTaskMenuItem label={t('scheduledTasks.editor.defaultModel')} selected={!model} onSelect={() => { setModel(''); close(); }} />
+                        {primaryModels.map((option) => (
+                          <ScheduledTaskMenuItem key={option.value} label={option.label} selected={model === option.value} onSelect={() => { setModel(option.value); close(); }} />
+                        ))}
+                        {unlistedModel && (
+                          <ScheduledTaskMenuItem label={unlistedModel} selected onSelect={close} />
+                        )}
+                        {moreModels.length > 0 && (
+                          <>
+                            <ScheduledTaskMenuDivider />
+                            <ScheduledTaskSubmenu label={t('scheduledTasks.editor.moreModels')}>
+                              {moreModels.map((option) => (
+                                <ScheduledTaskMenuItem key={option.value} label={option.label} selected={model === option.value} onSelect={() => { setModel(option.value); close(); }} />
+                              ))}
+                            </ScheduledTaskSubmenu>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </ScheduledTaskMenu>
+                </div>
+              </div>
             </div>
-          )}
-          <label>
-            <span>{t('scheduledTasks.editor.model')}</span>
-            <select value={model} onChange={(event) => setModel(event.target.value)}>
-              <option value="">{t('scheduledTasks.editor.defaultModel')}</option>
-              {models.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              {model && !models.some((option) => option.value === model) && <option value={model}>{model}</option>}
-            </select>
-          </label>
-          <fieldset>
-            <legend>{t('scheduledTasks.editor.permission')}</legend>
-            <label className="scheduled-task-choice">
-              <input type="radio" name="permission" checked={permission === 'edits'} onChange={() => setPermission('edits')} />
-              <span>
-                <strong>{t('scheduledTasks.permission.edits')}</strong>
-                <small>{t('scheduledTasks.permission.editsHint')}</small>
-              </span>
-            </label>
-            <label className="scheduled-task-choice">
-              <input type="radio" name="permission" checked={permission === 'all'} onChange={() => setPermission('all')} />
-              <span>
-                <strong>{t('scheduledTasks.permission.all')}</strong>
-                <small>{t('scheduledTasks.permission.allHint')}</small>
-              </span>
-            </label>
-          </fieldset>
-          {error && <p role="alert" className="scheduled-task-error">{error}</p>}
+
+            <div className={`scheduled-task-notice ${permission === 'all' ? 'danger' : ''}`}>
+              <p>
+                {t(`scheduledTasks.editor.notice.${permission}`)}{' '}
+                <button type="button" className="scheduled-task-link" aria-expanded={showSafety} onClick={() => setShowSafety((value) => !value)}>
+                  {t('scheduledTasks.editor.safetyLink')}
+                </button>
+              </p>
+              {showSafety && <p className="scheduled-task-notice-detail">{t('scheduledTasks.editor.safetyTips')}</p>}
+            </div>
+
+            <div className="scheduled-task-trigger">
+              <span className="scheduled-task-trigger-label">{t('scheduledTasks.editor.trigger')}</span>
+              <div className="scheduled-task-trigger-controls">
+                <ScheduledTaskMenu
+                  triggerClassName="scheduled-task-chip"
+                  ariaLabel={t('scheduledTasks.editor.trigger')}
+                  trigger={<><Clock size={15} /><span>{t(`scheduledTasks.editor.triggerKinds.${triggerKind}`)}</span>{chevron}</>}
+                >
+                  {(close) => (['schedule', 'interval', 'once'] as TriggerKind[]).map((value) => (
+                    <ScheduledTaskMenuItem key={value} label={t(`scheduledTasks.editor.triggerKinds.${value}`)} selected={triggerKind === value}
+                      onSelect={() => { setTriggerKind(value); close(); }} />
+                  ))}
+                </ScheduledTaskMenu>
+                {triggerKind === 'schedule' && (
+                  <>
+                    <ScheduledTaskMenu
+                      triggerClassName="scheduled-task-chip"
+                      ariaLabel={t('scheduledTasks.editor.frequency')}
+                      trigger={<><span>{t(`scheduledTasks.editor.frequencies.${frequency}`)}</span>{chevron}</>}
+                    >
+                      {(close) => (['daily', 'weekdays', 'weekly'] as Frequency[]).map((value) => (
+                        <ScheduledTaskMenuItem key={value} label={t(`scheduledTasks.editor.frequencies.${value}`)} selected={frequency === value}
+                          onSelect={() => { setFrequency(value); close(); }} />
+                      ))}
+                    </ScheduledTaskMenu>
+                    <input type="time" className="scheduled-task-chip scheduled-task-time" aria-label={t('scheduledTasks.editor.time')} value={time} required onChange={(event) => setTime(event.target.value)} />
+                  </>
+                )}
+                {triggerKind === 'interval' && (
+                  <label className="scheduled-task-chip scheduled-task-hours">
+                    <span>{t('scheduledTasks.editor.hoursPrefix')}</span>
+                    <input type="number" min={1} max={168} step={1} aria-label={t('scheduledTasks.editor.hours')} value={hours} required onChange={(event) => setHours(Number(event.target.value))} />
+                    <span>{t('scheduledTasks.editor.hoursSuffix')}</span>
+                  </label>
+                )}
+                {triggerKind === 'once' && (
+                  <input type="datetime-local" className="scheduled-task-chip scheduled-task-time" aria-label={t('scheduledTasks.editor.when')} value={onceAt} required onChange={(event) => setOnceAt(event.target.value)} />
+                )}
+              </div>
+              <button type="button" className="scheduled-task-more" aria-label={t('scheduledTasks.editor.moreOptions')} title={t('scheduledTasks.editor.moreOptions')}
+                aria-expanded={showLocation} onClick={() => setShowLocation((value) => !value)}>
+                <Plus size={18} />
+              </button>
+            </div>
+            {triggerKind === 'schedule' && frequency === 'weekly' && (
+              <div className="scheduled-task-days" role="group" aria-label={t('scheduledTasks.editor.days')}>
+                {WEEK_ORDER.map((day) => (
+                  <button type="button" key={day} aria-pressed={days.includes(day)} onClick={() => toggleDay(day)}>
+                    {t(`scheduledTasks.weekdays.${day}`)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {showLocation && (
+              <label className="scheduled-task-location">
+                <span>{t('scheduledTasks.editor.project')}</span>
+                <select value={projectPath} onChange={(event) => setProjectPath(event.target.value)}>
+                  <option value={CHAT_WORKSPACE_PATH}>{t('scheduledTasks.editor.chatWorkspace')}</option>
+                  {projectOptions.map((project) => (
+                    <option key={project.projectId} value={project.fullPath}>{project.displayName}</option>
+                  ))}
+                  {!projectKnown && <option value={projectPath}>{projectPath}</option>}
+                </select>
+              </label>
+            )}
+            {error && <p role="alert" className="scheduled-task-error">{error}</p>}
+          </div>
           <div className="scheduled-task-editor-actions">
             <button type="button" onClick={onClose}>{t('scheduledTasks.editor.cancel')}</button>
             <button type="submit" className="primary" disabled={saving}>
-              {saving ? t('scheduledTasks.editor.saving') : t('scheduledTasks.editor.save')}
+              {saving ? t('scheduledTasks.editor.saving') : task ? t('scheduledTasks.editor.save') : t('scheduledTasks.editor.create')}
             </button>
           </div>
         </form>

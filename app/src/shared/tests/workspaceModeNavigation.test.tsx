@@ -88,6 +88,26 @@ describe('Chat and Code navigation memories', () => {
     expect(result.current.homeRequest).toBe(request);
   });
 
+  it('starts a new chat with a handed-over draft from Scheduled tasks, and a plain New Chat drops it', () => {
+    const { result } = renderHook(useWorkspaceExperience, { wrapper: WorkspaceExperienceProvider });
+    act(() => result.current.enterSession('code-a'));
+    act(() => result.current.openScheduledTasks());
+    const request = result.current.homeRequest;
+    act(() => result.current.startChatWithDraft('Set up a daily briefing'));
+    expect(result.current.scheduledTasksOpen).toBe(false);
+    expect(result.current.home).toBe(true);
+    expect(result.current.mode).toBe('chat');
+    expect(result.current.homeRequest).toBe(request + 1);
+    expect(result.current.homeDraft).toBe('Set up a daily briefing');
+
+    act(() => result.current.consumeHomeDraft());
+    expect(result.current.homeDraft).toBeNull();
+
+    act(() => result.current.startChatWithDraft('Another prompt'));
+    act(() => result.current.openHome('chat'));
+    expect(result.current.homeDraft).toBeNull();
+  });
+
   it('remembers a just-created session before it appears in the sidebar', () => {
     const { result } = renderHook(useWorkspaceExperience, { wrapper: WorkspaceExperienceProvider });
     act(() => result.current.openHome('project'));

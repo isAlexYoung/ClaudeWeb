@@ -30,6 +30,7 @@ import type {
   ProviderModelsDefinition,
   ProviderSkillSource,
   QueuedChatMessage,
+  ScheduledTaskPermission,
   SubagentActivity,
   WorkspacePathValidationResult,
 } from '@/shared/types.js';
@@ -1420,4 +1421,19 @@ export function findApplicationRoot(startDirectory: string): string {
   return path.basename(parentDirectory) === 'dist-server'
     ? path.dirname(parentDirectory)
     : parentDirectory;
+}
+
+// ---------------------------
+//----------------- SCHEDULED TASK PERMISSION UTILITIES ------------
+
+/**
+ * Reads a scheduled-task permission from a database row, a backup record or a
+ * request body. Anything other than `manual` or `all` becomes `edits`, the
+ * permission tasks had before `manual` existed, so older rows, older backups
+ * and clients that never send the field keep running exactly as they did.
+ * Used by the scheduled-tasks service, the backup export/import and the
+ * database backup reader so every path agrees on the same three values.
+ */
+export function normalizeScheduledTaskPermission(value: unknown): ScheduledTaskPermission {
+  return value === 'manual' || value === 'all' ? value : 'edits';
 }

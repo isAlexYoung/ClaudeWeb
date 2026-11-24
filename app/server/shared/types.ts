@@ -1674,6 +1674,18 @@ export type BackupScheduledMessageRecord = {
   updatedAt: string | null;
 };
 
+/**
+ * How much an unattended scheduled-task run may do without asking. Nobody can
+ * answer a prompt during a scheduled run, so whatever would wait for approval is
+ * refused instead.
+ * - `manual`: nothing is approved automatically; only tools on the user's allow list run.
+ * - `edits`: file edits are approved automatically (acceptEdits); other requests need the allow list.
+ * - `all`: every tool runs without asking.
+ * Stored as text in `scheduled_tasks.permission` and in backups; read stored or
+ * submitted values through `normalizeScheduledTaskPermission`.
+ */
+export type ScheduledTaskPermission = 'manual' | 'edits' | 'all';
+
 /** One ClaudeWeb scheduled task; `schedule` and `toolsSettings` are the stored JSON text. Run history is not kept. */
 export type BackupScheduledTaskRecord = {
   id: string;
@@ -1683,7 +1695,7 @@ export type BackupScheduledTaskRecord = {
   schedule: string;
   timezone: string;
   model: string | null;
-  permission: 'edits' | 'all';
+  permission: ScheduledTaskPermission;
   toolsSettings: string;
   createdAt: string | null;
 };

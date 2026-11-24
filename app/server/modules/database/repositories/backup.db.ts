@@ -8,7 +8,7 @@ import type {
   BackupMergeSelection,
   BackupSessionRecord,
 } from '@/shared/types.js';
-import { normalizeProjectPath } from '@/shared/utils.js';
+import { normalizeProjectPath, normalizeScheduledTaskPermission } from '@/shared/utils.js';
 
 /**
  * Failure reason stored on a pending scheduled message whose time had already
@@ -144,7 +144,7 @@ export const backupDb = {
         schedule: row.schedule,
         timezone: row.timezone,
         model: row.model,
-        permission: row.permission === 'all' ? 'all' as const : 'edits' as const,
+        permission: normalizeScheduledTaskPermission(row.permission),
         toolsSettings: row.tools_settings,
         createdAt: row.created_at,
       })),

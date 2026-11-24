@@ -11,7 +11,7 @@ import type {
 import { nextRunAfter, normalizeTimeZone, parseSchedule, readSchedule } from '@/modules/scheduled-tasks/schedule.js';
 import type { TaskSchedule } from '@/modules/scheduled-tasks/schedule.js';
 import { WS_OPEN_STATE, connectedClients } from '@/modules/websocket/index.js';
-import { AppError } from '@/shared/utils.js';
+import { AppError, normalizeScheduledTaskPermission } from '@/shared/utils.js';
 
 const MAX_TASKS_PER_USER = 50;
 const MAX_NAME_LENGTH = 100;
@@ -89,7 +89,7 @@ export function toScheduledTask(row: ScheduledTaskRow, runs: ScheduledTaskRunRow
     schedule: readSchedule(row.schedule),
     timezone: row.timezone,
     model: row.model,
-    permission: row.permission === 'all' ? 'all' : 'edits',
+    permission: normalizeScheduledTaskPermission(row.permission),
     enabled: Boolean(row.enabled),
     nextRunAt: utc(row.next_run_at),
     lastRunAt: utc(row.last_run_at),
@@ -135,7 +135,7 @@ function readFields(body: Record<string, unknown>, now: Date, existing: Schedule
   const schedule = parseSchedule(body.schedule, now);
   const timezone = normalizeTimeZone(body.timezone);
   const model = typeof body.model === 'string' && body.model.trim() ? body.model.trim().slice(0, 200) : null;
-  const permission: ScheduledTaskPermission = body.permission === 'all' ? 'all' : 'edits';
+  const permission: ScheduledTaskPermission = normalizeScheduledTaskPermission(body.permission);
   // Pausing or resuming sends no tool lists; the saved ones are kept then.
   const tools = (body.toolsSettings && typeof body.toolsSettings === 'object' ? body.toolsSettings : null) as Record<string, unknown> | null;
   const toolsSettings = !tools && existing

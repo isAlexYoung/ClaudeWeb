@@ -5,6 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.5 - 2026-11-24 (stable)
+
+- Redesign Scheduled tasks: a large title with My tasks and Templates tabs, search, Source and Status filters, sorting by next run or name with an option to include completed one-off tasks, and a New task menu with "Create with Claude" and "Set up manually". Six templates (daily briefing, inbox triage, meeting prep, weekly review, content ideas, topic watch) sit under a wavy divider below your tasks and on their own tab.
+- Templates, "Create with Claude" and the editor's "Set up with Claude instead" open a new chat with the prompt already typed, ready to edit or send.
+- The task editor gains Instructions with Permission (Manual / Auto / Skip all approvals) and Model menus (with More models), a Trigger row (scheduled every day, on weekdays or on chosen days; every few hours; once) and a "+" for where the task runs. Scheduled tasks accept a new `manual` permission that approves nothing automatically; backups keep it.
+
 ## 2.2.4 - 2026-11-24 (stable)
 
 - Add a sidebar Plugins page that shares the Settings extension manager, with full-size search, filters, enabled/disabled cards, and installation flows. Add Google Drive, Gmail, Google Calendar, and Microsoft 365 recommendations with Claude account authorization guidance, a selectable/copyable connection link, access to the persistent built-in browser, and documented VPS CLI requirements.

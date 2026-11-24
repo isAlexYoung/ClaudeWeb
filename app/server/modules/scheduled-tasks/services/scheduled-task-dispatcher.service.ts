@@ -7,7 +7,7 @@ import { formatRunTime, nextRunAfter, readSchedule } from '@/modules/scheduled-t
 import { announceScheduledTasksChanged } from '@/modules/scheduled-tasks/services/scheduled-tasks.service.js';
 import { runDetachedChatTurn } from '@/modules/websocket/index.js';
 import type { ProviderRuntimeGateway } from '@/modules/websocket/index.js';
-import { AppError } from '@/shared/utils.js';
+import { AppError, normalizeScheduledTaskPermission } from '@/shared/utils.js';
 
 /** Due tasks are looked for this often; schedules are set to the minute. */
 const POLL_INTERVAL_MS = 30_000;
@@ -34,16 +34,18 @@ function readToolsSettings(raw: string): { allowedTools: string[]; disallowedToo
 /**
  * What a run is sent with. Nobody is watching a scheduled run, so `unattended`
  * makes the Claude runtime refuse anything that would wait for an answer
- * instead of leaving the run hanging. "edits" lets file edits through
- * (acceptEdits) and refuses the rest unless the user's allow list covers it;
- * "all" allows every tool.
+ * instead of leaving the run hanging. "manual" approves nothing by itself, so
+ * only tools on the user's allow list run (permissionMode default); "edits"
+ * also lets file edits through (acceptEdits) and refuses the rest unless the
+ * allow list covers it; "all" allows every tool.
  */
 export function buildRunOptions(task: ScheduledTaskRow, title: string): Record<string, unknown> {
   const tools = readToolsSettings(task.tools_settings);
-  const skipPermissions = task.permission === 'all';
+  const permission = normalizeScheduledTaskPermission(task.permission);
+  const skipPermissions = permission === 'all';
   return {
     ...(task.model ? { model: task.model } : {}),
-    permissionMode: skipPermissions ? 'default' : 'acceptEdits',
+    permissionMode: permission === 'edits' ? 'acceptEdits' : 'default',
     toolsSettings: { ...tools, skipPermissions },
     skipPermissions,
     unattended: true,

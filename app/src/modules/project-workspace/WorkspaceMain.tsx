@@ -218,6 +218,7 @@ function WorkspaceMain({
           experience.enterSession(sessionId);
           onNavigateToSession(sessionId);
         }}
+        onStartChat={experience.startChatWithDraft}
       />
     );
   }

@@ -180,6 +180,29 @@ test('"allow everything" runs skip permissions and a failing run is recorded', a
   });
 });
 
+test('"manual" runs approve nothing by themselves, and unknown permissions fall back to edits', async () => {
+  await withIsolatedDatabase(async (userId, projectPath) => {
+    const runs: RunCall[] = [];
+    const manual = scheduledTasksService.create(
+      userId,
+      taskBody(projectPath, { permission: 'manual', schedule: { kind: 'interval', hours: 1 } }),
+      new Date('2026-11-15T00:00:00Z'),
+    );
+    assert.equal(manual.permission, 'manual');
+    await dispatchDueScheduledTasks(createRuntime(runs), new Date('2026-11-15T01:00:00Z'));
+    assert.equal(runs[0].options.permissionMode, 'default');
+    assert.equal(runs[0].options.skipPermissions, false);
+    assert.equal(runs[0].options.unattended, true);
+
+    const unknown = scheduledTasksService.create(
+      userId,
+      taskBody(projectPath, { name: 'Unknown permission', permission: 'everything-please' }),
+      new Date('2026-11-15T00:00:00Z'),
+    );
+    assert.equal(unknown.permission, 'edits');
+  });
+});
+
 test('a one-off task switches itself off after running', async () => {
   await withIsolatedDatabase(async (userId, projectPath) => {
     const runs: RunCall[] = [];

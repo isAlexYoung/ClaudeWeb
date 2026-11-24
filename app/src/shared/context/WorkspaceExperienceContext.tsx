@@ -39,6 +39,9 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
   const [homeRequest, setHomeRequest] = useState(0);
   // A failed chat-workspace preparation stays visible until a new attempt is requested.
   const [homeError, setHomeError] = useState<WorkspaceHomeError | null>(null);
+  // Text another page (scheduled tasks) wants the next Chat landing composer to start with.
+  // It must outlive the navigation: chat only mounts once the chat workspace is ready.
+  const [homeDraft, setHomeDraft] = useState<string | null>(null);
   // Each mode remembers the conversation it last displayed; explicit New Chat clears only its own slot.
   const lastSessions = useRef<Record<WorkspaceMode, string | null>>({ chat: null, project: null });
   // Routing remains owned by project-workspace; the shared context only issues this navigation intent.
@@ -67,7 +70,17 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setContextUsage(null);
     setContextDetails(null);
     setHomeError(null);
+    // A plain New Chat never inherits a prompt that was meant for an earlier one.
+    setHomeDraft(null);
   }, []);
+
+  const startChatWithDraft = useCallback((text: string) => {
+    openHome('chat');
+    // Set after openHome's reset; both updates land in the same render.
+    setHomeDraft(text);
+  }, [openHome]);
+
+  const consumeHomeDraft = useCallback(() => setHomeDraft(null), []);
 
   const switchMode = useCallback((nextMode: WorkspaceMode) => {
     if (nextMode === mode && mainPage === 'workspace') return;
@@ -154,6 +167,9 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     transcriptActions,
     ...sessions,
     openHome,
+    homeDraft,
+    startChatWithDraft,
+    consumeHomeDraft,
     switchMode,
     resumeSessionId,
     homeProject,
@@ -167,7 +183,7 @@ export function WorkspaceExperienceProvider({ children }: { children: ReactNode 
     setTranscriptActions,
   }), [
     mode, home, scheduledTasksOpen, pluginsOpen, homeRequest, homeError, contextUsage, contextDetails, transcriptActions, sessions,
-    openHome, switchMode, resumeSessionId, homeProject, openScheduledTasks, openPlugins, enterProject, enterSession, rememberSession, toggleSessionPin,
+    openHome, homeDraft, startChatWithDraft, consumeHomeDraft, switchMode, resumeSessionId, homeProject, openScheduledTasks, openPlugins, enterProject, enterSession, rememberSession, toggleSessionPin,
   ]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

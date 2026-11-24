@@ -12,6 +12,8 @@ import PermissionContext from '@/modules/chat/context/PermissionContext';
 import { MarkdownWorkspaceContext } from '@/modules/chat/context/MarkdownWorkspaceContext';
 import { TranscriptSessionContext } from '@/modules/chat/context/TranscriptSessionContext';
 import { api } from '@/shared/api';
+import { writeDraftText } from '@/shared/chatDrafts';
+import { CHAT_WORKSPACE_PATH } from '@/shared/constants';
 import { QuoteDrafts, SelectionTools, useTextQuotes } from '@/modules/side-chat';
 import { getIntrinsicMessageKey } from '@/modules/chat/utils/messageKeys';
 import { readUserPreference, subscribeToUserPreferences, writeUserPreference } from '@/shared/userSettings';
@@ -444,6 +446,30 @@ function ChatInterface({
   }, [setInput, textareaRef]);
 
   usePaletteOpsRegister({ insertComposerText });
+
+  // A prompt handed over by another page (a scheduled-task template, "Create with
+  // Claude") becomes the Chat landing draft. It is written straight into the
+  // landing scope (`project:<chat workspace>`) rather than through setInput:
+  // right after New Chat this component can still hold the previous
+  // conversation's id for one render, and setInput would file the text under it.
+  // The composer's draft subscription then shows it once that scope is current.
+  const pendingHomeDraft = experience.homeDraft;
+  const consumeHomeDraft = experience.consumeHomeDraft;
+  const chatHomeProjectId = experience.home && experience.mode === 'chat'
+    && selectedProject && (selectedProject.fullPath || selectedProject.path || '').replace(/\/+$/, '') === CHAT_WORKSPACE_PATH
+    ? selectedProject.projectId
+    : null;
+  useEffect(() => {
+    if (!pendingHomeDraft || !chatHomeProjectId) return;
+    writeDraftText(`project:${chatHomeProjectId}`, pendingHomeDraft);
+    consumeHomeDraft?.();
+    window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    });
+  }, [pendingHomeDraft, chatHomeProjectId, consumeHomeDraft, textareaRef]);
 
   // Task prompts replace the draft: each one is a complete instruction the user reviews before sending.
   const replaceComposerText = useCallback((text: string) => {

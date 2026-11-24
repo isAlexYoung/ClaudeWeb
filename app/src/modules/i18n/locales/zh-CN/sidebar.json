@@ -269,7 +269,7 @@
     "newTask": "新建任务",
     "intro": "到点后，ClaudeWeb 会在所选项目里新开一个对话并发送提示词。任务在服务器上运行，关掉浏览器也会执行。同一时间只运行一个任务；ClaudeWeb 停止期间错过的那次，会在恢复后补跑一次。",
     "loading": "正在读取定时任务…",
-    "empty": "还没有定时任务。",
+    "empty": "暂无定时任务。",
     "paused": "已暂停",
     "manual": "手动运行",
     "nextRun": "下次：{{when}}",
@@ -294,7 +294,8 @@
       "weeklyAt": "每周{{days}} {{time}}",
       "everyHours": "每 {{count}} 小时",
       "daySeparator": "、",
-      "unreadable": "排期无法读取"
+      "unreadable": "排期无法读取",
+      "weekdaysAt": "工作日 {{time}}"
     },
     "weekdays": {
       "0": "日",
@@ -306,22 +307,24 @@
       "6": "六"
     },
     "permission": {
-      "edits": "只自动允许改文件",
-      "editsHint": "改文件自动允许。其他需要确认的操作（比如运行不在允许列表里的命令）直接拒绝，并记在对话里。",
+      "edits": "自动",
+      "editsHint": "无需询问即可运行，修改文件自动允许。",
       "editsShort": "只允许改文件",
-      "all": "全部自动允许",
-      "allHint": "所有工具都不再询问，包括运行命令。更方便，风险也更大。",
-      "allShort": "全部自动允许"
+      "all": "跳过所有批准",
+      "allHint": "即使是不安全的操作，Claude 也不会暂停询问。",
+      "allShort": "全部自动允许",
+      "manual": "手动",
+      "manualHint": "Claude 使用新工具前需要征得您的同意；无人值守时，这类操作会被直接拒绝。"
     },
     "editor": {
       "createTitle": "新建定时任务",
       "editTitle": "编辑定时任务",
       "name": "名称",
-      "namePlaceholder": "例如：每天早上的测试报告",
+      "namePlaceholder": "每日简报",
       "project": "运行位置",
       "chatWorkspace": "聊天（不属于项目）",
-      "prompt": "提示词",
-      "promptPlaceholder": "每次要让 Claude 做什么",
+      "prompt": "指令",
+      "promptPlaceholder": "提供指令，说明您希望如何完成此任务",
       "frequency": "频率",
       "kinds": {
         "once": "仅一次",
@@ -335,11 +338,102 @@
       "days": "星期",
       "pickDate": "请选择日期和时间。",
       "model": "模型",
-      "defaultModel": "默认",
-      "permission": "无人确认时的权限",
+      "defaultModel": "默认模型",
+      "permission": "权限",
       "cancel": "取消",
       "save": "保存",
-      "saving": "正在保存…"
+      "saving": "正在保存…",
+      "useClaude": "改用 Claude 设置",
+      "close": "关闭",
+      "trigger": "触发方式",
+      "triggerKinds": {
+        "schedule": "定时",
+        "interval": "间隔",
+        "once": "一次"
+      },
+      "frequencies": {
+        "daily": "每天",
+        "weekdays": "工作日",
+        "weekly": "每周"
+      },
+      "hoursPrefix": "每",
+      "hoursSuffix": "小时",
+      "pickDays": "请至少选择一天。",
+      "moreModels": "更多模型",
+      "moreOptions": "更多选项",
+      "create": "创建",
+      "notice": {
+        "manual": "在此任务中，Claude 只会使用您已允许的工具；需要批准的操作会被拒绝，因为运行时无人确认。",
+        "edits": "在此任务中，Claude 将直接工作并修改文件，不会暂停等待批准；未获允许的命令会被拒绝。",
+        "all": "在此任务中，Claude 将直接执行所有操作（包括运行命令），不会暂停等待批准。"
+      },
+      "safetyLink": "查看安全使用提示",
+      "safetyTips": "定时任务在服务器上运行，关掉浏览器也会执行；同一时间只运行一个任务，ClaudeWeb 停止期间错过的那次会在恢复后补跑一次。运行时没有人能确认操作，请只给任务清晰、可信的指令，谨慎使用「跳过所有批准」，并在设置中维护允许的工具列表。"
+    },
+    "noMatches": "没有符合条件的定时任务。",
+    "newTaskWithClaude": "与 Claude 一起创建",
+    "manualSetup": "手动设置",
+    "withClaudePrompt": "帮我设置一个定时任务。问我它应该做什么、多久运行一次以及在什么时间运行,然后创建它。",
+    "search": "搜索定时任务…",
+    "closeSearch": "关闭搜索",
+    "tabs": {
+      "mine": "我的",
+      "templates": "模板"
+    },
+    "filter": {
+      "title": "筛选",
+      "source": "来源",
+      "state": "状态",
+      "sources": {
+        "all": "全部",
+        "chat": "对话",
+        "project": "项目"
+      },
+      "states": {
+        "all": "全部",
+        "enabled": "已启用",
+        "paused": "已暂停",
+        "completed": "已自动关闭",
+        "shelved": "已搁置"
+      }
+    },
+    "sort": {
+      "title": "排序",
+      "next": "下次运行",
+      "name": "名称",
+      "includeCompleted": "包含已完成"
+    },
+    "templates": {
+      "dailyBriefing": {
+        "name": "每日简报",
+        "description": "日历、邮件和消息中今天需要您关注的内容。",
+        "prompt": "帮我设置一个定时任务「每日简报」（{{when}}）：汇总我的日历、邮件和消息中今天需要我关注的内容。如果缺少需要的信息或连接器，先问我，然后创建它。"
+      },
+      "inboxTriage": {
+        "name": "收件箱整理",
+        "description": "对您的收件箱进行分类，并为所有紧急邮件起草回复。",
+        "prompt": "帮我设置一个定时任务「收件箱整理」（{{when}}）：对我的收件箱进行分类，并为所有紧急邮件起草回复。如果缺少需要的信息或连接器，先问我，然后创建它。"
+      },
+      "meetingPrep": {
+        "name": "会议准备",
+        "description": "在您日历上的每场会议前提供一份简短摘要，涵盖参会者、背景和议程。",
+        "prompt": "帮我设置一个定时任务「会议准备」（{{when}}）：为我当天日历上的每场会议准备一份简短摘要，涵盖参会者、背景和议程。如果缺少需要的信息或连接器，先问我，然后创建它。"
+      },
+      "weeklyReview": {
+        "name": "每周回顾",
+        "description": "每周五发送的本周动态汇总。",
+        "prompt": "帮我设置一个定时任务「每周回顾」（{{when}}）：汇总本周的动态和进展，整理成一份周报。先问我要包含哪些来源，然后创建它。"
+      },
+      "contentIdeas": {
+        "name": "内容创意",
+        "description": "每周根据您所在行业的最新资讯拟定几个帖子创意。",
+        "prompt": "帮我设置一个定时任务「内容创意」（{{when}}）：根据我所在行业的最新资讯拟定几个帖子创意。先问我所在的行业和发布平台，然后创建它。"
+      },
+      "topicWatch": {
+        "name": "主题监测",
+        "description": "持续关注与某个主题、竞争对手或关键词相关的新闻或提及。",
+        "prompt": "帮我设置一个定时任务「主题监测」（{{when}}）：查找与某个主题、竞争对手或关键词相关的新闻或提及，并汇总新的内容。先问我要关注哪些主题或关键词，然后创建它。"
+      }
     }
   }
 }

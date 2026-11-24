@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
 import { getConnection } from '@/modules/database/connection.js';
+import type { ScheduledTaskPermission } from '@/shared/types.js';
 
-export type ScheduledTaskPermission = 'edits' | 'all';
+// Re-exported so existing consumers of the database barrel keep one import site.
+export type { ScheduledTaskPermission };
 export type ScheduledTaskRunStatus = 'queued' | 'running' | 'succeeded' | 'failed';
 export type ScheduledTaskRunTrigger = 'schedule' | 'manual';
 
