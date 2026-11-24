@@ -15,7 +15,10 @@ check() { if eval "$2"; then echo "PASS $1"; else echo "FAIL $1"; failures=$((fa
 cd /root
 
 # Only meaningful while no stable release exists; then the default install takes the newest stable one.
-if ! curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/releases/releases.json | grep -q '"channel": "stable"'; then
+# The list is read whole first: piping curl into `grep -q` lets grep exit early, curl then fails
+# writing (error 23) and, with pipefail, a list that has stable releases reads as one that has none.
+published="$(curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/releases/releases.json)"
+if ! grep -q '"channel": "stable"' <<<"$published"; then
   curl -fsSL "$URL" | bash > /tmp/cw-p-default.out 2>&1
   check "without --version the installer refuses: no stable release yet" "grep -q 'no stable release is published yet' /tmp/cw-p-default.out"
 fi
