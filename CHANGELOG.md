@@ -5,6 +5,8 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+- Scheduled task editor: the Model menu lists the Claude models again (Default model, Fable / Opus / Sonnet / Haiku by version, older versions under More models); the Instructions box grows with its text instead of showing a resize handle; the "+" run-location option is gone and new scheduled tasks always run in Chat (editing an existing task keeps its folder).
+
 ## 2.2.5 - 2026-11-24 (stable)
 
 - Redesign Scheduled tasks: a large title with My tasks and Templates tabs, search, Source and Status filters, sorting by next run or name with an option to include completed one-off tasks, and a New task menu with "Create with Claude" and "Set up manually". Six templates (daily briefing, inbox triage, meeting prep, weekly review, content ideas, topic watch) sit under a wavy divider below your tasks and on their own tab.

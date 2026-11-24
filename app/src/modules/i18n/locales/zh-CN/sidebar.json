@@ -321,7 +321,6 @@
       "editTitle": "编辑定时任务",
       "name": "名称",
       "namePlaceholder": "每日简报",
-      "project": "运行位置",
       "chatWorkspace": "聊天（不属于项目）",
       "prompt": "指令",
       "promptPlaceholder": "提供指令，说明您希望如何完成此任务",
@@ -360,7 +359,6 @@
       "hoursSuffix": "小时",
       "pickDays": "请至少选择一天。",
       "moreModels": "更多模型",
-      "moreOptions": "更多选项",
       "create": "创建",
       "notice": {
         "manual": "在此任务中，Claude 只会使用您已允许的工具；需要批准的操作会被拒绝，因为运行时无人确认。",

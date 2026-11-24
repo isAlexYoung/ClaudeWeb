@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Clock, FastForward, Hand, Plus, TriangleAlert, X } from 'lucide-react';
+import { ChevronDown, Clock, FastForward, Hand, TriangleAlert, X } from 'lucide-react';
 
 import { api } from '@/shared/api';
 import { CHAT_WORKSPACE_PATH, PROVIDER_PERMISSION_PREFERENCE_KEYS } from '@/shared/constants';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui';
 import { readUserPreference } from '@/shared/userSettings';
+import { catalogModelName } from '@/shared/utils';
 import type {
-  Project,
   ProviderModelOption,
+  ProviderModelsDefinition,
   ScheduledTask,
   ScheduledTaskInput,
   ScheduledTaskPermission,
@@ -53,10 +54,30 @@ function inAnHour(): string {
 
 /** Week starts on Monday in the picker; values stay 0 = Sunday ... 6 = Saturday. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
-/** Models listed before "More models"; the rest of the catalog goes in the side menu. */
-const PRIMARY_MODEL_COUNT = 4;
 /** The catalog's own "default" entry is what "Default model" (no model saved) already means. */
 const CATALOG_DEFAULT_MODEL = 'default';
+/** Claude Code's current-model aliases, listed directly in this order; everything else goes under "More models". */
+const PRIMARY_MODEL_FAMILIES = ['fable', 'opus', 'sonnet', 'haiku'];
+/** The prompt box grows with its text up to this height, then scrolls. */
+const PROMPT_MAX_HEIGHT = 240;
+
+/**
+ * Splits the Claude catalog the way the chat composer's model menu does: the
+ * four family aliases first, then older versions and custom models. 1M-context
+ * aliases are left out because they share a model with their family alias.
+ */
+function splitModelCatalog(options: ProviderModelOption[]) {
+  const models = options.filter((option) => option.value !== CATALOG_DEFAULT_MODEL && !/\[1m\]/i.test(option.value));
+  const families = PRIMARY_MODEL_FAMILIES
+    .map((family) => models.find((option) => option.value === family))
+    .filter((option): option is ProviderModelOption => Boolean(option));
+  // A catalog without the family aliases (only custom models, say) still gets a main list.
+  const primary = families.length ? families : models.slice(0, PRIMARY_MODEL_FAMILIES.length);
+  return { primary, more: models.filter((option) => !primary.includes(option)) };
+}
+
+/** The name a model is shown by: "Opus 5.5" rather than the bare alias label "Opus". */
+const modelName = (option: ProviderModelOption) => catalogModelName(option) || option.value;
 
 const PERMISSION_ICONS: Record<ScheduledTaskPermission, ReactNode> = {
   manual: <Hand size={16} />,
@@ -69,8 +90,8 @@ const PERMISSION_ORDER: ScheduledTaskPermission[] = ['manual', 'edits', 'all'];
 export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onStartWithClaude }: ScheduledTaskEditorProps) {
   const { t } = useTranslation('sidebar');
   const [name, setName] = useState('');
-  const [projectPath, setProjectPath] = useState(CHAT_WORKSPACE_PATH);
   const [prompt, setPrompt] = useState('');
+  const promptRef = useRef<HTMLTextAreaElement | null>(null);
   // The trigger menu's choice; together with frequency it decides which schedule is saved.
   const [triggerKind, setTriggerKind] = useState<TriggerKind>('schedule');
   // Daily, Monday-Friday, or chosen weekdays, for the "at a time" trigger.
@@ -81,12 +102,10 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
   const [onceAt, setOnceAt] = useState(inAnHour);
   const [model, setModel] = useState('');
   const [permission, setPermission] = useState<ScheduledTaskPermission>('edits');
-  const [projects, setProjects] = useState<Project[]>([]);
+  // The Claude model catalog, read when the form opens; empty until then or if the request fails.
   const [models, setModels] = useState<ProviderModelOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // The "+" row with the project picker; open from the start when a task already runs in a project.
-  const [showLocation, setShowLocation] = useState(false);
   // The expanded safety notes under the permission notice.
   const [showSafety, setShowSafety] = useState(false);
 
@@ -95,7 +114,6 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
     if (!open) return;
     const schedule = task?.schedule;
     setName(task?.name ?? '');
-    setProjectPath(task?.projectPath ?? CHAT_WORKSPACE_PATH);
     setPrompt(task?.prompt ?? '');
     setTriggerKind(schedule?.kind === 'interval' ? 'interval' : schedule?.kind === 'once' ? 'once' : 'schedule');
     setFrequency(schedule?.kind === 'weekly' ? (isWorkdays(schedule.days) ? 'weekdays' : 'weekly') : 'daily');
@@ -105,40 +123,44 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
     setOnceAt(schedule?.kind === 'once' ? toLocalInput(new Date(schedule.at)) : inAnHour());
     setModel(task?.model ?? '');
     setPermission(task?.permission ?? 'edits');
-    setShowLocation(Boolean(task && task.projectPath !== CHAT_WORKSPACE_PATH));
     setShowSafety(false);
     setError(null);
     setSaving(false);
   }, [open, task]);
 
-  // Projects and models are read when the form opens; neither is needed before.
+  // The model catalog is read when the form opens; it is not needed before.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     void (async () => {
       try {
-        const [projectsResponse, modelsResponse] = await Promise.all([api.projects(), api.providers.models('claude')]);
-        const projectList = projectsResponse.ok ? ((await projectsResponse.json()) as Project[]) : [];
-        const modelBody = modelsResponse.ok ? await modelsResponse.json() : null;
-        if (cancelled) return;
-        setProjects(Array.isArray(projectList) ? projectList : []);
-        setModels(Array.isArray(modelBody?.data?.models) ? modelBody.data.models : []);
+        const response = await api.providers.models('claude');
+        // GET /api/providers/claude/models answers { success, data: { provider, models: { OPTIONS, DEFAULT } } }.
+        const body = response.ok ? await response.json() as { data?: { models?: ProviderModelsDefinition } } : null;
+        const options = body?.data?.models?.OPTIONS;
+        if (!cancelled) setModels(Array.isArray(options) ? options : []);
       } catch {
-        // The form still works with the chat workspace and the default model.
+        // The form still works with the default model.
       }
     })();
     return () => { cancelled = true; };
   }, [open]);
 
-  const projectOptions = projects.filter((project) => project.fullPath && project.fullPath !== CHAT_WORKSPACE_PATH && !project.isArchived);
-  const projectKnown = projectPath === CHAT_WORKSPACE_PATH || projectOptions.some((project) => project.fullPath === projectPath);
+  // The prompt box follows its text instead of offering a resize handle.
+  useLayoutEffect(() => {
+    const textarea = promptRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, PROMPT_MAX_HEIGHT)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > PROMPT_MAX_HEIGHT ? 'auto' : 'hidden';
+  }, [prompt, open]);
 
-  const catalog = models.filter((option) => option.value !== CATALOG_DEFAULT_MODEL);
-  const primaryModels = catalog.slice(0, PRIMARY_MODEL_COUNT);
-  const moreModels = catalog.slice(PRIMARY_MODEL_COUNT);
+  const { primary: primaryModels, more: moreModels } = splitModelCatalog(models);
+  const catalog = [...primaryModels, ...moreModels];
   // A saved model the catalog no longer lists stays selectable instead of silently changing.
   const unlistedModel = model && !catalog.some((option) => option.value === model) ? model : null;
-  const modelLabel = model ? (catalog.find((option) => option.value === model)?.label ?? model) : t('scheduledTasks.editor.defaultModel');
+  const selectedModel = catalog.find((option) => option.value === model);
+  const modelLabel = model ? (selectedModel ? modelName(selectedModel) : model) : t('scheduledTasks.editor.defaultModel');
 
   const buildSchedule = (): ScheduledTaskSchedule => {
     if (triggerKind === 'once') return { kind: 'once', at: new Date(onceAt).toISOString() };
@@ -164,7 +186,8 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
     );
     const input: ScheduledTaskInput = {
       name: name.trim(),
-      projectPath,
+      // New tasks run in the chat workspace; an existing task keeps the folder it was created with.
+      projectPath: task?.projectPath ?? CHAT_WORKSPACE_PATH,
       prompt,
       schedule: buildSchedule(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
@@ -219,7 +242,7 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
             <div className="scheduled-task-field">
               <label htmlFor="scheduled-task-prompt">{t('scheduledTasks.editor.prompt')}</label>
               <div className="scheduled-task-prompt-box">
-                <textarea id="scheduled-task-prompt" value={prompt} rows={3} required onChange={(event) => setPrompt(event.target.value)} placeholder={t('scheduledTasks.editor.promptPlaceholder')} />
+                <textarea ref={promptRef} id="scheduled-task-prompt" value={prompt} rows={3} required onChange={(event) => setPrompt(event.target.value)} placeholder={t('scheduledTasks.editor.promptPlaceholder')} />
                 <div className="scheduled-task-prompt-bar">
                   <ScheduledTaskMenu
                     triggerClassName="scheduled-task-chip"
@@ -254,7 +277,7 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
                       <>
                         <ScheduledTaskMenuItem label={t('scheduledTasks.editor.defaultModel')} selected={!model} onSelect={() => { setModel(''); close(); }} />
                         {primaryModels.map((option) => (
-                          <ScheduledTaskMenuItem key={option.value} label={option.label} selected={model === option.value} onSelect={() => { setModel(option.value); close(); }} />
+                          <ScheduledTaskMenuItem key={option.value} label={modelName(option)} selected={model === option.value} onSelect={() => { setModel(option.value); close(); }} />
                         ))}
                         {unlistedModel && (
                           <ScheduledTaskMenuItem label={unlistedModel} selected onSelect={close} />
@@ -264,7 +287,7 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
                             <ScheduledTaskMenuDivider />
                             <ScheduledTaskSubmenu label={t('scheduledTasks.editor.moreModels')}>
                               {moreModels.map((option) => (
-                                <ScheduledTaskMenuItem key={option.value} label={option.label} selected={model === option.value} onSelect={() => { setModel(option.value); close(); }} />
+                                <ScheduledTaskMenuItem key={option.value} label={modelName(option)} selected={model === option.value} onSelect={() => { setModel(option.value); close(); }} />
                               ))}
                             </ScheduledTaskSubmenu>
                           </>
@@ -325,10 +348,6 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
                   <input type="datetime-local" className="scheduled-task-chip scheduled-task-time" aria-label={t('scheduledTasks.editor.when')} value={onceAt} required onChange={(event) => setOnceAt(event.target.value)} />
                 )}
               </div>
-              <button type="button" className="scheduled-task-more" aria-label={t('scheduledTasks.editor.moreOptions')} title={t('scheduledTasks.editor.moreOptions')}
-                aria-expanded={showLocation} onClick={() => setShowLocation((value) => !value)}>
-                <Plus size={18} />
-              </button>
             </div>
             {triggerKind === 'schedule' && frequency === 'weekly' && (
               <div className="scheduled-task-days" role="group" aria-label={t('scheduledTasks.editor.days')}>
@@ -338,18 +357,6 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
                   </button>
                 ))}
               </div>
-            )}
-            {showLocation && (
-              <label className="scheduled-task-location">
-                <span>{t('scheduledTasks.editor.project')}</span>
-                <select value={projectPath} onChange={(event) => setProjectPath(event.target.value)}>
-                  <option value={CHAT_WORKSPACE_PATH}>{t('scheduledTasks.editor.chatWorkspace')}</option>
-                  {projectOptions.map((project) => (
-                    <option key={project.projectId} value={project.fullPath}>{project.displayName}</option>
-                  ))}
-                  {!projectKnown && <option value={projectPath}>{projectPath}</option>}
-                </select>
-              </label>
             )}
             {error && <p role="alert" className="scheduled-task-error">{error}</p>}
           </div>

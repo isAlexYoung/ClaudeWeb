@@ -16,7 +16,6 @@ const harness = vi.hoisted(() => ({
     update: vi.fn(),
     remove: vi.fn(),
     runNow: vi.fn(),
-    projects: vi.fn(),
     models: vi.fn(),
   },
 }));
@@ -32,7 +31,6 @@ vi.mock('@/shared/api', () => ({
       remove: harness.api.remove,
       runNow: harness.api.runNow,
     },
-    projects: harness.api.projects,
     providers: { models: harness.api.models },
   },
 }));
@@ -77,10 +75,24 @@ const FINISHED: ScheduledTask = {
   runs: [{ ...TASK.runs[0], id: 'run-2', status: 'succeeded', error: null }],
 };
 
-const MODELS = ['Fable 5.2', 'Opus 5.5', 'Sonnet 5.5', 'Haiku 5.5', 'Opus 5', 'Sonnet 5'].map((label) => ({
-  value: label.toLowerCase().replace(/\s+/g, '-'),
-  label,
-}));
+/**
+ * The Claude catalog in the shape GET /api/providers/claude/models returns it:
+ * family aliases named by family with the version leading the description, a
+ * 1M-context alias, and older versions listed by their full names.
+ */
+const MODEL_CATALOG = {
+  DEFAULT: 'default',
+  OPTIONS: [
+    { value: 'default', label: 'Default (recommended)', description: 'Opus 5.5 · Recommended for your account' },
+    { value: 'opus', label: 'Opus', description: 'Opus 5.5 · Complex reasoning' },
+    { value: 'opus[1m]', label: 'Opus (1M context)', description: 'Opus 5.5 with a 1M context window' },
+    { value: 'sonnet', label: 'Sonnet', description: 'Sonnet 5.5 · Everyday tasks' },
+    { value: 'fable', label: 'Fable', description: 'Fable 5.2 · Hardest tasks' },
+    { value: 'haiku', label: 'Haiku', description: 'Haiku 5.5 · Fast' },
+    { value: 'claude-opus-5', label: 'Opus 5' },
+    { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
+  ],
+};
 
 beforeAll(async () => {
   await i18n.changeLanguage('en');
@@ -94,14 +106,7 @@ beforeEach(() => {
   harness.api.runNow.mockImplementation(async () => json({ success: true, data: { queued: true } }));
   harness.api.update.mockImplementation(async () => json({ success: true, data: TASK }));
   harness.api.create.mockImplementation(async () => json({ success: true, data: TASK }));
-  harness.api.projects.mockImplementation(async () => json([
-    { projectId: 'p1', displayName: 'Website', fullPath: '/srv/website' },
-    { projectId: 'chat', displayName: 'Chat', fullPath: '/home/claudeweb' },
-  ]));
-  harness.api.models.mockImplementation(async () => json({
-    success: true,
-    data: { models: [{ value: 'default', label: 'Default (recommended)' }, ...MODELS] },
-  }));
+  harness.api.models.mockImplementation(async () => json({ success: true, data: { provider: 'claude', models: MODEL_CATALOG } }));
 });
 
 const renderPage = (onStartChat = vi.fn(), onOpenSession = vi.fn()) => ({
@@ -192,7 +197,7 @@ test('"Create with Claude" and the editor\'s "Set up with Claude instead" open a
   assert.deepEqual(onStartChat.mock.calls[1], [askForDetails]);
 });
 
-test('the editor creates a weekly task in a project with the chosen model and permission', async () => {
+test('the editor creates a weekly chat task with the chosen model and permission', async () => {
   harness.tasks = [];
   const { view } = renderPage();
   await view.findByText('No scheduled tasks yet.');
@@ -207,34 +212,38 @@ test('the editor creates a weekly task in a project with the chosen model and pe
   fireEvent.click(await view.findByRole('menuitemradio', { name: 'Weekly' }));
   fireEvent.click(within(dialog).getByRole('button', { name: 'Fri' }));
 
-  // Model: the first four models are listed directly, the rest under "More models".
-  await waitFor(() => harness.api.models.mock.calls.length > 0);
+  // Model: Default, then Fable/Opus/Sonnet/Haiku by version name; older ones under "More models".
+  await waitFor(() => assert.ok(harness.api.models.mock.calls.length > 0));
   fireEvent.click(within(dialog).getByRole('button', { name: 'Model' }));
   const modelMenu = await view.findByRole('menu', { name: 'Model' });
-  assert.ok(within(modelMenu).getByRole('menuitemradio', { name: 'Default model' }));
-  assert.ok(within(modelMenu).getByRole('menuitemradio', { name: 'Haiku 5.5' }));
-  assert.equal(within(modelMenu).queryByRole('menuitemradio', { name: 'Opus 5' }), null);
+  await within(modelMenu).findByRole('menuitemradio', { name: 'Fable 5.2' });
+  assert.deepEqual(
+    within(modelMenu).getAllByRole('menuitemradio').map((item) => item.textContent),
+    ['Default model', 'Fable 5.2', 'Opus 5.5', 'Sonnet 5.5', 'Haiku 5.5'],
+    'the 1M alias and older versions are not in the main list',
+  );
   fireEvent.click(within(modelMenu).getByRole('menuitem', { name: 'More models' }));
-  fireEvent.click(await view.findByRole('menuitemradio', { name: 'Opus 5' }));
+  assert.ok(await view.findByRole('menuitemradio', { name: 'Sonnet 4.6' }));
+  fireEvent.click(view.getByRole('menuitemradio', { name: 'Opus 5' }));
+  assert.equal(within(dialog).getByRole('button', { name: 'Model' }).textContent, 'Opus 5');
 
   // Permission: Manual / Auto / Skip all approvals.
   fireEvent.click(within(dialog).getByRole('button', { name: 'Permissions' }));
   fireEvent.click(await view.findByRole('menuitemradio', { name: /Skip all approvals/ }));
   assert.match(within(dialog).getByText(/carries out every action/).textContent ?? '', /without pausing/);
 
-  // "+" reveals where the task runs.
-  fireEvent.click(within(dialog).getByRole('button', { name: 'More options' }));
-  await within(dialog).findByRole('option', { name: 'Website' });
-  fireEvent.change(within(dialog).getByLabelText('Run in'), { target: { value: '/srv/website' } });
+  // Where a task runs is no longer chosen in the form: new tasks run in the chat workspace.
+  assert.equal(within(dialog).queryByRole('button', { name: 'More options' }), null);
+  assert.equal(within(dialog).queryByRole('combobox'), null);
   fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
 
   await waitFor(() => assert.equal(harness.api.create.mock.calls.length, 1));
   const [body] = harness.api.create.mock.calls[0];
   assert.equal(body.name, 'Weekly cleanup');
   assert.equal(body.prompt, 'Tidy the logs');
-  assert.equal(body.projectPath, '/srv/website');
+  assert.equal(body.projectPath, '/home/claudeweb');
   assert.deepEqual(body.schedule, { kind: 'weekly', time: '09:00', days: [1, 5] });
-  assert.equal(body.model, 'opus-5');
+  assert.equal(body.model, 'claude-opus-5');
   assert.equal(body.permission, 'all');
   assert.equal(body.enabled, true);
   assert.ok(typeof body.timezone === 'string' && body.timezone.length > 0);
@@ -285,6 +294,23 @@ test('search, filter and "Include completed" narrow the list', async () => {
   assert.ok(await view.findByText('No scheduled tasks match.'));
   fireEvent.click(view.getByRole('button', { name: 'Close search' }));
   assert.ok(await view.findByText('Morning report'));
+});
+
+test('editing keeps the folder a task was created in, and the prompt box sizes itself to its text', async () => {
+  harness.tasks = [FINISHED];
+  const { view } = renderPage();
+  fireEvent.click(view.getByRole('button', { name: 'Sort' }));
+  fireEvent.click(await view.findByRole('menuitemradio', { name: 'Include completed' }));
+  fireEvent.click(await view.findByRole('button', { name: 'Edit' }));
+  const dialog = await view.findByRole('dialog');
+  const prompt = within(dialog).getByLabelText('Instructions') as HTMLTextAreaElement;
+  assert.equal(prompt.value, 'Write the release notes');
+  // The height is set from the text (no manual resizing); the box only scrolls past its maximum.
+  assert.match(prompt.style.height, /^\d+px$/);
+  assert.equal(prompt.style.overflowY, 'hidden');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+  await waitFor(() => assert.equal(harness.api.update.mock.calls.length, 1));
+  assert.equal(harness.api.update.mock.calls[0][1].projectPath, '/srv/website');
 });
 
 test('a server refusal is shown in the editor', async () => {

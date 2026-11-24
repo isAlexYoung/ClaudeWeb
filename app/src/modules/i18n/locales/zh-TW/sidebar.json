@@ -221,7 +221,6 @@
       "editTitle": "編輯排程任務",
       "name": "名稱",
       "namePlaceholder": "每日簡報",
-      "project": "執行位置",
       "chatWorkspace": "聊天（不屬於專案）",
       "prompt": "指示",
       "promptPlaceholder": "提供指示，說明您希望如何完成此任務",
@@ -260,7 +259,6 @@
       "hoursSuffix": "小時",
       "pickDays": "請至少選擇一天。",
       "moreModels": "更多模型",
-      "moreOptions": "更多選項",
       "create": "建立",
       "notice": {
         "manual": "在此任務中，Claude 只會使用您已允許的工具；需要核准的操作會被拒絕，因為執行時無人確認。",

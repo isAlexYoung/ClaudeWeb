@@ -324,7 +324,6 @@
       "editTitle": "Edit scheduled task",
       "name": "Name",
       "namePlaceholder": "Daily briefing",
-      "project": "Run in",
       "chatWorkspace": "Chat (no project)",
       "prompt": "Instructions",
       "promptPlaceholder": "Describe how you want this task done",
@@ -363,7 +362,6 @@
       "hoursSuffix": "hours",
       "pickDays": "Pick at least one day.",
       "moreModels": "More models",
-      "moreOptions": "More options",
       "create": "Create",
       "notice": {
         "manual": "In this task, Claude only uses tools you have already allowed; anything that needs approval is refused, because nobody is there to confirm it.",
