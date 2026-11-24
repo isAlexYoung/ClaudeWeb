@@ -546,7 +546,12 @@
       },
       "conversation": {
         "title": "对话",
-        "empty": "还没有对话。在下方描述你需要的内容，Claude 会直接修改这张表。",
+        "emptyTitle": "您需要什么样的电子表格？",
+        "suggestions": {
+          "tracker": "包含负责人和截止日期的项目跟踪表",
+          "budget": "包含总计和图表的月度预算",
+          "pipeline": "一个销售管道，附带按阶段划分的图表"
+        },
         "you": "你",
         "tools": "使用了 {{count}} 个工具",
         "openInChat": "在聊天中打开"

@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Workbook } from '@fortune-sheet/react';
 import '@fortune-sheet/react/dist/index.css';
-import { ArrowUp, ChevronDown, Loader2, Minimize2, PanelRight, Sheet, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, Loader2, Maximize2, Minimize2, Sheet, X } from 'lucide-react';
 
 import { ScheduledTaskMenu, ScheduledTaskMenuDivider, ScheduledTaskMenuItem } from '@/modules/scheduled-tasks';
 import { api } from '@/shared/api';
@@ -68,6 +68,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
 
   const workbookRef = useRef<ToolbarWorkbook | null>(null);
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const composerInputRef = useRef<HTMLInputElement | null>(null);
   // The revision of the file the grid shows, and its contents as last saved or loaded.
   const revisionRef = useRef<string | null>(null);
   const savedTextRef = useRef<string | null>(null);
@@ -88,6 +89,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
   const applyDetail = useCallback((next: ArtefactDetail) => {
     setDetail(next);
     setSessionId(next.sessionId);
+    notifyArtefactsChanged({ upsert: next });
     revisionRef.current = next.revision;
     if (next.content) {
       savedTextRef.current = JSON.stringify(next.content);
@@ -271,7 +273,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
     try {
       const updated = await readArtefactResponse<ArtefactDetail>(await api.artefacts.update(artefactId, { title: trimmed }));
       setDetail((current) => current && { ...current, title: updated.title });
-      notifyArtefactsChanged();
+      notifyArtefactsChanged({ upsert: updated });
     } catch (caught) {
       showNotice(caught instanceof Error ? caught.message : String(caught));
     }
@@ -282,7 +284,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
     pendingTextRef.current = null;
     try {
       await readArtefactResponse<unknown>(await api.artefacts.remove(artefactId));
-      notifyArtefactsChanged();
+      notifyArtefactsChanged({ removeId: artefactId });
       onClose();
     } catch (caught) {
       showNotice(caught instanceof Error ? caught.message : String(caught));
@@ -300,16 +302,22 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
     URL.revokeObjectURL(url);
   };
 
-  const close = async () => {
-    await save();
-    onClose();
-  };
-
   const minimize = async () => {
     await save();
     if (sessionId && onMinimize) onMinimize(sessionId);
     else onClose();
   };
+
+  const selectSuggestion = useCallback((prompt: string) => {
+    setComposerOpen(true);
+    setMessage(prompt);
+    requestAnimationFrame(() => {
+      const input = composerInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.setSelectionRange(prompt.length, prompt.length);
+    });
+  }, []);
 
   if (loadError && !detail) {
     return (
@@ -360,25 +368,22 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
         <div className="sheet-editor-head-actions">
           <button
             type="button"
-            className={`sheet-editor-head-button ${conversationOpen ? 'active' : ''}`}
+            className="artefact-icon-button"
             aria-pressed={conversationOpen}
+            data-open={conversationOpen ? 'true' : undefined}
+            aria-label={conversationOpen ? t('artefacts.editor.hideConversation') : t('artefacts.editor.showConversation')}
+            title={conversationOpen ? t('artefacts.editor.hideConversation') : t('artefacts.editor.showConversation')}
             onClick={() => setConversationOpen((value) => !value)}
           >
-            <PanelRight size={16} />
-            {conversationOpen ? t('artefacts.editor.hideConversation') : t('artefacts.editor.showConversation')}
+            {conversationOpen ? <Maximize2 size={17} /> : <Minimize2 size={17} />}
           </button>
-          {sessionId && onMinimize && (
-            <button
-              type="button"
-              className="artefact-icon-button"
-              aria-label={t('artefacts.editor.minimize')}
-              title={t('artefacts.editor.minimize')}
-              onClick={() => void minimize()}
-            >
-              <Minimize2 size={17} />
-            </button>
-          )}
-          <button type="button" className="artefact-icon-button" aria-label={t('artefacts.editor.close')} title={t('artefacts.editor.close')} onClick={() => void close()}>
+          <button
+            type="button"
+            className="artefact-icon-button"
+            aria-label={t('artefacts.editor.minimize')}
+            title={t('artefacts.editor.minimize')}
+            onClick={() => void minimize()}
+          >
             <X size={18} />
           </button>
         </div>
@@ -419,6 +424,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
                     <p className="sheet-composer-working" role="status"><Loader2 size={15} className="animate-spin" />{t('artefacts.editor.working')}</p>
                   ) : (
                     <input
+                      ref={composerInputRef}
                       value={message}
                       placeholder={t('artefacts.editor.composerPlaceholder')}
                       aria-label={t('artefacts.editor.composerPlaceholder')}
@@ -445,7 +451,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
           <SheetConversation
             sessionId={sessionId}
             running={running}
-            onClose={() => setConversationOpen(false)}
+            onSelectSuggestion={selectSuggestion}
             onOpenInChat={(id) => { void save().then(() => onOpenSession(id)); }}
           />
         )}

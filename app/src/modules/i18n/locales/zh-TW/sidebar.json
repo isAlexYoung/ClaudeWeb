@@ -476,7 +476,12 @@
       },
       "conversation": {
         "title": "對話",
-        "empty": "尚無對話。在下方描述你需要的內容，Claude 會直接修改這份試算表。",
+        "emptyTitle": "您需要什麼樣的試算表？",
+        "suggestions": {
+          "tracker": "包含負責人和截止日期的專案追蹤表",
+          "budget": "包含總計和圖表的月度預算",
+          "pipeline": "一個銷售管道，附帶按階段劃分的圖表"
+        },
         "you": "你",
         "tools": "使用了 {{count}} 個工具",
         "openInChat": "在聊天中開啟"

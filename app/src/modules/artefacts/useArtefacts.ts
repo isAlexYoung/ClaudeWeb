@@ -3,17 +3,38 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, readApiErrorMessage } from '@/shared/api';
 import type { ArtefactSummary } from '@/shared/types';
 
-type ArtefactsListener = () => void;
+type ArtefactChangeEvent = {
+  upsert?: ArtefactSummary;
+  removeId?: string;
+};
+type ArtefactsListener = (event?: ArtefactChangeEvent) => void;
 const artefactsListeners = new Set<ArtefactsListener>();
 
-/** Tells every mounted artefacts consumer (page, sidebar, chat card) to refresh. */
-export function notifyArtefactsChanged(): void {
-  for (const listener of artefactsListeners) listener();
+/** Tells every mounted artefacts consumer (page, sidebar, chat card) to update immediately and refresh. */
+export function notifyArtefactsChanged(event?: ArtefactChangeEvent): void {
+  for (const listener of artefactsListeners) listener(event);
 }
 
 function subscribeArtefactsChanged(listener: ArtefactsListener): () => void {
   artefactsListeners.add(listener);
   return () => { artefactsListeners.delete(listener); };
+}
+
+function applyArtefactEvent(current: ArtefactSummary[] | null, event?: ArtefactChangeEvent): ArtefactSummary[] | null {
+  if (!event) return current;
+  if (event.removeId) {
+    return current ? current.filter((item) => item.id !== event.removeId) : current;
+  }
+  if (event.upsert?.id) {
+    const incoming = event.upsert;
+    const list = current ?? [];
+    const index = list.findIndex((item) => item.id === incoming.id);
+    if (index === -1) return [incoming, ...list];
+    const next = [...list];
+    next[index] = { ...next[index], ...incoming };
+    return next;
+  }
+  return current;
 }
 
 /** The `{ success, data }` envelope's data, or the API's error message. */
@@ -56,24 +77,28 @@ export function useArtefacts() {
   // The first read starts once the page has mounted, and re-runs whenever another surface mutates artefacts.
   useEffect(() => {
     queueMicrotask(() => void reload());
-    return subscribeArtefactsChanged(() => { void reload(); });
+    return subscribeArtefactsChanged((event) => {
+      if (event) setArtefacts((current) => applyArtefactEvent(current, event));
+      void reload();
+    });
   }, [reload]);
 
   const createSheet = useCallback(async (title: string) => {
     const created = await readArtefactResponse<ArtefactSummary>(await api.artefacts.create({ kind: 'sheet', title }));
+    notifyArtefactsChanged({ upsert: created });
     await reload();
-    notifyArtefactsChanged();
     return created;
   }, [reload]);
 
   const update = useCallback(async (id: string, fields: { title?: string; pinned?: boolean }) => {
+    let updated: ArtefactSummary | undefined;
     try {
-      await readArtefactResponse<ArtefactSummary>(await api.artefacts.update(id, fields));
+      updated = await readArtefactResponse<ArtefactSummary>(await api.artefacts.update(id, fields));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     }
+    notifyArtefactsChanged(updated ? { upsert: updated } : undefined);
     await reload();
-    notifyArtefactsChanged();
   }, [reload]);
 
   const remove = useCallback(async (id: string) => {
@@ -82,8 +107,8 @@ export function useArtefacts() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     }
+    notifyArtefactsChanged({ removeId: id });
     await reload();
-    notifyArtefactsChanged();
   }, [reload]);
 
   return { artefacts, error, reload, createSheet, update, remove };

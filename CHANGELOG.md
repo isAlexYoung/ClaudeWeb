@@ -5,6 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.1 - 2026-11-24 (stable)
+
+- Artefacts sidebar icon: synchronously propagate created/opened/renamed artefact sessions so conversations owned by an artefact immediately display the Artefacts icon instead of a chat bubble.
+- Chat & spreadsheet card: center the minimized spreadsheet card above the conversation, apply the spreadsheet placeholder in the Chat composer, and hide the bottom-right quota ring in Chat mode (both Chat home and conversations).
+- Spreadsheet conversation drawer & header: redesign the empty drawer with a sketched grid illustration and clickable suggestion pills that fill the composer without auto-sending (removing the redundant close `×` and old empty text); update the top-right controls so diagonal arrows toggle the conversation panel and `×` minimizes the spreadsheet to Chat; raise the floating composer layer above FortuneSheet's bottom control strip so underlying text no longer bleeds through.
+
 ## 2.3.0 - 2026-11-24 (stable)
 
 - 更新了“作品”功能。 / Updated the Artefacts feature.

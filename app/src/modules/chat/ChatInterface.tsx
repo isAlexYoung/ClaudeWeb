@@ -831,6 +831,8 @@ function ChatInterface({
           onTextareaInput={handleTextareaInput}
           onInputFocusChange={handleInputFocusChange}
           placeholder={composerPlaceholder ?? t('input.placeholder', { provider: selectedProviderLabel })}
+          customPlaceholder={composerPlaceholder}
+          showQuotaRing={experience.mode !== 'chat'}
           isTextareaExpanded={isTextareaExpanded}
           sendByCtrlEnter={sendByCtrlEnter}
           taskMenu={composerTaskMenu}

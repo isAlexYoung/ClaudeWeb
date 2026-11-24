@@ -549,7 +549,12 @@
       },
       "conversation": {
         "title": "Conversation",
-        "empty": "No conversation yet. Describe what you need below and Claude will edit this spreadsheet directly.",
+        "emptyTitle": "What kind of spreadsheet do you need?",
+        "suggestions": {
+          "tracker": "A project tracker with owners and due dates",
+          "budget": "A monthly budget with totals and charts",
+          "pipeline": "A sales pipeline with charts by stage"
+        },
         "you": "You",
         "tools": "Used {{count}} tools",
         "openInChat": "Open in chat"

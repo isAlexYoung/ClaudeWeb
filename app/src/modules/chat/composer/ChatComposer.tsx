@@ -126,6 +126,10 @@ type ChatComposerProps = {
   onTextareaInput: (event: FormEvent<HTMLTextAreaElement>) => void;
   onInputFocusChange?: (focused: boolean) => void;
   placeholder: string;
+  /** Explicit placeholder override (e.g. for spreadsheet conversations). */
+  customPlaceholder?: string;
+  /** Whether to show the subscription quota ring beside permission controls. */
+  showQuotaRing?: boolean;
   isTextareaExpanded: boolean;
   sendByCtrlEnter?: boolean;
   /** TaskMaster actions for the add menu, or null when tasks are unavailable. */
@@ -209,6 +213,8 @@ export default function ChatComposer({
   onTextareaScrollSync,
   onTextareaInput,
   onInputFocusChange,
+  customPlaceholder,
+  showQuotaRing = true,
   isTextareaExpanded,
   taskMenu = null,
 }: ChatComposerProps) {
@@ -435,7 +441,7 @@ export default function ChatComposer({
               onFocus={() => onInputFocusChange?.(true)}
               onBlur={() => onInputFocusChange?.(false)}
               onInput={onTextareaInput}
-              placeholder={suggestion || t(isChatHome ? 'workspace.composer.homePlaceholder' : 'workspace.composer.placeholder')}
+              placeholder={suggestion || customPlaceholder || t(isChatHome ? 'workspace.composer.homePlaceholder' : 'workspace.composer.placeholder')}
               data-has-suggestion={suggestion ? 'true' : undefined}
               title={suggestion ? t('workspace.composer.acceptSuggestion') : undefined}
             />
@@ -486,7 +492,7 @@ export default function ChatComposer({
           onSelectPermissionMode={onSelectPermissionMode}
           providerLabel={providerLabel}
         />
-        <QuotaRing onSeeAll={onOpenUsageSettings} />
+        {showQuotaRing && <QuotaRing onSeeAll={onOpenUsageSettings} />}
       </div>
       </div>}
     </div>
