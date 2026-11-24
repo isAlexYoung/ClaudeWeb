@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.4",
+   "channel": "stable",
+   "published_at": "2026-11-24T18:29:10Z",
+   "notes": "\u4f5c\u54c1\u65b0\u589e\u6587\u6863\uff08Markdown\uff09\u548c\u767d\u677f\uff08Excalidraw\uff09\uff0c\u4ea4\u4e92\u4e0e\u7535\u5b50\u8868\u683c\u4e00\u81f4\u3002 / Artefacts add documents (Markdown) and whiteboards (Excalidraw) with the same interaction as spreadsheets.",
+   "package": {
+    "name": "claudeweb-2.3.4-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.4/claudeweb-2.3.4-linux-x64.tar.xz",
+    "bytes": 109559756,
+    "sha256": "740b6c089c8ea928e211f6c2e71d32906bda85f5664a49441c775ead8da4b7e8"
+   }
+  },
+  {
    "version": "2.3.3",
    "channel": "stable",
    "published_at": "2026-11-24T17:01:41Z",
@@ -230,5 +242,5 @@
    }
   }
  ],
- "generated_at": "2026-11-24T17:01:42Z"
+ "generated_at": "2026-11-24T18:29:10Z"
 }
