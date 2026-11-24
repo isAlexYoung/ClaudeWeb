@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.0",
+   "channel": "stable",
+   "published_at": "2026-11-24T13:55:22Z",
+   "notes": "\u66f4\u65b0\u4e86\u201c\u4f5c\u54c1\u201d\u529f\u80fd\u3002 / Updated the Artefacts feature.",
+   "package": {
+    "name": "claudeweb-2.3.0-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.0/claudeweb-2.3.0-linux-x64.tar.xz",
+    "bytes": 71686868,
+    "sha256": "27d78a47d94728d65b7795b56620fe3c6f4e26592ef00739c2fe27cb57d6c27f"
+   }
+  },
+  {
    "version": "2.2.8",
    "channel": "stable",
    "published_at": "2026-11-24T12:55:12Z",
@@ -182,5 +194,5 @@
    }
   }
  ],
- "generated_at": "2026-11-24T12:55:12Z"
+ "generated_at": "2026-11-24T13:55:22Z"
 }
