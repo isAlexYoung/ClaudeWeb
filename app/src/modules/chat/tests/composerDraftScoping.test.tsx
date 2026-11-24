@@ -4,7 +4,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, test, vi } from 'vitest';
 
 import { useChatComposerState } from '@/modules/chat/hooks/useChatComposerState';
-import { readDraftText, resetChatDrafts, writeDraftText } from '@/shared/chatDrafts';
+import { readDraftAttachments, readDraftText, resetChatDrafts, writeDraftText } from '@/shared/chatDrafts';
 import type { PermissionMode, Project, ProjectSession } from '@/shared/types';
 import type { TextQuote } from '@/shared/types';
 import { formatQuotedQuestion } from '@/shared/utils';
@@ -178,6 +178,54 @@ test('choosing a Code-home folder preserves the task text and attachments', asyn
   assert.equal(view.result.current.attachedFiles[0], file);
   assert.equal(readDraftText('code-home:1'), 'Keep this task while choosing a folder');
   assert.equal(readDraftText('project:project-2'), '');
+});
+
+test('attachments stay with their own conversation when switching sessions', async () => {
+  const photo = new File(['png'], 'photo.png', { type: 'image/png' });
+  const view = renderComposer({ id: 'session-a' });
+  await act(async () => {
+    view.result.current.setInput('look at this');
+    view.result.current.setAttachedFiles([photo]);
+  });
+
+  await act(async () => view.rerender({ session: { id: 'session-b' } }));
+  assert.deepEqual(view.result.current.attachedFiles, [], 'session B must not show session A\'s files');
+
+  const report = new File(['pdf'], 'report.pdf', { type: 'application/pdf' });
+  await act(async () => view.result.current.setAttachedFiles((current) => [...current, report]));
+  assert.deepEqual(readDraftAttachments('session-b'), [report]);
+
+  await act(async () => view.rerender({ session: { id: 'session-a' } }));
+  assert.deepEqual(view.result.current.attachedFiles, [photo]);
+  assert.equal(view.result.current.input, 'look at this');
+});
+
+test('text, images and documents are all still there after the composer unmounts and comes back', async () => {
+  const photo = new File(['png'], 'photo.png', { type: 'image/png' });
+  const doc = new File(['docx'], 'notes.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const first = renderComposer(null);
+  await act(async () => {
+    first.result.current.setInput('draft with files');
+    first.result.current.setAttachedFiles([photo, doc]);
+  });
+  // Opening Scheduled tasks replaces the chat, which unmounts the composer.
+  first.unmount();
+
+  const second = renderComposer(null);
+  assert.equal(second.result.current.input, 'draft with files');
+  assert.deepEqual(second.result.current.attachedFiles, [photo, doc]);
+});
+
+test('removing every attachment forgets them, and signing out drops all of them', async () => {
+  const photo = new File(['png'], 'photo.png', { type: 'image/png' });
+  const view = renderComposer({ id: 'session-a' });
+  await act(async () => view.result.current.setAttachedFiles([photo]));
+  await act(async () => view.result.current.setAttachedFiles([]));
+  assert.deepEqual(readDraftAttachments('session-a'), []);
+
+  await act(async () => view.result.current.setAttachedFiles([photo]));
+  resetChatDrafts();
+  assert.deepEqual(readDraftAttachments('session-a'), []);
 });
 
 test('editing a quoted user turn restores chips and only its question into the textarea', async () => {

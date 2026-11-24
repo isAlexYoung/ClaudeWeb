@@ -369,7 +369,10 @@
         "all": "In this task, Claude carries out every action, including running commands, without pausing for approval."
       },
       "safetyLink": "Safety tips",
-      "safetyTips": "Scheduled tasks run on the server, even with the browser closed. One task runs at a time, and a run missed while ClaudeWeb was stopped is made up once it is back. Nobody can confirm actions during a run, so give tasks clear instructions you trust, use \"Skip all approvals\" sparingly, and keep the allowed-tools list in Settings up to date."
+      "safetyTips": "Scheduled tasks run on the server, even with the browser closed. One task runs at a time, and a run missed while ClaudeWeb was stopped is made up once it is back. Nobody can confirm actions during a run, so give tasks clear instructions you trust, use \"Skip all approvals\" sparingly, and keep the allowed-tools list in Settings up to date.",
+      "hour": "Hour",
+      "minute": "Minute",
+      "date": "Date"
     },
     "noMatches": "No scheduled tasks match.",
     "newTaskWithClaude": "Create with Claude",

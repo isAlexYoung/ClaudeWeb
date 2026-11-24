@@ -572,6 +572,13 @@
 .scheduled-task-trigger-controls .scheduled-task-chip:hover, .scheduled-task-trigger-controls .scheduled-task-chip[data-open="true"] { background: var(--workspace-hover); }
 .scheduled-task-time { padding: 0 12px; font-variant-numeric: tabular-nums; outline: none; }
 :root[data-theme="dark"] .scheduled-task-time { color-scheme: dark; }
+/* Time picker: the trigger-menu panel with an hour and a minute column (replaces the unthemed native picker). */
+.scheduled-task-time-menu { overflow: hidden; padding: 6px; }
+.scheduled-task-time-columns { display: flex; gap: 4px; }
+.scheduled-task-time-column { display: flex; flex-direction: column; gap: 2px; width: 64px; max-height: 232px; overflow-y: auto; scrollbar-width: thin; }
+.scheduled-task-time-option { flex-shrink: 0; padding: 7px 0; border-radius: 9px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; color: hsl(var(--popover-foreground)); }
+.scheduled-task-time-option:hover, .scheduled-task-time-option:focus-visible { background: var(--workspace-hover); outline: none; }
+.scheduled-task-time-option[aria-checked="true"] { background: var(--workspace-hover); color: hsl(var(--primary)); font-weight: 600; }
 .scheduled-task-hours input { width: 48px; border: 0; outline: none; background: transparent; color: inherit; font-size: 14px; text-align: center; }
 .scheduled-task-days { display: flex; flex-wrap: wrap; gap: 6px; }
 .scheduled-task-days button { min-width: 40px; padding: 6px 8px; border: 1px solid var(--workspace-line); border-radius: 8px; font-size: 13px; }

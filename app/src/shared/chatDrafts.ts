@@ -252,6 +252,31 @@ function normalizeQueuedMessage(queued: StoredQueuedMessage | null): StoredQueue
     : null;
 }
 
+/**
+ * Files attached to each scope's unsent message. They are browser File objects,
+ * which cannot be written to the server or to localStorage, so this copy lives
+ * in memory only: it lets an attachment survive leaving the chat (the composer
+ * unmounting for Scheduled tasks or Plugins) and switching to another
+ * conversation and back, but not a page reload. Cleared on sign-out.
+ */
+const draftAttachments = new Map<string, File[]>();
+/** One shared empty list, so a scope without attachments always reads the same reference. */
+const NO_ATTACHMENTS: File[] = [];
+
+/** Used by chat's composer: the files attached to a scope's unsent message, oldest first. */
+export function readDraftAttachments(scope: string): File[] {
+  return draftAttachments.get(scope) ?? NO_ATTACHMENTS;
+}
+
+/** Used by chat's composer to remember (or, with an empty list, forget) a scope's attachments. */
+export function writeDraftAttachments(scope: string, files: File[]): void {
+  if (files.length > 0) {
+    draftAttachments.set(scope, files);
+  } else {
+    draftAttachments.delete(scope);
+  }
+}
+
 /** Reads one scope's composer text, synchronously, for the first render. */
 export function readDraftText(scope: string): string {
   return drafts.get(scope)?.text ?? '';
@@ -443,6 +468,7 @@ export function resetChatDrafts(): void {
   storeGeneration += 1;
   lastAppliedHydrate = 0;
   drafts = new Map();
+  draftAttachments.clear();
   pendingScopes.clear();
   textRevisions.clear();
   textRequests.clear();

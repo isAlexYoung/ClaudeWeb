@@ -23,6 +23,7 @@ import {
   ScheduledTaskMenuLabel,
   ScheduledTaskSubmenu,
 } from '@/modules/scheduled-tasks/ScheduledTaskMenu';
+import ScheduledTaskTimePicker from '@/modules/scheduled-tasks/ScheduledTaskTimePicker';
 import { WORKDAYS, isWorkdays } from '@/modules/scheduled-tasks/scheduleText';
 import { readApiError } from '@/modules/scheduled-tasks/useScheduledTasks';
 
@@ -334,7 +335,8 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
                           onSelect={() => { setFrequency(value); close(); }} />
                       ))}
                     </ScheduledTaskMenu>
-                    <input type="time" className="scheduled-task-chip scheduled-task-time" aria-label={t('scheduledTasks.editor.time')} value={time} required onChange={(event) => setTime(event.target.value)} />
+                    <ScheduledTaskTimePicker value={time} onChange={setTime} ariaLabel={t('scheduledTasks.editor.time')}
+                      hourLabel={t('scheduledTasks.editor.hour')} minuteLabel={t('scheduledTasks.editor.minute')} />
                   </>
                 )}
                 {triggerKind === 'interval' && (
@@ -345,7 +347,12 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
                   </label>
                 )}
                 {triggerKind === 'once' && (
-                  <input type="datetime-local" className="scheduled-task-chip scheduled-task-time" aria-label={t('scheduledTasks.editor.when')} value={onceAt} required onChange={(event) => setOnceAt(event.target.value)} />
+                  <>
+                    <input type="date" className="scheduled-task-chip scheduled-task-time" aria-label={t('scheduledTasks.editor.date')} value={onceAt.slice(0, 10)} required
+                      onChange={(event) => setOnceAt(`${event.target.value}T${onceAt.slice(11, 16)}`)} />
+                    <ScheduledTaskTimePicker value={onceAt.slice(11, 16)} onChange={(next) => setOnceAt(`${onceAt.slice(0, 10)}T${next}`)}
+                      ariaLabel={t('scheduledTasks.editor.time')} hourLabel={t('scheduledTasks.editor.hour')} minuteLabel={t('scheduledTasks.editor.minute')} />
+                  </>
                 )}
               </div>
             </div>

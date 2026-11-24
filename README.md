@@ -21,7 +21,7 @@ English | [中文](README.zh-CN.md) | [Changelog](CHANGELOG.md)
 
 ## Install
 
-The current stable release is **2.2.5**. Run this as root on the server:
+The current stable release is **2.2.6**. Run this as root on the server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
@@ -31,7 +31,7 @@ If signed in as a user with sudo access, replace `bash` with `sudo bash`. To ins
 
 You need an amd64 (x86_64) server with at least **2 CPU cores and 2 GB RAM**, and your own Claude account or API credentials.
 
-| System | 2.2.5 |
+| System | 2.2.6 |
 | --- | --- |
 | Debian 12 | Supported |
 | Debian 13 | Supported |

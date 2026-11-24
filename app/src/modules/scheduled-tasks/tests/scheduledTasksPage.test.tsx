@@ -258,7 +258,14 @@ test('weekdays and manual permission are saved as Monday-Friday and "manual"', a
   fireEvent.change(within(dialog).getByLabelText('Instructions'), { target: { value: 'Summarise open PRs' } });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Repeat' }));
   fireEvent.click(await view.findByRole('menuitemradio', { name: 'Weekdays' }));
-  fireEvent.change(within(dialog).getByLabelText('Time'), { target: { value: '08:30' } });
+  // The time is picked from the themed menu: an hour column, then a minute column that closes it.
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Time' }));
+  const timeMenu = await view.findByRole('menu', { name: 'Time' });
+  assert.equal(within(within(timeMenu).getByRole('group', { name: 'Hour' })).getByRole('menuitemradio', { checked: true }).textContent, '09');
+  fireEvent.click(within(within(timeMenu).getByRole('group', { name: 'Hour' })).getByRole('menuitemradio', { name: '08' }));
+  fireEvent.click(within(within(timeMenu).getByRole('group', { name: 'Minute' })).getByRole('menuitemradio', { name: '30' }));
+  await waitFor(() => assert.equal(view.queryByRole('menu', { name: 'Time' }), null));
+  assert.equal(within(dialog).getByRole('button', { name: 'Time' }).textContent, '08:30');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Permissions' }));
   fireEvent.click(await view.findByRole('menuitemradio', { name: /^Manual/ }));
   fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }));

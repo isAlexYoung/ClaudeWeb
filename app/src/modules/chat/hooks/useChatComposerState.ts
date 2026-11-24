@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -26,9 +26,11 @@ import {
   changeQueuedMessage,
   clearQueuedMessage,
   hydrateChatDrafts,
+  readDraftAttachments,
   readDraftText,
   readQueuedMessage,
   subscribeToChatDrafts,
+  writeDraftAttachments,
   writeDraftText,
 } from '@/shared/chatDrafts';
 import { escapeRegExp } from '@/modules/chat/utils/chatFormatting';
@@ -120,6 +122,8 @@ const createFakeSubmitEvent = () => {
 };
 
 const MAX_ATTACHMENT_COUNT = 10;
+/** The attachment list of a composer with no draft scope; one array, so it never looks changed. */
+const NO_ATTACHED_FILES: File[] = [];
 
 const isImageAttachment = (attachment: ChatAttachment) => {
   if (attachment.mimeType?.startsWith('image/')) return true;
@@ -263,7 +267,15 @@ export function useChatComposerState({
     };
   });
   const input = inputState.value;
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  // The files attached to the open scope's unsent message. Like inputState, the
+  // scope travels with the list, so files attached in one conversation are never
+  // shown in or saved to another; chatDrafts keeps each scope's copy so the list
+  // survives this hook unmounting (leaving the chat for Scheduled tasks).
+  const [attachmentState, setAttachmentState] = useState<{ scope: string | null; files: File[] }>(() => {
+    const initialScope = selectedSession?.id || currentSessionId || draftScopeOverride
+      || (selectedProject ? `project:${selectedProject.projectId}` : null);
+    return { scope: initialScope, files: initialScope ? readDraftAttachments(initialScope) : [] };
+  });
   const [fileErrors, setFileErrors] = useState<Map<string, string>>(new Map());
   // Progress of the files being uploaded for a send, shown above the input with a cancel button.
   const [attachmentUpload, setAttachmentUpload] = useState<AttachmentUploadProgress | null>(null);
@@ -294,6 +306,23 @@ export function useChatComposerState({
   const draftScope = sessionKey ?? draftScopeOverride ?? (selectedProjectId ? `project:${selectedProjectId}` : null);
   const draftScopeRef = useRef(draftScope);
   draftScopeRef.current = draftScope;
+  // Right after a switch the state still holds the previous scope's list; show the new scope's own.
+  // Memoized so the callbacks that read it keep their identity between renders.
+  const attachedFiles = useMemo(() => (attachmentState.scope === draftScope
+    ? attachmentState.files
+    : draftScope ? readDraftAttachments(draftScope) : NO_ATTACHED_FILES), [attachmentState, draftScope]);
+  // Every change is applied to the scope open at the time, starting from that scope's stored list.
+  const setAttachedFiles = useCallback<Dispatch<SetStateAction<File[]>>>((next) => {
+    setAttachmentState((previous) => {
+      const scope = draftScopeRef.current;
+      const current = previous.scope === scope ? previous.files : scope ? readDraftAttachments(scope) : [];
+      return { scope, files: typeof next === 'function' ? next(current) : next };
+    });
+  }, []);
+  // Mirror the list into chatDrafts so it is still there when this conversation is opened again.
+  useEffect(() => {
+    if (attachmentState.scope) writeDraftAttachments(attachmentState.scope, attachmentState.files);
+  }, [attachmentState]);
   // Composition is tracked on `window` in the capture phase rather than on the textarea, so a
   // composition that starts in one field and ends after focus moves still closes cleanly.
   const isComposingRef = useRef(false);
@@ -645,7 +674,7 @@ export function useChatComposerState({
     if (validFiles.length > 0) {
       setAttachedFiles((previous) => [...previous, ...validFiles].slice(0, MAX_ATTACHMENT_COUNT));
     }
-  }, [addMessage, t]);
+  }, [addMessage, setAttachedFiles, t]);
 
   const handlePaste = useCallback(
     (event: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -838,7 +867,7 @@ export function useChatComposerState({
       }));
       return true;
     },
-    [addMessage, recordSentMessage, resetCommandMenuState, setInput, t],
+    [addMessage, recordSentMessage, resetCommandMenuState, setAttachedFiles, setInput, t],
   );
 
   // Uploads a send's files in pieces, showing their progress. Returns null
@@ -880,6 +909,8 @@ export function useChatComposerState({
       submitOptions?: SubmitOptions,
     ) => {
       event.preventDefault();
+      // The scope the message was written in; a new chat's scope changes while it is being sent.
+      const submitScope = draftScopeRef.current;
       const originalInput = queuedSubmission?.content ?? inputValueRef.current;
       const sentQuotes = queuedSubmission ? [] : quotes || [];
       const currentInput = formatQuotedQuestion(originalInput, sentQuotes);
@@ -1130,6 +1161,8 @@ export function useChatComposerState({
       inputValueRef.current = '';
       resetCommandMenuState();
       setAttachedFiles([]);
+      // A new chat may already have moved to its session: the files it sent must not wait in the old scope.
+      if (submitScope) writeDraftAttachments(submitScope, []);
       setFileErrors(new Map());
       setIsTextareaExpanded(false);
 
@@ -1163,6 +1196,7 @@ export function useChatComposerState({
       sendMessage,
       sessionKey,
       addMessage,
+      setAttachedFiles,
       setIsUserScrolledUp,
       slashCommands,
       t,
@@ -1260,7 +1294,7 @@ export function useChatComposerState({
     inputValueRef.current = queuedDraft.content;
     setAttachedFiles(queuedDraft.attachments);
     textareaRef.current?.focus();
-  }, [queuedDraft]);
+  }, [queuedDraft, setAttachedFiles]);
 
   const deleteQueuedDraft = useCallback(() => {
     if (queuedDraftSessionRef.current) {

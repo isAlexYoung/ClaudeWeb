@@ -5,7 +5,11 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.2.6 - 2026-11-24 (stable)
+
 - Scheduled task editor: the Model menu lists the Claude models again (Default model, Fable / Opus / Sonnet / Haiku by version, older versions under More models); the Instructions box grows with its text instead of showing a resize handle; the "+" run-location option is gone and new scheduled tasks always run in Chat (editing an existing task keeps its folder).
+- Chat composer: images and files attached to a message you have not sent yet stay with that conversation while you open Scheduled tasks or Plugins and come back, and no longer carry over when you switch to another conversation. Reloading the page still clears them.
+- Scheduled task editor: the time button opens an hour and minute menu in the same style as the frequency menu instead of the browser's time picker; one-off tasks keep their date field and use the same time menu.
 
 ## 2.2.5 - 2026-11-24 (stable)
 
