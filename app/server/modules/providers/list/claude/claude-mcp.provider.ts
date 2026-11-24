@@ -13,6 +13,24 @@ import {
   writeJsonConfig,
 } from '@/shared/utils.js';
 
+// Parked definitions never appear in the CLI's active mcpServers map.
+function readManagedServers(config: Record<string, unknown>): Record<string, unknown> {
+  const active = readObjectRecord(config.mcpServers) ?? {};
+  const disabled = readObjectRecord(config.claudewebDisabledMcpServers) ?? {};
+  return { ...Object.fromEntries(Object.entries(disabled).map(([name, value]) => [name, { ...(readObjectRecord(value) ?? {}), __claudewebDisabled: true }])), ...active };
+}
+
+function writeManagedServers(config: Record<string, unknown>, servers: Record<string, unknown>): void {
+  const active: Record<string, unknown> = {};
+  const disabled: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(servers)) {
+    const { __claudewebDisabled, ...definition } = readObjectRecord(value) ?? {};
+    (__claudewebDisabled === true ? disabled : active)[name] = definition;
+  }
+  config.mcpServers = active;
+  config.claudewebDisabledMcpServers = disabled;
+}
+
 export class ClaudeMcpProvider extends McpProvider {
   constructor() {
     super('claude', ['user', 'local', 'project'], ['stdio', 'http', 'sse']);
@@ -22,18 +40,18 @@ export class ClaudeMcpProvider extends McpProvider {
     if (scope === 'project') {
       const filePath = path.join(workspacePath, '.mcp.json');
       const config = await readJsonConfig(filePath);
-      return readObjectRecord(config.mcpServers) ?? {};
+      return readManagedServers(config);
     }
 
     const filePath = path.join(os.homedir(), '.claude.json');
     const config = await readJsonConfig(filePath);
     if (scope === 'user') {
-      return readObjectRecord(config.mcpServers) ?? {};
+      return readManagedServers(config);
     }
 
     const projects = readObjectRecord(config.projects) ?? {};
     const projectConfig = readObjectRecord(projects[workspacePath]) ?? {};
-    return readObjectRecord(projectConfig.mcpServers) ?? {};
+    return readManagedServers(projectConfig);
   }
 
   protected async writeScopedServers(
@@ -44,7 +62,7 @@ export class ClaudeMcpProvider extends McpProvider {
     if (scope === 'project') {
       const filePath = path.join(workspacePath, '.mcp.json');
       const config = await readJsonConfig(filePath);
-      config.mcpServers = servers;
+      writeManagedServers(config, servers);
       await writeJsonConfig(filePath, config);
       return;
     }
@@ -52,14 +70,14 @@ export class ClaudeMcpProvider extends McpProvider {
     const filePath = path.join(os.homedir(), '.claude.json');
     const config = await readJsonConfig(filePath);
     if (scope === 'user') {
-      config.mcpServers = servers;
+      writeManagedServers(config, servers);
       await writeJsonConfig(filePath, config);
       return;
     }
 
     const projects = readObjectRecord(config.projects) ?? {};
     const projectConfig = readObjectRecord(projects[workspacePath]) ?? {};
-    projectConfig.mcpServers = servers;
+    writeManagedServers(projectConfig, servers);
     projects[workspacePath] = projectConfig;
     config.projects = projects;
     await writeJsonConfig(filePath, config);
@@ -113,6 +131,7 @@ export class ClaudeMcpProvider extends McpProvider {
         scope,
         transport: 'stdio',
         command: config.command,
+        ...(config.__claudewebDisabled === true ? { enabled: false } : {}),
         args: readStringArray(config.args),
         env: readStringRecord(config.env),
       };
@@ -126,6 +145,7 @@ export class ClaudeMcpProvider extends McpProvider {
         scope,
         transport,
         url: config.url,
+        ...(config.__claudewebDisabled === true ? { enabled: false } : {}),
         headers: readStringRecord(config.headers),
       };
     }

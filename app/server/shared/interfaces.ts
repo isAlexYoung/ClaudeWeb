@@ -197,6 +197,8 @@ export interface IProviderMcp {
   listServers(options?: { workspacePath?: string }): Promise<Record<McpScope, ProviderMcpServer[]>>;
   listServersForScope(scope: McpScope, options?: { workspacePath?: string }): Promise<ProviderMcpServer[]>;
   upsertServer(input: UpsertProviderMcpServerInput): Promise<ProviderMcpServer>;
+  /** Preserves an installed definition while changing its runtime availability. */
+  setServerEnabled(input: { name: string; scope?: McpScope; workspacePath?: string; enabled: boolean }): Promise<void>;
   removeServer(
     input: { name: string; scope?: McpScope; workspacePath?: string },
   ): Promise<{ removed: boolean; provider: LLMProvider; name: string; scope: McpScope }>;

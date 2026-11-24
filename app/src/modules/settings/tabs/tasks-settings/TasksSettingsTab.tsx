@@ -23,7 +23,7 @@ export default function TasksSettingsTab({ onArchiveChanged, claudePermissions, 
     isTaskMasterInstalled,
     isCheckingInstallation,
   } = useTasksSettings();
-  const { promptSuggestionsEnabled = true, changeSummaryEnabled = true } = useUiPreferences();
+  const { promptSuggestionsEnabled = true, changeSummaryEnabled = true, chatMcpEnabled } = useUiPreferences();
   const setPreference = useSetUiPreference();
   // The server's hourly archiver reads this preference; the offered choices match its list.
   const [archiveDays, setArchiveDays] = useState(() => {
@@ -111,6 +111,9 @@ export default function TasksSettingsTab({ onArchiveChanged, claudePermissions, 
         )}
       </SettingsSection>
       <SettingsSection title={t('promptSuggestions.section')}>
+        <SettingsRow label={t('chatMcp.label')} description={t('chatMcp.description')}>
+          <SettingsToggle checked={chatMcpEnabled} onChange={value => setPreference('chatMcpEnabled', value)} ariaLabel={t('chatMcp.label')} />
+        </SettingsRow>
         <SettingsRow label={t('promptSuggestions.label')} description={t('promptSuggestions.description')}>
           <SettingsToggle checked={promptSuggestionsEnabled} onChange={value => setPreference('promptSuggestionsEnabled', value)} ariaLabel={t('promptSuggestions.label')} />
         </SettingsRow>

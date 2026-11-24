@@ -864,7 +864,7 @@ export function addUniqueProviderSkillSource(
  */
 export async function findProviderSkillMarkdownFiles(
   rootDir: string,
-  options: { recursive?: boolean } = {},
+  options: { recursive?: boolean; includeDisabled?: boolean } = {},
 ): Promise<string[]> {
   const skillFiles: string[] = [];
 
@@ -883,7 +883,10 @@ export async function findProviderSkillMarkdownFiles(
         skillFiles.push(skillPath);
       }
     } catch {
-      // Directories without SKILL.md are expected while walking plugin trees.
+      if (options.includeDisabled) {
+        const parked = path.join(dirPath, 'SKILL.md.disabled');
+        try { if ((await stat(parked)).isFile()) skillFiles.push(parked); } catch { /* no parked entry */ }
+      }
     }
 
     for (const entry of entries) {
@@ -913,7 +916,10 @@ export async function findProviderSkillMarkdownFiles(
           skillFiles.push(skillPath);
         }
       } catch {
-        // A partial skill directory should not block discovery of sibling skills.
+        if (options.includeDisabled) {
+          const parked = `${skillPath}.disabled`;
+          try { if ((await stat(parked)).isFile()) skillFiles.push(parked); } catch { /* no parked entry */ }
+        }
       }
     }
 

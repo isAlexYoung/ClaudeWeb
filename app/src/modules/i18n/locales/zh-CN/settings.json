@@ -1004,5 +1004,44 @@
         "description": "Claude 直接动手执行，尽量少打断你，倾向行动而不是先做计划。"
       }
     }
+  },
+  "extensions": {
+    "connectorExists": "同名连接器已存在，请使用其他名称。",
+    "pluginUrl": "插件仓库地址",
+    "search": "筛选您的插件",
+    "filter": "扩展分类",
+    "filters": {
+      "all": "全部",
+      "mcp": "连接器",
+      "skill": "Skills"
+    },
+    "types": {
+      "plugin": "插件",
+      "mcp": "MCP",
+      "skill": "Skills"
+    },
+    "enabled": "已启用",
+    "disabled": "未启用",
+    "add": "添加扩展",
+    "back": "返回插件列表",
+    "installType": "安装类型",
+    "refresh": "刷新",
+    "remove": "卸载",
+    "enable": "启用",
+    "edit": "编辑",
+    "removeTitle": "卸载“{{name}}”？",
+    "actionFailed": "操作失败，请重试。",
+    "switchBackground": "切换背景插件",
+    "backgroundConflict": "“{{name}}”正在提供背景，是否切换到这个插件？",
+    "localFilesDescription": "访问你的电脑文件和本机工具",
+    "mcpDescription": "为 Claude 提供额外工具与数据",
+    "loading": "正在加载扩展…",
+    "noMatches": "没有匹配的扩展",
+    "empty": "点击右上角的 ＋ 添加扩展",
+    "connectorName": "连接器名称",
+    "connectorNamePlaceholder": "留空时使用服务器名称",
+    "connectorUrl": "连接器地址",
+    "advancedConnector": "使用配置表单添加",
+    "invalidConnectorUrl": "请输入 HTTP 或 HTTPS 连接器地址。"
   }
 }

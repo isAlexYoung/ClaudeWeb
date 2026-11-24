@@ -403,8 +403,8 @@ function PluginCard({
 }
 
 /* ─── Main Component ────────────────────────────────────────────────────── */
-/** Rendered by the settings module as its Plugins tab, for installing, updating and toggling plugins. */
-export default function PluginSettingsTab() {
+/** Used by the unified extensions installer, with the legacy full manager retained for existing consumers. */
+export default function PluginSettingsTab({ installOnly = false, onInstalled }: { installOnly?: boolean; onInstalled?: () => void } = {}) {
   const { t } = useTranslation('settings');
   const {
     plugins: allPlugins,
@@ -472,6 +472,7 @@ export default function PluginSettingsTab() {
     const result = await installPlugin(gitUrl.trim());
     if (result.success) {
       setGitUrl('');
+      onInstalled?.();
     } else {
       setInstallError(result.error || t('pluginSettings.installFailed'));
     }
@@ -548,6 +549,18 @@ export default function PluginSettingsTab() {
       />
     );
   };
+
+  if (installOnly) return (
+    <form className="space-y-4" onSubmit={event => { event.preventDefault(); void handleInstall(); }}>
+      <label htmlFor="extension-plugin-url" className="block text-sm font-medium text-foreground">{t('extensions.pluginUrl')}</label>
+      <div className="flex gap-2">
+        <input id="extension-plugin-url" aria-label={t('pluginSettings.installAriaLabel')} value={gitUrl} onChange={event => setGitUrl(event.target.value)} placeholder="https://github.com/owner/plugin" disabled={installing} className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        <button type="submit" disabled={installing || !gitUrl.trim()} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{installing && <Loader2 className="h-4 w-4 animate-spin" />}{t('pluginSettings.installButton')}</button>
+      </div>
+      {installError && <p role="alert" className="text-sm text-destructive">{installError}</p>}
+      <a href={CUSTOM_PLUGINS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><BookOpen className="h-3.5 w-3.5" />{t('pluginSettings.customPlugins')}<ExternalLink className="h-3 w-3" /></a>
+    </form>
+  );
 
   return (
     <div className="space-y-6">

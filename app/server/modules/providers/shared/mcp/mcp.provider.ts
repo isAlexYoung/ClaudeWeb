@@ -23,6 +23,8 @@ const normalizeServerName = (name: string): string => {
  * Shared MCP provider for provider-specific config readers/writers.
  */
 export abstract class McpProvider implements IProviderMcp {
+  // User/local/project edits can share a JSON file; serialize the read-modify-write cycle.
+  private configWrites: Promise<void> = Promise.resolve();
   protected readonly provider: LLMProvider;
   protected readonly supportedScopes: McpScope[];
   protected readonly supportedTransports: McpTransport[];
@@ -35,6 +37,12 @@ export abstract class McpProvider implements IProviderMcp {
     this.provider = provider;
     this.supportedScopes = supportedScopes;
     this.supportedTransports = supportedTransports;
+  }
+
+  private changeConfig<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.configWrites.then(operation);
+    this.configWrites = next.then(() => {}, () => {});
+    return next;
   }
 
   async listServers(options?: { workspacePath?: string }): Promise<Record<McpScope, ProviderMcpServer[]>> {
@@ -67,48 +75,69 @@ export abstract class McpProvider implements IProviderMcp {
   }
 
   async upsertServer(input: UpsertProviderMcpServerInput): Promise<ProviderMcpServer> {
-    const scope = input.scope ?? 'project';
-    this.assertScopeAndTransport(scope, input.transport);
+    return this.changeConfig(async () => {
+      const scope = input.scope ?? 'project';
+      this.assertScopeAndTransport(scope, input.transport);
 
-    const workspacePath = resolveWorkspacePath(input.workspacePath);
-    const normalizedName = normalizeServerName(input.name);
-    const scopedServers = await this.readScopedServers(scope, workspacePath);
-    scopedServers[normalizedName] = this.buildServerConfig(input);
-    await this.writeScopedServers(scope, workspacePath, scopedServers);
+      const workspacePath = resolveWorkspacePath(input.workspacePath);
+      const normalizedName = normalizeServerName(input.name);
+      const scopedServers = await this.readScopedServers(scope, workspacePath);
+      const wasDisabled = (scopedServers[normalizedName] as Record<string, unknown> | undefined)?.__claudewebDisabled === true;
+      scopedServers[normalizedName] = { ...this.buildServerConfig(input), ...(wasDisabled ? { __claudewebDisabled: true } : {}) };
+      await this.writeScopedServers(scope, workspacePath, scopedServers);
 
-    return {
-      provider: this.provider,
-      name: normalizedName,
-      scope,
-      transport: input.transport,
-      command: input.command,
-      args: input.args,
-      env: input.env,
-      cwd: input.cwd,
-      url: input.url,
-      headers: input.headers,
-      envVars: input.envVars,
-      bearerTokenEnvVar: input.bearerTokenEnvVar,
-      envHttpHeaders: input.envHttpHeaders,
-    };
+      return {
+        provider: this.provider,
+        name: normalizedName,
+        scope,
+        transport: input.transport,
+        ...(wasDisabled ? { enabled: false } : {}),
+        command: input.command,
+        args: input.args,
+        env: input.env,
+        cwd: input.cwd,
+        url: input.url,
+        headers: input.headers,
+        envVars: input.envVars,
+        bearerTokenEnvVar: input.bearerTokenEnvVar,
+        envHttpHeaders: input.envHttpHeaders,
+      };
+    });
+  }
+
+  /** Used by provider extension management to preserve a connector while removing it from runtime config. */
+  async setServerEnabled(input: { name: string; scope?: McpScope; workspacePath?: string; enabled: boolean }): Promise<void> {
+    return this.changeConfig(async () => {
+      const scope = input.scope ?? 'user';
+      this.assertScope(scope);
+      const workspacePath = resolveWorkspacePath(input.workspacePath);
+      const name = normalizeServerName(input.name);
+      const servers = await this.readScopedServers(scope, workspacePath);
+      const config = servers[name];
+      if (!config || typeof config !== 'object') throw new AppError('MCP server not found.', { code: 'MCP_NOT_FOUND', statusCode: 404 });
+      servers[name] = { ...config, __claudewebDisabled: !input.enabled };
+      await this.writeScopedServers(scope, workspacePath, servers);
+    });
   }
 
   async removeServer(
     input: { name: string; scope?: McpScope; workspacePath?: string },
   ): Promise<{ removed: boolean; provider: LLMProvider; name: string; scope: McpScope }> {
-    const scope = input.scope ?? 'project';
-    this.assertScope(scope);
+    return this.changeConfig(async () => {
+      const scope = input.scope ?? 'project';
+      this.assertScope(scope);
 
-    const workspacePath = resolveWorkspacePath(input.workspacePath);
-    const normalizedName = normalizeServerName(input.name);
-    const scopedServers = await this.readScopedServers(scope, workspacePath);
-    const removed = Object.prototype.hasOwnProperty.call(scopedServers, normalizedName);
-    if (removed) {
-      delete scopedServers[normalizedName];
-      await this.writeScopedServers(scope, workspacePath, scopedServers);
-    }
+      const workspacePath = resolveWorkspacePath(input.workspacePath);
+      const normalizedName = normalizeServerName(input.name);
+      const scopedServers = await this.readScopedServers(scope, workspacePath);
+      const removed = Object.prototype.hasOwnProperty.call(scopedServers, normalizedName);
+      if (removed) {
+        delete scopedServers[normalizedName];
+        await this.writeScopedServers(scope, workspacePath, scopedServers);
+      }
 
-    return { removed, provider: this.provider, name: normalizedName, scope };
+      return { removed, provider: this.provider, name: normalizedName, scope };
+    });
   }
 
   protected abstract readScopedServers(

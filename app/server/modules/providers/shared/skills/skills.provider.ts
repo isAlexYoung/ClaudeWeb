@@ -100,6 +100,7 @@ export abstract class SkillsProvider implements IProviderSkills {
     for (const source of sources) {
       const skillFiles = await findProviderSkillMarkdownFiles(source.rootDir, {
         recursive: source.recursive,
+        includeDisabled: options?.includeDisabled,
       });
       for (const skillPath of skillFiles) {
         try {
@@ -114,7 +115,8 @@ export abstract class SkillsProvider implements IProviderSkills {
             description: definition.description,
             command,
             scope: source.scope,
-            sourcePath: skillPath,
+            sourcePath: skillPath.replace(/\.disabled$/, ''),
+            ...(skillPath.endsWith('.disabled') ? { enabled: false } : {}),
             pluginName: source.pluginName,
             pluginId: source.pluginId,
           });
@@ -175,6 +177,8 @@ export abstract class SkillsProvider implements IProviderSkills {
 
       const skillDirectoryPath = path.join(globalSkillSource.rootDir, resolvedDirectoryName);
       const skillPath = path.join(skillDirectoryPath, 'SKILL.md');
+      // Reinstalling/updating a parked skill must preserve the user's disabled choice.
+      const isDisabled = await stat(`${skillPath}.disabled`).then(info => info.isFile(), () => false);
       const normalizedSkillPath = path.resolve(skillPath);
       if (seenSkillPaths.has(normalizedSkillPath)) {
         throw new AppError(`Duplicate skill target "${resolvedDirectoryName}" in one request.`, {
@@ -207,11 +211,12 @@ export abstract class SkillsProvider implements IProviderSkills {
 
       pendingInstalls.push({
         skillDirectoryPath,
-        skillPath,
+        skillPath: isDisabled ? `${skillPath}.disabled` : skillPath,
         content,
         supportingFiles,
         skill: {
           provider: this.provider,
+          ...(isDisabled ? { enabled: false } : {}),
           name: definition.name,
           description: definition.description,
           command,

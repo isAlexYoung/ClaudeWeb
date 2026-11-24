@@ -725,6 +725,8 @@ export type ProviderSkillScope = 'user' | 'project' | 'plugin' | 'repo' | 'admin
  */
 export type ProviderSkillListOptions = {
   workspacePath?: string;
+  /** Management lists may include parked skill entry files; runtime discovery must omit them. */
+  includeDisabled?: boolean;
 };
 
 /**
@@ -788,6 +790,8 @@ export type ProviderSkill = {
   command: string;
   scope: ProviderSkillScope;
   sourcePath: string;
+  /** False when the entry file is parked as .md.disabled and is unavailable to Claude. */
+  enabled?: boolean;
   pluginName?: string;
   pluginId?: string;
 };
@@ -851,6 +855,8 @@ export type ProviderMcpServer = {
   name: string;
   scope: McpScope;
   transport: McpTransport;
+  /** False when the definition is retained outside the native mcpServers map. */
+  enabled?: boolean;
   command?: string;
   args?: string[];
   env?: Record<string, string>;

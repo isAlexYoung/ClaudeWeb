@@ -28,6 +28,8 @@ type ProviderSkillsProps = {
   selectedProvider: SkillsProvider;
   currentProjects: SkillsProject[];
   onRefreshReady?: SettingsExtensionRefreshRegistration;
+  installOnly?: boolean;
+  onInstalled?: () => void;
 };
 
 type QueuedSkillSourceFile = {
@@ -176,8 +178,8 @@ const buildQueuedSkillFolders = (selectedFiles: File[], t: (key: string, options
   });
 };
 
-/** Rendered by the settings module's agents tab to list, upload and delete one provider's skills. */
-export default function ProviderSkills({ selectedProvider, currentProjects, onRefreshReady }: ProviderSkillsProps) {
+/** Used by agent settings to list skills and by plugins settings to install skill links and files. */
+export default function ProviderSkills({ selectedProvider, currentProjects, onRefreshReady, installOnly = false, onInstalled }: ProviderSkillsProps) {
   const { t } = useTranslation('settings');
   const {
     skills,
@@ -235,6 +237,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects, onRe
     setSubmitError(null);
     try {
       await addSkillFromUrl(skillUrl.trim());
+      onInstalled?.();
       setSkillUrl('');
       setJustInstalled(true);
       setIsAddDialogOpen(false);
@@ -339,6 +342,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects, onRe
           : undefined,
       })));
       await addSkills({ entries });
+      onInstalled?.();
       setQueuedFiles([]);
       setJustInstalled(true);
       setIsAddDialogOpen(false);
@@ -347,7 +351,7 @@ export default function ProviderSkills({ selectedProvider, currentProjects, onRe
     } finally {
       setIsSubmitting(false);
     }
-  }, [addSkills, queuedFiles, t]);
+  }, [addSkills, onInstalled, queuedFiles, t]);
 
   const handleAddDialogOpenChange = useCallback((open: boolean) => {
     if (open) {
@@ -487,6 +491,22 @@ export default function ProviderSkills({ selectedProvider, currentProjects, onRe
         </div>
       )}
 
+    </div>
+  );
+
+  if (installOnly) return (
+    <div className="space-y-5">
+      <form className="space-y-2" onSubmit={event => { event.preventDefault(); void handleUrlInstall(); }}>
+        <label htmlFor="extension-skill-url" className="text-sm font-medium">{t('skillsPage.link.label')}</label>
+        <div className="flex gap-2">
+          <Input id="extension-skill-url" type="url" value={skillUrl} onChange={event => setSkillUrl(event.target.value)} placeholder="https://github.com/owner/repo/tree/main/skills/my-skill" disabled={isSubmitting} required className="min-w-0 flex-1" />
+          <Button type="submit" disabled={isSubmitting || !skillUrl.trim()}>{isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}{t('skillsPage.link.add')}</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">{t('skillsPage.link.hint')}</p>
+      </form>
+      {uploadPanel}
+      {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
+      <div className="flex justify-end"><Button disabled={isSubmitting || !queuedFiles.length} onClick={() => void handleUploadInstall()}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{t('skillsPage.installPlain')}</Button></div>
     </div>
   );
 

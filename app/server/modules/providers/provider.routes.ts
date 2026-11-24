@@ -8,6 +8,7 @@ import { providerMcpService } from '@/modules/providers/services/mcp.service.js'
 import { providerModelsService } from '@/modules/providers/services/provider-models.service.js';
 import { providerTokenUsageService } from '@/modules/providers/services/provider-token-usage.service.js';
 import { providerSkillsService } from '@/modules/providers/services/skills.service.js';
+import { removeProviderSkillEntry, setProviderSkillEnabled } from '@/modules/providers/services/skill-state.service.js';
 import { sessionConversationsSearchService } from '@/modules/providers/services/session-conversations-search.service.js';
 import { sessionsService } from '@/modules/providers/services/sessions.service.js';
 import { yourClaudeService } from '@/modules/providers/services/your-claude.service.js';
@@ -766,7 +767,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const provider = parseProvider(req.params.provider);
     const workspacePath = readOptionalQueryString(req.query.workspacePath);
-    const skills = await providerSkillsService.listProviderSkills(provider, { workspacePath });
+    const skills = await providerSkillsService.listProviderSkills(provider, { workspacePath, includeDisabled: req.query.includeDisabled === '1' });
     res.json(createApiSuccessResponse({ provider, skills }));
   }),
 );
@@ -780,6 +781,17 @@ router.post(
     res.json(createApiSuccessResponse({ provider, skills }));
   }),
 );
+
+router.put('/:provider/skills/state', asyncHandler(async (req: Request, res: Response) => {
+  if (typeof req.body?.enabled !== 'boolean') throw new AppError('enabled must be a boolean.', { statusCode: 400 });
+  await setProviderSkillEnabled(parseProvider(req.params.provider), req.body.sourcePath, req.body.enabled, readOptionalQueryString(req.body.workspacePath));
+  res.json(createApiSuccessResponse({ success: true }));
+}));
+
+router.post('/:provider/skills/remove-entry', asyncHandler(async (req: Request, res: Response) => {
+  await removeProviderSkillEntry(parseProvider(req.params.provider), req.body?.sourcePath, readOptionalQueryString(req.body?.workspacePath));
+  res.json(createApiSuccessResponse({ removed: true }));
+}));
 
 router.delete(
   '/:provider/skills/:directoryName',
@@ -846,6 +858,15 @@ router.delete(
     res.json(createApiSuccessResponse(result));
   }),
 );
+
+router.put('/:provider/mcp/servers/:name/enable', asyncHandler(async (req: Request, res: Response) => {
+  if (typeof req.body?.enabled !== 'boolean') throw new AppError('enabled must be a boolean.', { statusCode: 400 });
+  await providerMcpService.setProviderMcpEnabled(parseProvider(req.params.provider), {
+    name: readPathParam(req.params.name, 'name'), enabled: req.body.enabled,
+    scope: parseMcpScope(req.body.scope), workspacePath: readOptionalQueryString(req.body.workspacePath),
+  });
+  res.json(createApiSuccessResponse({ success: true }));
+}));
 
 router.post(
   '/mcp/servers/global',

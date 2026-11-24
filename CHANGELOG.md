@@ -5,6 +5,8 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+- Unify Settings > Plugins into searchable, filterable extension cards grouped by enabled state, with installation on a separate page and animated state changes. Add persistent MCP/skill toggles and move the chat MCP preference to Tasks & sessions.
+
 ## 2.2.2 - 2026-11-23 (stable)
 
 - Promote Plugin Host v2 (`apiVersion: 2`) to stable: multi-slot plugin architecture (`background`, `overlay`, `settings`, `tab`), single-active background slot arbitration, unified `activate()`/`deactivate()` lifecycle, live workspace `project`/`session` and `isFocusedSession` propagation, and stable plugin UIs across list refreshes.

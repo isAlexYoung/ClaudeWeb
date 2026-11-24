@@ -128,6 +128,7 @@ const normalizeSkill = (
     command: String(skill.command ?? ''),
     scope,
     sourcePath: String(skill.sourcePath ?? ''),
+    enabled: skill.enabled !== false,
     pluginName: typeof skill.pluginName === 'string' ? skill.pluginName : undefined,
     pluginId: typeof skill.pluginId === 'string' ? skill.pluginId : undefined,
     projectDisplayName: shouldAttachProject
@@ -184,7 +185,7 @@ const fetchProviderSkills = async (
   provider: SkillsProvider,
   project?: ProjectTarget,
 ): Promise<ProviderSkill[]> => {
-  const response = await api.providers.skills(provider, { workspacePath: project?.path });
+  const response = await api.providers.skills(provider, { workspacePath: project?.path, includeDisabled: true });
   const data = await toResponseJson<ApiResponse<ProviderSkillsResponse>>(response);
   if (!response.ok || !data.success) {
     throw new Error(getApiErrorMessage(data, `Failed to load ${provider} skills`));
@@ -224,6 +225,7 @@ type UseProviderSkillsArgs = {
   currentProjects: SkillsProject[];
 };
 
+/** Used by skills and plugins settings to load and manage the provider's skill catalog. */
 export function useProviderSkills({ selectedProvider, currentProjects }: UseProviderSkillsArgs) {
   const [skills, setSkills] = useState<ProviderSkill[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -326,6 +328,20 @@ export function useProviderSkills({ selectedProvider, currentProjects }: UseProv
 
   return {
     skills,
+    toggleSkill: async (skill: ProviderSkill, enabled: boolean) => {
+      const response = await api.providers.setSkillEnabled(selectedProvider, { sourcePath: skill.sourcePath, workspacePath: skill.projectPath, enabled });
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(getApiErrorMessage(result, 'Failed to change skill state'));
+      clearProviderSkillCache(selectedProvider);
+      await refreshSkills({ force: true });
+    },
+    removeSkill: async (skill: ProviderSkill) => {
+      const response = await api.providers.removeSkillEntry(selectedProvider, { sourcePath: skill.sourcePath, workspacePath: skill.projectPath });
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(getApiErrorMessage(result, 'Failed to remove skill'));
+      clearProviderSkillCache(selectedProvider);
+      await refreshSkills({ force: true });
+    },
     isLoading,
     loadError,
     saveStatus,

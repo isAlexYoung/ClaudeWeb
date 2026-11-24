@@ -31,7 +31,7 @@ MCP 和技能管理目前仍使用下表列出的各自路径，不会随这个�
 | 插件：MCP 用户范围 | `~/.claude.json` 的 `mcpServers`。 |
 | 插件：MCP 项目范围 | 项目根目录的 `.mcp.json`，键 `mcpServers`。 |
 | 插件：MCP 本地项目范围 | `~/.claude.json` 的 `projects[项目绝对路径].mcpServers`。 |
-| 插件：聊天模式 MCP 开关 | `auth.db` 的 `user_preferences.uiPreferences.chatMcpEnabled`；项目模式按项目配置读取。 |
+| 任务与会话：聊天模式 MCP 开关 | `auth.db` 的 `user_preferences.uiPreferences.chatMcpEnabled`；项目模式按项目配置读取。 |
 | 插件：添加全局技能 | `~/.claude/skills/<技能名>/SKILL.md`；同目录可包含脚本、参考资料和资源。链接添加和上传使用同一个安装器。 |
 | 插件：项目技能 | 项目根目录的 `.claude/skills/<技能名>/SKILL.md`。 |
 | 插件：Claude CLI 插件附带的技能 | 根据 `~/.claude/settings.json` 的 `enabledPlugins` 和 `~/.claude/plugins/installed_plugins.json` 的安装路径发现，与网页自定义插件分别管理。 |
@@ -67,13 +67,18 @@ MCP 和技能管理目前仍使用下表列出的各自路径，不会随这个�
 
 ## 插件、MCP 与技能刷新
 
+插件页使用搜索栏、“全部 / 连接器 / Skills”筛选，以及独立的“＋”安装页。
+列表只显示“已启用”和“未启用”两组，每组依次列出自定义插件、MCP 和 Skills；没有项目的分类不显示占位提示。卡片标明类型，有设置面板的插件才显示“打开面板”。启停成功后卡片带过渡动画移动，遵循系统的减弱动态效果偏好。
+
+MCP 停用时保留原配置与凭证，定义从原作用范围的 `mcpServers` 移到同级 `claudewebDisabledMcpServers`；启用时还原。技能停用时将入口文件重命名为 `SKILL.md.disabled`（插件附带的命令为 `.md.disabled`），保留同目录的支持文件，启用时恢复原名。停用的技能只进入管理列表，不进入运行时技能发现结果。
+
 插件页右上角“刷新”同时刷新三类列表，等待期间保留原列表。
 MCP 没有定时轮询。进入页面、项目范围变化，以及添加、编辑、删除服务器后会重新读取；
 MCP 普通读取有 30 秒缓存，技能普通读取有五分钟缓存；点击“刷新”会绕过缓存。
 
 ## 通过链接添加技能
 
-在“插件 → 技能 → 添加技能”输入链接，点击“添加”。支持公开 GitHub 仓库、
+在“插件 → ＋ → Skills”输入链接，点击“添加”。支持公开 GitHub 仓库、
 `tree/<分支或版本>/<技能目录>`、`blob/<分支或版本>/<技能目录>/SKILL.md`
 及 `raw.githubusercontent.com` 的 SKILL.md 链接。包含 `/` 的分支名可在分支段用 `%2F` 编码。
 仓库链接会发现其中的技能；仓库过大时请提供具体技能目录或上传文件夹。

@@ -1011,5 +1011,44 @@
         "description": "Claude acts immediately, keeps interruptions to a minimum and prefers action over planning."
       }
     }
+  },
+  "extensions": {
+    "connectorExists": "A connector with that name already exists. Choose another name.",
+    "pluginUrl": "Plugin repository URL",
+    "search": "Filter your extensions",
+    "filter": "Extension categories",
+    "filters": {
+      "all": "All",
+      "mcp": "Connectors",
+      "skill": "Skills"
+    },
+    "types": {
+      "plugin": "Plugin",
+      "mcp": "MCP",
+      "skill": "Skills"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "add": "Add extension",
+    "back": "Back to extensions",
+    "installType": "Installation type",
+    "refresh": "Refresh",
+    "remove": "Uninstall",
+    "enable": "Enable",
+    "edit": "Edit",
+    "removeTitle": "Uninstall “{{name}}”?",
+    "actionFailed": "The operation failed. Please try again.",
+    "switchBackground": "Switch background plugin",
+    "backgroundConflict": "“{{name}}” currently provides the background. Switch to this plugin?",
+    "localFilesDescription": "Access your computer files and local tools",
+    "mcpDescription": "Additional tools and data for Claude",
+    "loading": "Loading extensions…",
+    "noMatches": "No matching extensions",
+    "empty": "Use the ＋ button above to add an extension",
+    "connectorName": "Connector name",
+    "connectorNamePlaceholder": "Defaults to the server name",
+    "connectorUrl": "Connector URL",
+    "advancedConnector": "Add using configuration form",
+    "invalidConnectorUrl": "Enter an HTTP or HTTPS connector URL."
   }
 }

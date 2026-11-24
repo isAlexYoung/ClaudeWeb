@@ -53,7 +53,7 @@ const getScopeDescription = (scope: McpScope, mode: McpFormMode, t: TranslateFn)
     : t('mcpForm.scopes.projectDesc');
 };
 
-/** Rendered by McpServers to add or edit an MCP server, in both provider and global (all providers) mode. */
+/** Used by MCP and plugins settings to add or edit provider/global connector configuration. */
 export default function McpServerFormModal({
   provider,
   mode = 'provider',

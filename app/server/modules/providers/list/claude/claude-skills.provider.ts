@@ -30,7 +30,7 @@ const getClaudePluginName = (pluginId: string): string | null => {
 };
 
 const stripMarkdownExtension = (filename: string): string =>
-  filename.replace(/\.md$/i, '');
+  filename.replace(/\.md(?:\.disabled)?$/i, '');
 
 const pathExistsAsDirectory = async (directoryPath: string): Promise<boolean> => {
   try {
@@ -78,7 +78,7 @@ export class ClaudeSkillsProvider extends SkillsProvider {
   async listSkills(options?: ProviderSkillListOptions): Promise<ProviderSkill[]> {
     return [
       ...(await super.listSkills(options)),
-      ...(await this.listPluginSkills(getClaudeHomePath())),
+      ...(await this.listPluginSkills(getClaudeHomePath(), options?.includeDisabled ?? false)),
     ];
   }
 
@@ -107,7 +107,7 @@ export class ClaudeSkillsProvider extends SkillsProvider {
     };
   }
 
-  private async listPluginSkills(claudeHomePath: string): Promise<ProviderSkill[]> {
+  private async listPluginSkills(claudeHomePath: string, includeDisabled: boolean): Promise<ProviderSkill[]> {
     const settings = await readJsonConfig(path.join(claudeHomePath, 'settings.json'));
     const enabledPlugins = readObjectRecord(settings.enabledPlugins);
     if (!enabledPlugins) {
@@ -165,7 +165,7 @@ export class ClaudeSkillsProvider extends SkillsProvider {
           const commandsPath = path.join(pluginFolder, 'commands');
           if (await pathExistsAsDirectory(commandsPath)) {
             skills.push(
-              ...(await this.listPluginCommandSkills(commandsPath, pluginId, pluginName)),
+              ...(await this.listPluginCommandSkills(commandsPath, pluginId, pluginName, includeDisabled)),
             );
           }
 
@@ -175,7 +175,7 @@ export class ClaudeSkillsProvider extends SkillsProvider {
           }
 
           skills.push(
-            ...(await this.listPluginSkillMarkdowns(pluginFolder, pluginId, pluginName)),
+            ...(await this.listPluginSkillMarkdowns(pluginFolder, pluginId, pluginName, includeDisabled)),
           );
         }
       }
@@ -188,13 +188,14 @@ export class ClaudeSkillsProvider extends SkillsProvider {
     commandsPath: string,
     pluginId: string,
     pluginName: string,
+    includeDisabled: boolean,
   ): Promise<ProviderSkill[]> {
     const skills: ProviderSkill[] = [];
 
     try {
       const entries = await readdir(commandsPath, { withFileTypes: true });
       const commandFiles = entries
-        .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.md'))
+        .filter((entry) => entry.isFile() && (entry.name.toLowerCase().endsWith('.md') || (includeDisabled && entry.name.toLowerCase().endsWith('.md.disabled'))))
         .sort((left, right) => left.name.localeCompare(right.name));
 
       for (const commandFile of commandFiles) {
@@ -207,7 +208,8 @@ export class ClaudeSkillsProvider extends SkillsProvider {
             description: definition.description,
             command: `/${pluginName}:${definition.name}`,
             scope: 'plugin',
-            sourcePath,
+            sourcePath: sourcePath.replace(/\.disabled$/, ''),
+            ...(sourcePath.endsWith('.disabled') ? { enabled: false } : {}),
             pluginName,
             pluginId,
           });
@@ -239,9 +241,11 @@ export class ClaudeSkillsProvider extends SkillsProvider {
     installPath: string,
     pluginId: string,
     pluginName: string,
+    includeDisabled: boolean,
   ): Promise<ProviderSkill[]> {
     const skillFiles = await findProviderSkillMarkdownFiles(path.join(installPath, 'skills'), {
       recursive: true,
+      includeDisabled,
     });
     const skills: ProviderSkill[] = [];
 
@@ -254,7 +258,8 @@ export class ClaudeSkillsProvider extends SkillsProvider {
           description: definition.description,
           command: `/${pluginName}:${definition.name}`,
           scope: 'plugin',
-          sourcePath: skillPath,
+          sourcePath: skillPath.replace(/\.disabled$/, ''),
+          ...(skillPath.endsWith('.disabled') ? { enabled: false } : {}),
           pluginName,
           pluginId,
         });

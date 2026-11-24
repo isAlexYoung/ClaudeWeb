@@ -7,6 +7,7 @@ type Props = {
   pluginName: string;
   iconFile: string;
   className?: string;
+  fallbackText?: string;
 };
 
 // Module-level cache so repeated renders don't re-fetch
@@ -55,7 +56,7 @@ function sanitizeSvg(svgText: string): string | null {
 }
 
 /** Used by the project-workspace module's tab bar and by this module's PluginSettingsTab to show a plugin's icon. */
-export default function PluginIcon({ pluginName, iconFile, className }: Props) {
+export default function PluginIcon({ pluginName, iconFile, className, fallbackText }: Props) {
   const url = iconFile ? api.plugins.assetUrl(pluginName, iconFile) : '';
   const [svg, setSvg] = useState<string | null>(url ? (svgCache.get(url) ?? null) : null);
 
@@ -77,7 +78,7 @@ export default function PluginIcon({ pluginName, iconFile, className }: Props) {
       .catch(() => {});
   }, [url, pluginName, iconFile]);
 
-  if (!svg) return <span className={className} />;
+  if (!svg) return <span className={className}>{fallbackText}</span>;
 
   return (
     <span className={className} dangerouslySetInnerHTML={{ __html: svg }} />

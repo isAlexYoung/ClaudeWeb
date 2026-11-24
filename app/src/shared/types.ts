@@ -1202,6 +1202,8 @@ export type ProviderMcpServer = {
   name: string;
   scope: McpScope;
   transport: McpTransport;
+  /** Whether this installed connector is available to new conversations. */
+  enabled?: boolean;
   command?: string;
   args?: string[];
   env?: KeyValueMap;
@@ -1258,6 +1260,12 @@ type McpImportMode = 'form' | 'json';
 // ---------------------------
 
 //----------------- PLUGINS ------------
+
+/** A typed installed extension, shared by the unified list and its card renderer. */
+export type SettingsExtensionItem =
+  | { id: string; kind: 'plugin'; name: string; description: string; enabled: boolean; source: Plugin }
+  | { id: string; kind: 'mcp'; name: string; description: string; enabled: boolean; source: ProviderMcpServer }
+  | { id: string; kind: 'skill'; name: string; description: string; enabled: boolean; source: ProviderSkill };
 
 /** Supported UI placement slots for ClaudeWeb plugins. */
 export type PluginSlot = 'tab' | 'background' | 'overlay' | 'settings';
@@ -2170,6 +2178,8 @@ export type ProviderSkill = {
   command: string;
   scope: SkillsScope;
   sourcePath: string;
+  /** Disabled entries remain manageable but are excluded from runtime discovery. */
+  enabled?: boolean;
   pluginName?: string;
   pluginId?: string;
   projectDisplayName?: string;

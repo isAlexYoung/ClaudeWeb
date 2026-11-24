@@ -6,6 +6,11 @@ import { AppError } from '@/shared/utils.js';
 
 
 export const providerMcpService = {
+  /** Used by extension cards to change runtime availability without losing credentials. */
+  async setProviderMcpEnabled(providerName: string, input: { name: string; scope?: McpScope; workspacePath?: string; enabled: boolean }): Promise<void> {
+    const provider = providerRegistry.resolveProvider(providerName);
+    await provider.mcp.setServerEnabled(input);
+  },
   /** Lists effective scoped configuration with live status; never starts an MCP process. */
   async listConnections(providerName: string, options: { workspacePath?: string; sessionId?: string }) {
     const scopes = await this.listProviderMcpServers(providerName, options);
@@ -15,7 +20,7 @@ export const providerMcpService = {
       readClaudeMcpConnections(options.sessionId).catch(() => []),
       new Promise<[]>(resolve => { timer = setTimeout(() => resolve([]), 2000); }),
     ]).finally(() => clearTimeout(timer)) : [];
-    return resolveMcpConnections([...effective.values()], runtime);
+    return resolveMcpConnections([...effective.values()].filter(server => server.enabled !== false), runtime);
   },
   /**
    * Lists MCP servers for one provider grouped by supported scopes.

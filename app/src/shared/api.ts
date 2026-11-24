@@ -549,6 +549,8 @@ export const api = {
     ) => get(`/api/providers/${provider}/mcp/servers${query({ scope, workspacePath })}`),
     saveMcpServer: (provider: string, payload: unknown) =>
       post(`/api/providers/${provider}/mcp/servers`, payload),
+    setMcpEnabled: (provider: string, serverName: string, payload: { enabled: boolean; scope: string; workspacePath?: string }) =>
+      put(`/api/providers/${encodeURIComponent(provider)}/mcp/servers/${encodeURIComponent(serverName)}/enable`, payload),
     deleteMcpServer: (
       provider: string,
       serverName: string,
@@ -559,8 +561,12 @@ export const api = {
       ),
     saveGlobalMcpServer: (payload: unknown) => post('/api/providers/mcp/servers/global', payload),
 
-    skills: (provider: string, { workspacePath }: { workspacePath?: string } = {}) =>
-      get(`/api/providers/${encodeURIComponent(provider)}/skills${query({ workspacePath })}`),
+    skills: (provider: string, { workspacePath, includeDisabled }: { workspacePath?: string; includeDisabled?: boolean } = {}) =>
+      get(`/api/providers/${encodeURIComponent(provider)}/skills${query({ workspacePath, includeDisabled: includeDisabled ? '1' : undefined })}`),
+    setSkillEnabled: (provider: string, payload: { sourcePath: string; enabled: boolean; workspacePath?: string }) =>
+      put(`/api/providers/${encodeURIComponent(provider)}/skills/state`, payload),
+    removeSkillEntry: (provider: string, payload: { sourcePath: string; workspacePath?: string }) =>
+      post(`/api/providers/${encodeURIComponent(provider)}/skills/remove-entry`, payload),
     saveSkills: (provider: string, payload: unknown) =>
       post(`/api/providers/${provider}/skills`, payload),
     importSkill: (provider: string, url: string) =>

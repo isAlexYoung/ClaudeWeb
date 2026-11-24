@@ -111,6 +111,7 @@ const normalizeServer = (
     name: String(server.name ?? ''),
     scope: normalizeScope(server.scope, scope),
     transport,
+    enabled: server.enabled !== false,
     command: server.command,
     args: server.args ?? [],
     env: server.env ?? {},
@@ -295,6 +296,7 @@ type McpServerFormState =
   | { scope: 'global'; editingServer: null }
   | null;
 
+/** Used by MCP and plugins settings to share provider-scoped loading, forms and mutations. */
 export function useMcpServers({ selectedProvider, currentProjects }: UseMcpServersArgs) {
   const { t } = useTranslation('settings');
   const [servers, setServers] = useState<ProviderMcpServer[]>([]);
@@ -429,8 +431,8 @@ export function useMcpServers({ selectedProvider, currentProjects }: UseMcpServe
   );
 
   const deleteServer = useCallback(
-    async (server: ProviderMcpServer) => {
-      if (!window.confirm(t('mcpServersAddErrors.deleteConfirm'))) {
+    async (server: ProviderMcpServer, options: { confirm?: boolean } = {}) => {
+      if (options.confirm !== false && !window.confirm(t('mcpServersAddErrors.deleteConfirm'))) {
         return;
       }
 
@@ -443,6 +445,7 @@ export function useMcpServers({ selectedProvider, currentProjects }: UseMcpServe
       } catch (error) {
         setDeleteError(getErrorMessage(error));
         setSaveStatus('error');
+        if (options.confirm === false) throw error;
       }
     },
     [cacheKey, refreshServers, selectedProvider, t],
@@ -470,6 +473,14 @@ export function useMcpServers({ selectedProvider, currentProjects }: UseMcpServe
 
   return {
     servers,
+    /** Persists state before refetching, so grouping changes only after a successful write. */
+    toggleServer: async (server: ProviderMcpServer, enabled: boolean) => {
+      const response = await api.providers.setMcpEnabled(selectedProvider, server.name, { enabled, scope: server.scope, workspacePath: server.workspacePath });
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(getApiErrorMessage(result, 'Failed to change connector state'));
+      mcpServersCache.delete(cacheKey);
+      await refreshServers({ force: true });
+    },
     isLoading,
     refreshServers,
     loadError,
