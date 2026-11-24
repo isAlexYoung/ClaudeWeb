@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { artefactsService } from '@/modules/artefacts/services/artefacts.service.js';
+import { artefactsService, resolveArtefactTurnContext } from '@/modules/artefacts/services/artefacts.service.js';
 import { SHEET_FORMAT, validateSheetDocument } from '@/modules/artefacts/sheet-format.js';
 import { closeConnection, initializeDatabase, sessionsDb, userDb } from '@/modules/database/index.js';
 import { chatRunRegistry, connectedClients } from '@/modules/websocket/index.js';
@@ -73,19 +73,26 @@ const sheet = (cells: Record<string, string | number | boolean | null>) => ({
   sheets: [{ name: 'Sheet1', cells }],
 });
 
-test('a new spreadsheet is an empty sheet on disk, listed and opened with its revision', async () => {
+test('a new spreadsheet is an empty sheet on disk with its own conversation, listed and opened with its revision', async () => {
   await withArtefacts((userId, directory) => {
     const created = artefactsService.create(userId, { kind: 'sheet', title: '预算' });
     assert.equal(created.title, '预算');
     assert.equal(created.kind, 'sheet');
+    assert.ok(created.sessionId, 'creating a spreadsheet immediately allocates its dedicated conversation');
+    assert.equal(sessionsDb.getSessionById(created.sessionId)?.custom_name, '预算');
     const file = path.join(directory, `${created.id}.sheet.json`);
     assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), sheet({}));
 
     assert.deepEqual(artefactsService.list(userId).map((item) => item.id), [created.id]);
     const opened = artefactsService.open(userId, created.id);
+    assert.equal(opened.sessionId, created.sessionId);
     assert.deepEqual(opened.content, sheet({}));
     assert.equal(opened.contentError, null);
     assert.match(opened.revision, /^\d+-\d+$/);
+
+    const turnContext = resolveArtefactTurnContext(created.sessionId);
+    assert.ok(turnContext?.systemPromptAppend?.includes(file));
+    assert.ok(turnContext?.systemPromptAppend?.includes(SHEET_FORMAT));
   });
 });
 
@@ -135,6 +142,7 @@ test('renaming, pinning and deleting, which removes the file too', async () => {
     const updated = artefactsService.update(userId, created.id, { title: '  季度报表  ', pinned: true });
     assert.equal(updated.title, '季度报表');
     assert.equal(updated.pinned, true);
+    assert.equal(sessionsDb.getSessionById(created.sessionId!)?.custom_name, '季度报表');
     expectAppError(() => artefactsService.update(userId, created.id, { title: ' ' }), 'INVALID_REQUEST_BODY');
 
     artefactsService.remove(userId, created.id);
@@ -143,14 +151,15 @@ test('renaming, pinning and deleting, which removes the file too', async () => {
   });
 });
 
-test('asking Claude creates the spreadsheet\'s conversation once and tells it which file to edit', async () => {
+test('asking Claude reuses the spreadsheet\'s conversation and tells it which file to edit', async () => {
   await withArtefacts(async (userId, directory) => {
     const runs: RunCall[] = [];
     const runtime = createRuntime(runs);
     const created = artefactsService.create(userId, { kind: 'sheet', title: '预算' });
 
     const first = artefactsService.sendMessage(userId, created.id, { text: '做一个月度预算表', sessionTitle: '电子表格：预算' }, runtime);
-    assert.equal(sessionsDb.getSessionById(first.sessionId)?.custom_name, '电子表格：预算');
+    assert.equal(first.sessionId, created.sessionId);
+    assert.equal(sessionsDb.getSessionById(first.sessionId)?.custom_name, '预算');
     await waitForIdle(userId, created.id);
 
     assert.equal(runs.length, 1);

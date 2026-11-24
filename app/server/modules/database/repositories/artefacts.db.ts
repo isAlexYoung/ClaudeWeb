@@ -33,10 +33,16 @@ export const artefactsDb = {
       .get(userId, id) as ArtefactRow | undefined) ?? null;
   },
 
-  insert(row: Omit<ArtefactRow, 'pinned' | 'session_id'>): void {
+  getBySessionId(sessionId: string): ArtefactRow | null {
+    return (getConnection()
+      .prepare(`SELECT ${COLUMNS} FROM artefacts WHERE session_id = ? LIMIT 1`)
+      .get(sessionId) as ArtefactRow | undefined) ?? null;
+  },
+
+  insert(row: Omit<ArtefactRow, 'pinned' | 'session_id'> & { session_id?: string | null }): void {
     getConnection().prepare(
-      `INSERT INTO artefacts (${COLUMNS}) VALUES (?, ?, ?, ?, ?, NULL, 0, ?, ?, ?)`,
-    ).run(row.id, row.user_id, row.kind, row.title, row.file_path, row.created_at, row.updated_at, row.opened_at);
+      `INSERT INTO artefacts (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+    ).run(row.id, row.user_id, row.kind, row.title, row.file_path, row.session_id ?? null, row.created_at, row.updated_at, row.opened_at);
   },
 
   /** Title and pin are what the page edits; the time it was changed moves with them. */

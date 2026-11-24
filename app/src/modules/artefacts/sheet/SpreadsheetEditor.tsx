@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Workbook } from '@fortune-sheet/react';
 import '@fortune-sheet/react/dist/index.css';
-import { ArrowUp, ChevronDown, Loader2, PanelRight, Sheet, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, Loader2, Minimize2, PanelRight, Sheet, X } from 'lucide-react';
 
 import { ScheduledTaskMenu, ScheduledTaskMenuDivider, ScheduledTaskMenuItem } from '@/modules/scheduled-tasks';
 import { api } from '@/shared/api';
@@ -13,7 +13,7 @@ import type { GridSheet } from '@/modules/artefacts/sheet/sheetFormat';
 import SheetConversation from '@/modules/artefacts/sheet/SheetConversation';
 import SheetToolbar from '@/modules/artefacts/sheet/SheetToolbar';
 import type { ToolbarWorkbook } from '@/modules/artefacts/sheet/SheetToolbar';
-import { readArtefactResponse } from '@/modules/artefacts/useArtefacts';
+import { notifyArtefactsChanged, readArtefactResponse } from '@/modules/artefacts/useArtefacts';
 
 type SpreadsheetEditorProps = {
   artefactId: string;
@@ -21,6 +21,8 @@ type SpreadsheetEditorProps = {
   menuButton?: ReactNode;
   /** Back to the Artefacts list. */
   onClose: () => void;
+  /** Minimizes the spreadsheet into its dedicated Chat conversation (showing the card at the top). */
+  onMinimize?: (sessionId: string) => void;
   /** Opens the spreadsheet's conversation in the full chat. */
   onOpenSession: (sessionId: string) => void;
 };
@@ -46,7 +48,7 @@ function gridLanguage(language: string): string {
  * Claude has changed it. While Claude works, the grid is read-only so the two
  * never write over each other.
  */
-export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onOpenSession }: SpreadsheetEditorProps) {
+export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onMinimize, onOpenSession }: SpreadsheetEditorProps) {
   const { t, i18n } = useTranslation('sidebar');
   const [detail, setDetail] = useState<ArtefactDetail | null>(null);
   // The workbook handed to FortuneSheet; replaced (with a new key) when the file is reloaded.
@@ -65,6 +67,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onO
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
 
   const workbookRef = useRef<ToolbarWorkbook | null>(null);
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
   // The revision of the file the grid shows, and its contents as last saved or loaded.
   const revisionRef = useRef<string | null>(null);
   const savedTextRef = useRef<string | null>(null);
@@ -183,6 +186,27 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onO
     return () => clearTimeout(timer);
   }, [gridData, gridKey]);
 
+  // FortuneSheet only recalculates canvas dimensions on window resize, not when a
+  // flex sibling (the conversation drawer or sidebar) changes the grid container's width.
+  useEffect(() => {
+    const element = gridContainerRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return undefined;
+    let frame: number | null = null;
+    const notifyResize = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        window.dispatchEvent(new Event('resize'));
+      });
+    };
+    const observer = new ResizeObserver(notifyResize);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, []);
+
   // Leaving the editor saves what is still pending.
   useEffect(() => () => { void save(); }, [save]);
 
@@ -247,6 +271,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onO
     try {
       const updated = await readArtefactResponse<ArtefactDetail>(await api.artefacts.update(artefactId, { title: trimmed }));
       setDetail((current) => current && { ...current, title: updated.title });
+      notifyArtefactsChanged();
     } catch (caught) {
       showNotice(caught instanceof Error ? caught.message : String(caught));
     }
@@ -257,6 +282,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onO
     pendingTextRef.current = null;
     try {
       await readArtefactResponse<unknown>(await api.artefacts.remove(artefactId));
+      notifyArtefactsChanged();
       onClose();
     } catch (caught) {
       showNotice(caught instanceof Error ? caught.message : String(caught));
@@ -277,6 +303,12 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onO
   const close = async () => {
     await save();
     onClose();
+  };
+
+  const minimize = async () => {
+    await save();
+    if (sessionId && onMinimize) onMinimize(sessionId);
+    else onClose();
   };
 
   if (loadError && !detail) {
@@ -335,6 +367,17 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onO
             <PanelRight size={16} />
             {conversationOpen ? t('artefacts.editor.hideConversation') : t('artefacts.editor.showConversation')}
           </button>
+          {sessionId && onMinimize && (
+            <button
+              type="button"
+              className="artefact-icon-button"
+              aria-label={t('artefacts.editor.minimize')}
+              title={t('artefacts.editor.minimize')}
+              onClick={() => void minimize()}
+            >
+              <Minimize2 size={17} />
+            </button>
+          )}
           <button type="button" className="artefact-icon-button" aria-label={t('artefacts.editor.close')} title={t('artefacts.editor.close')} onClick={() => void close()}>
             <X size={18} />
           </button>
@@ -342,7 +385,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onO
       </div>
 
       <div className="sheet-editor-body">
-        <div className="sheet-editor-grid">
+        <div ref={gridContainerRef} className="sheet-editor-grid">
           {gridData ? (
             <Workbook
               key={gridKey}

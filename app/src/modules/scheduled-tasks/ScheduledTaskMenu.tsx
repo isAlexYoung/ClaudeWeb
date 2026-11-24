@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronRight } from 'lucide-react';
@@ -6,6 +6,14 @@ import { Check, ChevronRight } from 'lucide-react';
 /** Marks every open panel, so a click inside any of them (or a submenu) does not count as outside. */
 const MENU_PANEL_ATTRIBUTE = 'data-scheduled-task-menu';
 const VIEWPORT_MARGIN = 8;
+
+type MenuPanelContextValue = {
+  /** The single submenu open inside this panel, or null when none is open. */
+  activeSubmenuId: string | null;
+  setActiveSubmenuId: (id: string | null) => void;
+};
+
+const MenuPanelContext = createContext<MenuPanelContextValue | null>(null);
 
 type PanelPosition = { top: number; left: number; maxHeight: number };
 
@@ -46,6 +54,9 @@ function FloatingPanel({ anchor, placement, className, label, children }: {
   const panelRef = useRef<HTMLDivElement | null>(null);
   // Null until the panel has been measured; it renders invisibly for that first frame.
   const [position, setPosition] = useState<PanelPosition | null>(null);
+  // Coordinates sibling submenus in this panel so at most one side panel is open at a time.
+  const [activeSubmenuId, setActiveSubmenuId] = useState<string | null>(null);
+  const panelContext = useMemo(() => ({ activeSubmenuId, setActiveSubmenuId }), [activeSubmenuId]);
 
   useLayoutEffect(() => {
     const place = () => {
@@ -70,7 +81,9 @@ function FloatingPanel({ anchor, placement, className, label, children }: {
         ? { top: position.top, left: position.left, maxHeight: position.maxHeight }
         : { top: 0, left: 0, visibility: 'hidden' }}
     >
-      {children}
+      <MenuPanelContext.Provider value={panelContext}>
+        {children}
+      </MenuPanelContext.Provider>
     </div>,
     document.body,
   );
@@ -181,12 +194,16 @@ type ScheduledTaskMenuItemProps = {
 
 /** One choice in a ScheduledTaskMenu: optional icon, label, description and a check mark when selected. */
 export function ScheduledTaskMenuItem({ label, description, icon, selected, danger, onSelect }: ScheduledTaskMenuItemProps) {
+  const panel = useContext(MenuPanelContext);
   return (
     <button
       type="button"
       role={selected === undefined ? 'menuitem' : 'menuitemradio'}
       aria-checked={selected === undefined ? undefined : selected}
       className={`scheduled-task-menu-item ${danger ? 'danger' : ''}`}
+      onMouseEnter={() => {
+        if (panel?.activeSubmenuId !== null) panel?.setActiveSubmenuId(null);
+      }}
       onClick={onSelect}
     >
       {icon && <span className="scheduled-task-menu-icon">{icon}</span>}
@@ -201,26 +218,38 @@ export function ScheduledTaskMenuItem({ label, description, icon, selected, dang
 
 /** A menu row that opens a second panel beside it on hover or click, e.g. "More models". */
 export function ScheduledTaskSubmenu({ label, children }: { label: ReactNode; children: ReactNode }) {
+  const id = useId();
+  const panel = useContext(MenuPanelContext);
   // The row the side panel opens beside, or null while closed; hovering the row or clicking it opens it.
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const open = anchor !== null && (panel ? panel.activeSubmenuId === id : true);
   return (
     <>
       <button
         type="button"
         role="menuitem"
         aria-haspopup="menu"
-        aria-expanded={anchor !== null}
-        className={`scheduled-task-menu-item ${anchor ? 'active' : ''}`}
-        onMouseEnter={(event) => setAnchor(event.currentTarget)}
+        aria-expanded={open}
+        className={`scheduled-task-menu-item ${open ? 'active' : ''}`}
+        onMouseEnter={(event) => {
+          setAnchor(event.currentTarget);
+          panel?.setActiveSubmenuId(id);
+        }}
         onClick={(event) => {
           const row = event.currentTarget;
-          setAnchor((current) => (current ? null : row));
+          if (open) {
+            setAnchor(null);
+            panel?.setActiveSubmenuId(null);
+          } else {
+            setAnchor(row);
+            panel?.setActiveSubmenuId(id);
+          }
         }}
       >
         <span className="scheduled-task-menu-text"><span>{label}</span></span>
         <ChevronRight size={15} aria-hidden="true" />
       </button>
-      {anchor && (
+      {open && anchor && (
         <FloatingPanel anchor={anchor} placement="side" className="scheduled-task-submenu">
           {children}
         </FloatingPanel>

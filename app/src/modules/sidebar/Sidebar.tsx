@@ -162,7 +162,10 @@ function Sidebar({
     document.body.classList.toggle('pwa-mode', isPWA);
   }, [isPWA]);
 
-  useEffect(() => { reloadRecentConversations(); }, [reloadRecentConversations]);
+  const recentSessionSignature = projects
+    .map((project) => `${project.projectId}:${project.sessions?.[0]?.id ?? ''}:${project.sessions?.length ?? 0}`)
+    .join('|');
+  useEffect(() => { reloadRecentConversations(); }, [reloadRecentConversations, recentSessionSignature]);
 
   const handleProjectCreated = (project?: Record<string, unknown>) => {
     void paletteOps.refreshProjects();

@@ -8,5 +8,5 @@ export { broadcastSessionUpserted, broadcastSessionUpsertedBatch } from './servi
 // runDetachedChatTurn: used by the scheduled-messages module to run a turn
 // from a timer, with no socket to stream to or report errors on. Its
 // RUN_NOT_STOPPED_ERROR says the run it had to interrupt could not be stopped.
-export { runDetachedChatTurn, RUN_NOT_STOPPED_ERROR } from './services/chat-websocket.service.js';
-export type { ProviderRuntimeGateway } from './services/chat-websocket.service.js';
+export { runDetachedChatTurn, RUN_NOT_STOPPED_ERROR, setSessionTurnHook } from './services/chat-websocket.service.js';
+export type { ProviderRuntimeGateway, SessionTurnHook, SessionTurnHookResult } from './services/chat-websocket.service.js';

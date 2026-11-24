@@ -5,6 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.0 - 2026-11-24 (stable)
+
+- 更新了“作品”功能。 / Updated the Artefacts feature.
+- Artefacts: creating a spreadsheet now immediately creates its dedicated Chat conversation (marked with the Artefacts icon in the left sidebar and synced on rename); the spreadsheet editor adds a Minimize button to return to that conversation with a top card to reopen the sheet or download CSV, and messages sent directly in that Chat automatically edit the linked spreadsheet.
+- Artefacts & sidebar: show Artefacts only in Chat mode (expanded and collapsed), fix overlapping filter submenus in `ScheduledTaskMenu`, fix the spreadsheet conversation drawer being covered by the FortuneSheet canvas and resize cleanly when toggled, and fix `A1:NaN` in the formula bar name box.
+
 ## 2.2.8 - 2026-11-24 (stable)
 
 - Add Artefacts (作品) to the left sidebar, between Search and Scheduled tasks, in both Chat and Code. The page lists your artefacts as cards or rows, with search, a filter menu (sort by last opened, date created or name; type with counts; opened date; pinned only), a grid/list switch that is remembered, and a New menu. Cards can be opened, pinned, renamed, deleted or followed to their conversation.

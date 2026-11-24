@@ -23,6 +23,20 @@ import type {
 } from '@/shared/types.js';
 import { parseIncomingJsonObject } from '@/shared/utils.js';
 
+export type SessionTurnHookResult = {
+  systemPromptAppend?: string;
+  onFinished?: () => void;
+};
+
+export type SessionTurnHook = (sessionId: string) => SessionTurnHookResult | null;
+
+let sessionTurnHook: SessionTurnHook | null = null;
+
+/** Registers a server-side hook that can enrich turns for linked sessions (e.g. artefacts). */
+export function setSessionTurnHook(hook: SessionTurnHook | null): void {
+  sessionTurnHook = hook;
+}
+
 /**
  * Trust boundary for client-supplied image attachments: chat.send options come
  * straight from the browser, and the provider runtimes read the referenced
@@ -329,8 +343,13 @@ async function dispatchRun(
   // Brand-new sessions have no provider id yet, so the runtime starts fresh
   // and announces one, which the gateway writer captures and maps back to the
   // app session id.
+  const hookResult = !extraRuntimeOptions.systemPromptAppend
+    ? sessionTurnHook?.(sessionId) ?? null
+    : null;
+
   const runtimeOptions: AnyRecord = {
     ...clientOptions,
+    ...(hookResult?.systemPromptAppend ? { systemPromptAppend: hookResult.systemPromptAppend } : {}),
     ...extraRuntimeOptions,
     // Attachments are re-validated server-side: only direct children of the
     // global upload store may reach provider runtimes or their file tools.
@@ -354,6 +373,11 @@ async function dispatchRun(
     failure = error instanceof Error ? error.message : String(error);
     console.error(`[Chat] Provider runtime "${provider}" failed`, { sessionId, error: failure });
   } finally {
+    try {
+      hookResult?.onFinished?.();
+    } catch {
+      // Turn post-processing must never prevent run cleanup.
+    }
     // Safety net: a runtime that crashed (or resolved) without emitting its
     // terminal `complete` would otherwise leave the session stuck in
     // "processing" forever on every connected client. Scoped to THIS run —

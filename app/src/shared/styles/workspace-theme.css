@@ -1131,8 +1131,8 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 .sheet-editor-head-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .sheet-editor-head-button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 9px; color: hsl(var(--foreground)); font-size: 14px; }
 .sheet-editor-head-button:hover, .sheet-editor-head-button.active { background: var(--workspace-hover); }
-.sheet-editor-body { display: flex; flex: 1; min-height: 0; }
-.sheet-editor-grid { position: relative; flex: 1; min-width: 0; }
+.sheet-editor-body { position: relative; display: flex; flex: 1; min-height: 0; overflow: hidden; }
+.sheet-editor-grid { position: relative; flex: 1; min-width: 0; overflow: hidden; isolation: isolate; }
 .sheet-editor-grid .fortune-container { font-family: var(--workspace-ui-font, inherit); }
 .sheet-editor-lock { position: absolute; inset: 0; z-index: 5; background: hsl(var(--background) / .12); cursor: progress; }
 .sheet-editor-floating { position: absolute; left: 50%; bottom: 58px; z-index: 20; display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(820px, calc(100% - 32px)); transform: translateX(-50%); pointer-events: none; }
@@ -1155,7 +1155,7 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 .sheet-color-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .sheet-toolbar-chat { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; margin-left: 8px; padding: 7px 14px; border-radius: 9px; background: var(--workspace-bubble); color: hsl(var(--primary)); font-size: 13.5px; font-weight: 500; }
 .sheet-toolbar-chat.active { background: hsl(var(--primary) / .12); }
-.sheet-conversation { display: flex; flex-direction: column; width: 340px; max-width: 45%; border-left: 1px solid var(--workspace-line); background: var(--workspace-sidebar); }
+.sheet-conversation { position: relative; z-index: 25; display: flex; flex-shrink: 0; flex-direction: column; width: 340px; max-width: 45%; border-left: 1px solid var(--workspace-line); background: var(--workspace-sidebar); }
 .sheet-conversation-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 12px 18px; border-bottom: 1px solid var(--workspace-line); }
 .sheet-conversation-head h2 { margin: 0; font-size: 15px; font-weight: 500; }
 .sheet-conversation-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; }
@@ -1167,6 +1167,18 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 .sheet-conversation-tools { margin: 0 0 12px; color: hsl(var(--muted-foreground)); font-size: 12.5px; }
 .sheet-conversation-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin: 12px; padding: 9px; border-radius: 10px; background: var(--workspace-bubble); color: hsl(var(--foreground)); font-size: 13.5px; }
 .sheet-conversation-open:hover { background: var(--workspace-hover); }
+
+/* Minimized artefact card shown at the top of its dedicated Chat conversation. */
+.artefact-session-banner { display: flex; justify-content: flex-start; padding-top: 6px; }
+.artefact-session-card { display: flex; align-items: center; gap: 6px; width: min(440px, 100%); padding: 10px 12px; border: 1px solid var(--workspace-line); border-radius: 14px; background: var(--workspace-bubble); transition: background-color .15s ease, box-shadow .15s ease; }
+.artefact-session-card:hover { box-shadow: 0 4px 16px rgb(0 0 0 / .06); }
+.artefact-session-card-open { display: flex; flex: 1; min-width: 0; align-items: center; gap: 12px; text-align: left; }
+.artefact-session-card-icon { display: inline-grid; flex-shrink: 0; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--kind-bg); color: var(--kind-fg); }
+.artefact-session-card-text { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.artefact-session-card-text strong { overflow: hidden; color: hsl(var(--foreground)); font-size: 14.5px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+.artefact-session-card-text small { color: hsl(var(--muted-foreground)); font-size: 12.5px; }
+.artefact-session-card-action { flex-shrink: 0; color: hsl(var(--muted-foreground)); }
+.artefact-session-card-action:hover { color: hsl(var(--foreground)); }
 
 /* The sidebar's entries and list, animated as one block when the mode changes. */
 .workspace-sidebar-body { display: flex; flex: 1; flex-direction: column; min-height: 0; }
@@ -1189,6 +1201,6 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
   .artefacts-tile-face { height: 84px; }
   .artefacts-grid { grid-template-columns: 1fr; }
   .artefact-row-meta { display: none; }
-  .sheet-conversation { position: absolute; inset: 56px 0 0 auto; z-index: 30; width: 100%; max-width: none; }
+  .sheet-conversation { position: absolute; inset: 0 0 0 auto; z-index: 30; width: 100%; max-width: none; }
   .sheet-editor-title { max-width: 180px; }
 }

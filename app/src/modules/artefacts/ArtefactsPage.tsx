@@ -21,6 +21,8 @@ type ArtefactsPageProps = {
   menuButton?: ReactNode;
   /** Opens one artefact's editor. */
   onOpenArtefact: (id: string) => void;
+  /** Called right after creating an artefact (so the sidebar can show its new conversation). */
+  onArtefactCreated?: (artefact: ArtefactSummary) => void;
   /** Opens the conversation an artefact is edited in. */
   onOpenSession: (sessionId: string) => void;
   /** "New → Chat": starts a new conversation. */
@@ -112,7 +114,7 @@ function ArtefactPreview({ artefact }: { artefact: ArtefactSummary }) {
  * menu; only spreadsheets can be created and opened so far, the other kinds
  * show their picture and say they are coming.
  */
-export default function ArtefactsPage({ menuButton, onOpenArtefact, onOpenSession, onNewChat }: ArtefactsPageProps) {
+export default function ArtefactsPage({ menuButton, onOpenArtefact, onArtefactCreated, onOpenSession, onNewChat }: ArtefactsPageProps) {
   const { t, i18n } = useTranslation('sidebar');
   const now = useNow();
   const { artefacts, error, createSheet, update, remove } = useArtefacts();
@@ -180,6 +182,7 @@ export default function ArtefactsPage({ menuButton, onOpenArtefact, onOpenSessio
     setCreating(true);
     try {
       const created = await createSheet(t('artefacts.untitled'));
+      onArtefactCreated?.(created);
       onOpenArtefact(created.id);
     } catch (caught) {
       setNotice(t('artefacts.createFailed', { error: caught instanceof Error ? caught.message : String(caught) }));

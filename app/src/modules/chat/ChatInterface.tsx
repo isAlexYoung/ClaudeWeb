@@ -71,6 +71,10 @@ type ChatInterfaceProps = {
   /** Code landing content and folder control supplied by project-workspace through the chat module's public API. */
   homeContent?: ReactNode;
   composerLeading?: ReactNode;
+  /** Optional header card at the top of the transcript (e.g. a minimized artefact). */
+  transcriptHeader?: ReactNode;
+  /** Optional composer placeholder override for specialised conversations (e.g. spreadsheets). */
+  composerPlaceholder?: string;
 };
 
 /**
@@ -98,6 +102,8 @@ function ChatInterface({
   onShowAllTasks,
   homeContent,
   composerLeading,
+  transcriptHeader,
+  composerPlaceholder,
 }: ChatInterfaceProps) {
   const experience = useWorkspaceExperience();
   // Keep the SDK limit event visible without clearing the conversation or inventing quota.
@@ -706,6 +712,7 @@ function ChatInterface({
               onEditMessage={supportsMessageEditing && !isProcessing ? beginEditMessage : undefined}
               onRegenerateMessage={supportsMessageEditing && !isProcessing ? regenerateFromMessage : undefined}
               onForkFromMessage={supportsSessionForking ? handleForkFromMessage : undefined}
+              transcriptHeader={transcriptHeader}
               onLoadFullTranscript={loadFullTranscript}
             />
               <ChatTurnNavigator
@@ -823,7 +830,7 @@ function ChatInterface({
           onTextareaScrollSync={syncInputOverlayScroll}
           onTextareaInput={handleTextareaInput}
           onInputFocusChange={handleInputFocusChange}
-          placeholder={t('input.placeholder', { provider: selectedProviderLabel })}
+          placeholder={composerPlaceholder ?? t('input.placeholder', { provider: selectedProviderLabel })}
           isTextareaExpanded={isTextareaExpanded}
           sendByCtrlEnter={sendByCtrlEnter}
           taskMenu={composerTaskMenu}

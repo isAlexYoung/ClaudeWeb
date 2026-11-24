@@ -23,7 +23,7 @@ import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceCont
 import WorkspaceStateView from '@/modules/project-workspace/WorkspaceStateView';
 import WorkspaceErrorBoundary from '@/modules/project-workspace/WorkspaceErrorBoundary';
 import { ScheduledTasksPage } from '@/modules/scheduled-tasks';
-import { ArtefactsPage, SpreadsheetEditor } from '@/modules/artefacts';
+import { ArtefactSessionCard, ArtefactsPage, SpreadsheetEditor, useArtefactBySessionId } from '@/modules/artefacts';
 import MobileMenuButton from '@/modules/project-workspace/MobileMenuButton';
 import { useWorkspaceTools } from '@/modules/project-workspace/context/WorkspaceToolsContext';
 
@@ -72,8 +72,9 @@ function WorkspaceMain({
   onProjectsRefresh,
   onRenameSession,
 }: WorkspaceMainProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'sidebar']);
   const experience = useWorkspaceExperience();
+  const sessionArtefact = useArtefactBySessionId(!experience.home ? selectedSession?.id : null);
   const isCodeHome = experience.home && experience.mode === 'project';
   const tools = useWorkspaceTools();
   const paletteOps = usePaletteOps();
@@ -225,6 +226,7 @@ function WorkspaceMain({
           artefactId={experience.openArtefactId}
           menuButton={menuButton}
           onClose={experience.closeArtefact}
+          onMinimize={openSession}
           onOpenSession={openSession}
         />
       </Suspense>
@@ -232,6 +234,7 @@ function WorkspaceMain({
       <ArtefactsPage
         menuButton={menuButton}
         onOpenArtefact={experience.openArtefact}
+        onArtefactCreated={() => onProjectsRefresh()}
         onOpenSession={openSession}
         onNewChat={() => experience.openHome('chat')}
       />
@@ -302,6 +305,12 @@ function WorkspaceMain({
               <ChatInterface
                 homeContent={isCodeHome ? <UsageDashboard /> : undefined}
                 composerLeading={isCodeHome ? <WorkspaceProjectPicker /> : undefined}
+                transcriptHeader={sessionArtefact ? (
+                  <ArtefactSessionCard artefact={sessionArtefact} onOpen={experience.openArtefact} />
+                ) : undefined}
+                composerPlaceholder={sessionArtefact?.kind === 'sheet'
+                  ? t('sidebar:artefacts.editor.composerPlaceholder')
+                  : undefined}
                 isActive={activeTab === 'chat'}
                 selectedProject={selectedProject}
                 selectedSession={selectedSession}

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { memo, useCallback, useMemo } from 'react';
-import type { Dispatch, RefObject, SetStateAction } from 'react';
+import type { Dispatch, ReactNode, RefObject, SetStateAction } from 'react';
 
 import type {
   BackgroundTaskSummary,
@@ -97,6 +97,8 @@ type ChatMessagesPaneProps = {
   showChangeSummary?: boolean;
   /** Opens the right panel's Changes view from a card's file row. */
   onOpenChanges?: (changes: TurnChanges, path: string) => void;
+  /** Optional card pinned to the top of the transcript column (e.g. a minimized artefact). */
+  transcriptHeader?: ReactNode;
   /** Fetches the whole transcript for an export, which otherwise only sees the loaded page. */
   onLoadFullTranscript?: () => Promise<ChatMessage[]>;
 };
@@ -159,6 +161,7 @@ function ChatMessagesPane({
   onRegenerateMessage,
   showChangeSummary = false,
   onOpenChanges,
+  transcriptHeader,
   onLoadFullTranscript,
   onFileOpen,
   onShowSettings,
@@ -271,6 +274,7 @@ function ChatMessagesPane({
         </div>
       )}
       <div className="mx-auto w-full max-w-[54.25rem] space-y-3 px-4 sm:space-y-4">
+      {transcriptHeader}
       {(isLoadingSessionMessages || isProcessing) && chatMessages.length === 0 ? (
         <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-center space-x-2">

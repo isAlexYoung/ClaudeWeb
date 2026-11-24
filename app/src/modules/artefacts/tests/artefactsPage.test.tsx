@@ -119,6 +119,29 @@ test('the filter menu sorts, filters by type with counts, by opened date and to 
   assert.deepEqual(titles(view.container), ['Alpha plan']);
 });
 
+test('hovering across filter submenus closes the previous submenu so panels never overlap', async () => {
+  const { view } = renderPage();
+  await view.findByRole('list', { name: 'Artefacts' });
+  openFilter(view);
+
+  fireEvent.mouseEnter(view.getByRole('menuitem', { name: /^Sort by/ }));
+  assert.equal(document.querySelectorAll('.scheduled-task-submenu').length, 1);
+  assert.notEqual(view.queryByRole('menuitemradio', { name: 'Name' }), null);
+
+  fireEvent.mouseEnter(view.getByRole('menuitem', { name: /^Type/ }));
+  assert.equal(document.querySelectorAll('.scheduled-task-submenu').length, 1);
+  assert.equal(view.queryByRole('menuitemradio', { name: 'Name' }), null);
+  assert.notEqual(view.queryByRole('menuitemcheckbox', { name: /^Spreadsheet/ }), null);
+
+  fireEvent.mouseEnter(view.getByRole('menuitem', { name: /^Opened/ }));
+  assert.equal(document.querySelectorAll('.scheduled-task-submenu').length, 1);
+  assert.equal(view.queryByRole('menuitemcheckbox', { name: /^Spreadsheet/ }), null);
+  assert.notEqual(view.queryByRole('menuitemradio', { name: 'Past 7 days' }), null);
+
+  fireEvent.mouseEnter(view.getByRole('menuitemradio', { name: 'Pinned' }));
+  assert.equal(document.querySelectorAll('.scheduled-task-submenu').length, 0);
+});
+
 test('the list view is remembered for the next visit', async () => {
   const first = renderPage();
   await first.view.findByRole('list', { name: 'Artefacts' });

@@ -12,8 +12,8 @@ import {
   validateSheetDocument,
 } from '@/modules/artefacts/sheet-format.js';
 import type { SheetDocument } from '@/modules/artefacts/sheet-format.js';
-import { chatRunRegistry, runDetachedChatTurn } from '@/modules/websocket/index.js';
-import type { ProviderRuntimeGateway } from '@/modules/websocket/index.js';
+import { broadcastSessionUpserted, chatRunRegistry, runDetachedChatTurn, setSessionTurnHook } from '@/modules/websocket/index.js';
+import type { ProviderRuntimeGateway, SessionTurnHookResult } from '@/modules/websocket/index.js';
 import { AppError } from '@/shared/utils.js';
 
 /** One artefact as the Artefacts page lists it. */
@@ -136,6 +136,18 @@ function readDocument(filePath: string): { content: SheetDocument | null; error:
   return problem ? { content: null, error: problem } : { content: parsed as SheetDocument, error: null };
 }
 
+function ensureLinkedSession(userId: number, row: ArtefactRow, preferredTitle?: string): string {
+  if (row.session_id && sessionsDb.getSessionById(row.session_id)) {
+    return row.session_id;
+  }
+  const sessionId = randomUUID();
+  const title = preferredTitle?.trim() ? preferredTitle.trim().slice(0, MAX_TITLE_LENGTH) : row.title;
+  sessionsDb.createAppSession(sessionId, 'claude', getArtefactWorkspace(), title);
+  artefactsDb.setSession(userId, row.id, sessionId);
+  void broadcastSessionUpserted(sessionId).catch(() => {});
+  return sessionId;
+}
+
 export const artefactsService = {
   list(userId: number): ArtefactSummary[] {
     return artefactsDb.list(userId).map(toSummary);
@@ -146,25 +158,31 @@ export const artefactsService = {
       throw new AppError('Only spreadsheets can be created.', { code: 'ARTEFACT_KIND_UNSUPPORTED', statusCode: 400 });
     }
     const id = randomUUID();
+    const sessionId = randomUUID();
     const now = new Date().toISOString();
+    const title = readTitle(body.title, 'Untitled');
     const filePath = path.join(getArtefactsDirectory(), `${id}.sheet.json`);
     writeDocument(filePath, blankSheetDocument());
+    sessionsDb.createAppSession(sessionId, 'claude', getArtefactWorkspace(), title);
     artefactsDb.insert({
       id,
       user_id: userId,
       kind: 'sheet',
-      title: readTitle(body.title, 'Untitled'),
+      title,
       file_path: filePath,
+      session_id: sessionId,
       created_at: now,
       updated_at: now,
       opened_at: now,
     });
+    void broadcastSessionUpserted(sessionId).catch(() => {});
     return toSummary(requireRow(userId, id));
   },
 
   /** Opening it counts as opening: the page sorts by when each was last opened. */
   open(userId: number, id: string): ArtefactDetail {
-    requireRow(userId, id);
+    const existing = requireRow(userId, id);
+    ensureLinkedSession(userId, existing);
     artefactsDb.touchOpened(userId, id, new Date().toISOString());
     const row = requireRow(userId, id);
     const { content, error } = readDocument(row.file_path);
@@ -192,11 +210,15 @@ export const artefactsService = {
   },
 
   update(userId: number, id: string, body: Record<string, unknown>): ArtefactSummary {
-    requireRow(userId, id);
+    const existing = requireRow(userId, id);
     const fields: { title?: string; pinned?: boolean } = {};
     if (body.title !== undefined) fields.title = readTitle(body.title);
     if (body.pinned !== undefined) fields.pinned = Boolean(body.pinned);
     artefactsDb.update(userId, id, fields, new Date().toISOString());
+    if (fields.title !== undefined && existing.session_id && sessionsDb.getSessionById(existing.session_id)) {
+      sessionsDb.updateSessionCustomName(existing.session_id, fields.title);
+      void broadcastSessionUpserted(existing.session_id).catch(() => {});
+    }
     return toSummary(requireRow(userId, id));
   },
 
@@ -242,15 +264,10 @@ export const artefactsService = {
       throw new AppError('Claude is already editing this spreadsheet.', { code: 'ARTEFACT_BUSY', statusCode: 409 });
     }
 
-    let sessionId = row.session_id && sessionsDb.getSessionById(row.session_id) ? row.session_id : null;
-    if (!sessionId) {
-      sessionId = randomUUID();
-      const sessionTitle = typeof body.sessionTitle === 'string' && body.sessionTitle.trim()
-        ? body.sessionTitle.trim().slice(0, MAX_TITLE_LENGTH)
-        : row.title;
-      sessionsDb.createAppSession(sessionId, 'claude', getArtefactWorkspace(), sessionTitle);
-      artefactsDb.setSession(userId, id, sessionId);
-    }
+    const preferredTitle = typeof body.sessionTitle === 'string' && body.sessionTitle.trim()
+      ? body.sessionTitle.trim()
+      : undefined;
+    const sessionId = ensureLinkedSession(userId, row, preferredTitle);
 
     pendingRuns.add(id);
     lastRunErrors.delete(id);
@@ -283,7 +300,22 @@ export const artefactsService = {
   },
 };
 
+/** Enriches interactive Chat turns inside an artefact's conversation with its editing format. */
+export function resolveArtefactTurnContext(sessionId: string): SessionTurnHookResult | null {
+  const row = artefactsDb.getBySessionId(sessionId);
+  if (!row || row.kind !== 'sheet') return null;
+  return {
+    systemPromptAppend: sheetEditingInstructions(row.file_path, row.title),
+    onFinished: () => {
+      if (artefactsDb.get(row.user_id, row.id)) {
+        artefactsDb.touchUpdated(row.user_id, row.id, new Date().toISOString());
+      }
+    },
+  };
+}
+
 /** Started with the server: gives artefact runs the provider runtime scheduled tasks use. */
 export function initializeArtefacts(runtime: ProviderRuntimeGateway): void {
   artefactRuntime = runtime;
+  setSessionTurnHook(resolveArtefactTurnContext);
 }

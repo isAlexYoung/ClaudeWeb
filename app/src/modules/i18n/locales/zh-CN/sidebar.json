@@ -506,6 +506,7 @@
       "downloadCsv": "下载 CSV",
       "showConversation": "显示对话",
       "hideConversation": "隐藏对话",
+      "minimize": "最小化到对话",
       "close": "关闭",
       "saving": "保存中…",
       "saved": "已保存",

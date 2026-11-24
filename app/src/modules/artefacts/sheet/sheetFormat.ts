@@ -194,8 +194,11 @@ export function toGridSheets(document: SheetDocument): GridSheet[] {
       name: sheet.name,
       id: `sheet-${order + 1}`,
       order,
+      status: order === 0 ? 1 : 0,
       row: Math.max(MIN_ROWS, maxRow + 20),
       column: Math.max(MIN_COLUMNS, maxColumn + 5),
+      // Initialise an explicit A1 selection so FortuneSheet's name box renders "A1" instead of "A1:NaN".
+      luckysheet_select_save: [{ row: [0, 0], column: [0, 0], row_focus: 0, column_focus: 0 }],
       celldata: [...cells.entries()].map(([key, v]) => {
         const [r, c] = key.split('_').map(Number);
         return { r, c, v };

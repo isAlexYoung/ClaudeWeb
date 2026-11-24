@@ -509,6 +509,7 @@
       "downloadCsv": "Download CSV",
       "showConversation": "Show conversation",
       "hideConversation": "Hide conversation",
+      "minimize": "Minimize to chat",
       "close": "Close",
       "saving": "Saving…",
       "saved": "Saved",

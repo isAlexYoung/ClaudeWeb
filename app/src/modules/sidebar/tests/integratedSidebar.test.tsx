@@ -21,9 +21,11 @@ vi.mock('@/shared/api', () => ({
   readApiJson: async (response: Response) => response.json(),
 }));
 vi.mock('@/modules/auth', () => ({ useAuth: () => ({ user: { username: 'alex' }, logout: () => {} }) }));
-// Conversations started by a scheduled task, as the scheduled-tasks module reports them.
+// Conversations started by a scheduled task or owned by an artefact.
 const scheduled = vi.hoisted(() => ({ ids: new Set<string>() }));
+const artefactSessions = vi.hoisted(() => ({ ids: new Set<string>() }));
 vi.mock('@/modules/scheduled-tasks', () => ({ useScheduledTaskSessionIds: () => scheduled.ids }));
+vi.mock('@/modules/artefacts', () => ({ useArtefactSessionIds: () => artefactSessions.ids }));
 
 const SESSION: ProjectSession = { id: 'session-1', summary: 'Fix the build', __provider: 'claude' };
 const PROJECT = {
@@ -110,6 +112,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   scheduled.ids = new Set();
+  artefactSessions.ids = new Set();
   resetUserPreferences();
   localStorage.clear();
   // chat-1 was started from New Chat, so it belongs to the Chats section.
@@ -247,7 +250,8 @@ test('Scheduled tasks sits under New chat, Search and Artefacts and marks the co
   assert.equal(view.getByRole('button', { name: 'Fix the build' }).getAttribute('data-scheduled'), 'true');
 });
 
-test('Artefacts shows in both modes and Scheduled tasks only in Chat, expanded and collapsed', () => {
+test('Artefacts and Scheduled tasks show only in Chat, expanded and collapsed, and artefact chats carry the Artefacts icon', () => {
+  artefactSessions.ids = new Set(['chat-1']);
   const list = createList();
   const view = renderSidebar(list);
   const shown = (name: string) => view.queryByRole('button', { name }) !== null;
@@ -255,6 +259,7 @@ test('Artefacts shows in both modes and Scheduled tasks only in Chat, expanded a
   fireEvent.click(artefacts);
   assert.equal(artefacts.getAttribute('aria-pressed'), 'true');
   assert.equal(shown('Scheduled tasks'), true);
+  assert.equal(view.getByRole('button', { name: 'Hello' }).getAttribute('data-artefact'), 'true');
   // The collapsed rail has no mode tabs; it follows the mode chosen while expanded.
   view.rerender(sidebarTree(list, { collapsed: true }));
   assert.equal(shown('Scheduled tasks'), true);
@@ -263,14 +268,15 @@ test('Artefacts shows in both modes and Scheduled tasks only in Chat, expanded a
   view.rerender(sidebarTree(list));
   fireEvent.click(view.getByRole('tab', { name: 'Project' }));
   assert.equal(shown('Scheduled tasks'), false);
-  assert.equal(shown('Artefacts'), true);
+  assert.equal(shown('Artefacts'), false);
   view.rerender(sidebarTree(list, { collapsed: true }));
   assert.equal(shown('Scheduled tasks'), false);
-  assert.equal(shown('Artefacts'), true);
+  assert.equal(shown('Artefacts'), false);
 
   view.rerender(sidebarTree(list));
   fireEvent.click(view.getByRole('tab', { name: 'Chat' }));
   assert.equal(shown('Scheduled tasks'), true);
+  assert.equal(shown('Artefacts'), true);
 });
 
 test('legacy Chat-directory conversations stay in Chats, even without a saved mode classification', () => {

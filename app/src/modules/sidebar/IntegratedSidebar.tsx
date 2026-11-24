@@ -26,6 +26,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
+import { useArtefactSessionIds } from '@/modules/artefacts';
 import { useScheduledTaskSessionIds } from '@/modules/scheduled-tasks';
 import { useModeSwapMotion } from '@/modules/sidebar/hooks/useModeSwapMotion';
 import { api } from '@/shared/api';
@@ -90,8 +91,8 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
   const { list } = props;
   const { t } = useTranslation('sidebar');
   const experience = useWorkspaceExperience();
-  // Scheduled tasks are a Chat feature: Code mode does not list them.
-  const showScheduledTasks = experience.mode === 'chat';
+  // Artefacts and Scheduled tasks are Chat features: Code mode does not list them.
+  const showChatPages = experience.mode === 'chat';
   const modeSwapRef = useModeSwapMotion(experience.mode);
   // Search lives in one modal instead of the navigation tree; the backend query is unchanged.
   const [searchOpen, setSearchOpen] = useState(false);
@@ -105,7 +106,8 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
   const [extraPins, setExtraPins] = useState<Record<string, PinnedSessionRow | null>>({});
   // Remember the clicked occurrence when a conversation appears in several sections.
   const [selectedOccurrence, setSelectedOccurrence] = useState<{ sessionId: string; key: string } | null>(null);
-  // Conversations a scheduled task started carry a clock instead of a speech bubble.
+  // Conversations owned by an artefact carry the Artefacts icon; scheduled task runs carry a clock.
+  const artefactSessionIds = useArtefactSessionIds();
   const scheduledSessionIds = useScheduledTaskSessionIds();
 
   const allSessions = list.projects.flatMap((project) => list.getProjectSessions(project)
@@ -202,10 +204,13 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
         <button
           className="workspace-nav-main"
           title={title}
+          data-artefact={artefactSessionIds.has(session.id) || undefined}
           data-scheduled={scheduledSessionIds.has(session.id) || undefined}
           onClick={() => openSession(session, projectId, occurrence)}
         >
-          {!nested && (scheduledSessionIds.has(session.id) ? <Clock size={18} /> : <MessageCircle size={18} />)}
+          {!nested && (artefactSessionIds.has(session.id)
+            ? <Shapes size={18} />
+            : scheduledSessionIds.has(session.id) ? <Clock size={18} /> : <MessageCircle size={18} />)}
           <span>{title}</span>
           {busy && <i className="workspace-busy-dot" />}
           {list.attentionSessionIds.has(session.id) && <i className="workspace-attention-dot" />}
@@ -380,15 +385,17 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
         <button className="workspace-icon-button" aria-label={t('workspace.search')} onClick={openSearch}>
           <Search size={19} />
         </button>
-        <button
-          className="workspace-icon-button"
-          aria-label={t('artefacts.title')}
-          aria-pressed={experience.artefactsOpen}
-          onClick={() => { experience.openArtefacts(); props.onNavigatePage?.(); }}
-        >
-          <Shapes size={19} />
-        </button>
-        {showScheduledTasks && (
+        {showChatPages && (
+          <button
+            className="workspace-icon-button"
+            aria-label={t('artefacts.title')}
+            aria-pressed={experience.artefactsOpen}
+            onClick={() => { experience.openArtefacts(); props.onNavigatePage?.(); }}
+          >
+            <Shapes size={19} />
+          </button>
+        )}
+        {showChatPages && (
           <button
             className="workspace-icon-button"
             aria-label={t('scheduledTasks.title')}
@@ -441,15 +448,17 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
         <Search size={18} />
         {t('workspace.search')}
       </button>
-      <button
-        className={`workspace-new-chat workspace-scheduled-entry ${experience.artefactsOpen ? 'selected' : ''}`}
-        aria-pressed={experience.artefactsOpen}
-        onClick={() => { experience.openArtefacts(); props.onNavigatePage?.(); }}
-      >
-        <Shapes size={18} />
-        {t('artefacts.title')}
-      </button>
-      {showScheduledTasks && (
+      {showChatPages && (
+        <button
+          className={`workspace-new-chat workspace-scheduled-entry ${experience.artefactsOpen ? 'selected' : ''}`}
+          aria-pressed={experience.artefactsOpen}
+          onClick={() => { experience.openArtefacts(); props.onNavigatePage?.(); }}
+        >
+          <Shapes size={18} />
+          {t('artefacts.title')}
+        </button>
+      )}
+      {showChatPages && (
         <button
           className={`workspace-new-chat workspace-scheduled-entry ${experience.scheduledTasksOpen ? 'selected' : ''}`}
           aria-pressed={experience.scheduledTasksOpen}
