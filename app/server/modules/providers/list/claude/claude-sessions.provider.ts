@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 
@@ -729,17 +730,73 @@ function dropSupersededPromptBranches(rows: AnyRecord[]): AnyRecord[] {
 /** When the CLI run behind a session started (epoch ms), or null when none is up. */
 type LiveRunStartTimeProbe = (sessionId: string) => number | null;
 
+/**
+ * Locates a newly created Claude JSONL transcript on disk before the periodic
+ * filesystem watcher has indexed its `jsonl_path` into SQLite.
+ */
+async function findClaudeSessionTranscript(
+  projectPath: string | null | undefined,
+  providerSessionId: string,
+): Promise<string | null> {
+  if (
+    !providerSessionId
+    || providerSessionId.includes('/')
+    || providerSessionId.includes('\\')
+    || providerSessionId.includes('..')
+  ) {
+    return null;
+  }
+
+  const projectsRoot = path.join(os.homedir(), '.claude', 'projects');
+  const fileName = `${providerSessionId}.jsonl`;
+
+  if (projectPath) {
+    const directCandidate = path.join(
+      projectsRoot,
+      projectPath.replace(/[^a-zA-Z0-9]/g, '-'),
+      fileName,
+    );
+    try {
+      await fsp.access(directCandidate);
+      return directCandidate;
+    } catch {
+      // Fall through to a shallow scan in case the path encoding differs (e.g. symlinked home).
+    }
+  }
+
+  try {
+    const entries = await fsp.readdir(projectsRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const candidate = path.join(projectsRoot, entry.name, fileName);
+      try {
+        await fsp.access(candidate);
+        return candidate;
+      } catch {
+        // Keep scanning.
+      }
+    }
+  } catch {
+    // ~/.claude/projects does not exist yet.
+  }
+
+  return null;
+}
+
 async function getSessionMessages(
   sessionId: string,
   providerSessionId: string,
   limit: number | null,
   offset: number,
   getLiveRunStartTime: LiveRunStartTimeProbe,
+  projectPath?: string,
 ): Promise<ClaudeHistoryMessagesResult> {
   try {
     // The DB row is keyed by the app-facing session id, while the JSONL rows
     // on disk carry the provider-native id — both ids are needed here.
-    const jsonLPath = sessionsDb.getSessionById(sessionId)?.jsonl_path;
+    const sessionRow = sessionsDb.getSessionById(sessionId);
+    const jsonLPath = sessionRow?.jsonl_path
+      ?? (await findClaudeSessionTranscript(projectPath ?? sessionRow?.project_path, providerSessionId));
 
     if (!jsonLPath) {
       return { messages: [], total: 0, hasMore: false };
@@ -1808,7 +1865,7 @@ export class ClaudeSessionsProvider implements IProviderSessions {
     try {
       // Load full history first so `total` reflects frontend-normalized messages,
       // not raw JSONL records.
-      result = await getSessionMessages(sessionId, providerSessionId, null, 0, this.getLiveRunStartTime);
+      result = await getSessionMessages(sessionId, providerSessionId, null, 0, this.getLiveRunStartTime, options.projectPath);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(`[ClaudeProvider] Failed to load session ${sessionId}:`, message);

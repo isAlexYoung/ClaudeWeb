@@ -398,17 +398,37 @@ const rebuildSessionsTableWithProjectSchema = (db: Database): void => {
  * Rows that existed before this migration were always keyed directly by the
  * provider-native session id, so backfilling `provider_session_id` with
  * `session_id` keeps every legacy row resolvable through the new mapping.
+ *
+ * The backfill must run ONLY when adding the column (and only for rows that
+ * actually point to a transcript on disk): running it unconditionally on every
+ * restart stamped app-allocated sessions that had not sent a first turn yet
+ * (`provider_session_id IS NULL, jsonl_path IS NULL`) with their app UUID as if
+ * it were a Claude-native session id, causing `--resume <app-uuid>` to fail
+ * with "No conversation found with session ID".
  */
 const addProviderSessionIdMapping = (db: Database): void => {
   const sessionsTableInfo = getTableInfo(db, 'sessions');
   const columnNames = sessionsTableInfo.map((column) => column.name);
+  const addedColumn = !columnNames.includes('provider_session_id');
 
   addColumnToTableIfNotExists(db, 'sessions', columnNames, 'provider_session_id', 'TEXT');
-  db.exec(`
-    UPDATE sessions
-    SET provider_session_id = session_id
-    WHERE provider_session_id IS NULL
-  `);
+  if (addedColumn) {
+    db.exec(`
+      UPDATE sessions
+      SET provider_session_id = session_id
+      WHERE provider_session_id IS NULL
+        AND jsonl_path IS NOT NULL
+    `);
+  } else {
+    // Heal app-created sessions that were wrongly backfilled on an earlier
+    // restart before they ever produced a transcript file.
+    db.exec(`
+      UPDATE sessions
+      SET provider_session_id = NULL
+      WHERE provider_session_id = session_id
+        AND jsonl_path IS NULL
+    `);
+  }
 };
 
 /**

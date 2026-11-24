@@ -4,8 +4,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { closeConnection } from '@/modules/database/connection.js';
+import { closeConnection, getConnection } from '@/modules/database/connection.js';
 import { initializeDatabase } from '@/modules/database/init-db.js';
+import { runMigrations } from '@/modules/database/migrations.js';
 import { sessionsDb } from '@/modules/database/repositories/sessions.db.js';
 
 async function withIsolatedDatabase(runTest: () => void | Promise<void>): Promise<void> {
@@ -105,5 +106,29 @@ test('legacy provider-keyed rows stay resolvable through both lookups', async ()
 
     assert.equal(sessionsDb.getSessionById('legacy-1')?.provider, 'opencode');
     assert.equal(sessionsDb.getSessionByProviderSessionId('legacy-1')?.session_id, 'legacy-1');
+  });
+});
+
+test('runMigrations preserves pending app sessions and heals wrongly backfilled rows', async () => {
+  await withIsolatedDatabase(() => {
+    // 1. Fresh app-allocated session (e.g. a newly created artefact) before any turn runs.
+    sessionsDb.createAppSession('app-pending', 'claude', '/workspace/demo', 'test2');
+    // 2. App-allocated session poisoned by an earlier restart (provider_session_id === session_id, no transcript).
+    sessionsDb.createAppSession('app-poisoned', 'claude', '/workspace/demo', 'old-artefact');
+    getConnection()
+      .prepare('UPDATE sessions SET provider_session_id = session_id WHERE session_id = ?')
+      .run('app-poisoned');
+    // 3. Real mapped app session (provider id differs from app id) — must stay intact even before watcher sets jsonl_path.
+    sessionsDb.createAppSession('app-live', 'claude', '/workspace/demo', 'Live Chat');
+    sessionsDb.assignProviderSessionId('app-live', 'claude-native-live');
+    // 4. Real disk-discovered session (provider id === session id, WITH jsonl_path) — must stay intact.
+    sessionsDb.createSession('disk-native', 'claude', '/workspace/demo', 'From Disk', undefined, undefined, '/fake/disk-native.jsonl');
+
+    runMigrations(getConnection());
+
+    assert.equal(sessionsDb.getSessionById('app-pending')?.provider_session_id, null);
+    assert.equal(sessionsDb.getSessionById('app-poisoned')?.provider_session_id, null);
+    assert.equal(sessionsDb.getSessionById('app-live')?.provider_session_id, 'claude-native-live');
+    assert.equal(sessionsDb.getSessionById('disk-native')?.provider_session_id, 'disk-native');
   });
 });

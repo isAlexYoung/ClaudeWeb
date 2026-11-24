@@ -369,6 +369,23 @@ async function dispatchRun(
     // run instead of leaving the session processing forever.
     await beforeRun?.(run);
     await dependencies.runtime.run(provider, command, runtimeOptions, run.writer);
+    // Provider runtimes (e.g. Claude SDK) handle errors internally and report
+    // them through `error` and non-zero `complete` writer events rather than
+    // throwing. Inspect those runtime-emitted events BEFORE the `finally`
+    // safety net synthesizes a fallback completion, so detached callers
+    // (artefacts, scheduled tasks/messages) surface real failures without
+    // flagging runtimes/mocks that resolve without emitting `complete`.
+    const errorEvent = [...run.events].reverse().find(
+      (event) => event.kind === 'error' && typeof event.content === 'string' && event.content.trim().length > 0,
+    );
+    if (errorEvent && typeof errorEvent.content === 'string') {
+      failure = errorEvent.content.trim();
+    } else {
+      const completeEvent = [...run.events].reverse().find((event) => event.kind === 'complete');
+      if (completeEvent && !completeEvent.aborted && typeof completeEvent.exitCode === 'number' && completeEvent.exitCode !== 0) {
+        failure = `Provider runtime "${provider}" exited with code ${completeEvent.exitCode}.`;
+      }
+    }
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
     console.error(`[Chat] Provider runtime "${provider}" failed`, { sessionId, error: failure });

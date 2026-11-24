@@ -390,7 +390,7 @@ export const api = {
     update: (id: string, body: { title?: string; pinned?: boolean }) => patch(`/api/artefacts/${encodeURIComponent(id)}`, body),
     remove: (id: string) => del(`/api/artefacts/${encodeURIComponent(id)}`),
     state: (id: string) => get(`/api/artefacts/${encodeURIComponent(id)}/state`),
-    sendMessage: (id: string, body: { text: string; sessionTitle?: string }) =>
+    sendMessage: (id: string, body: { text: string; sessionTitle?: string; model?: string; effort?: string; mcpEnabled?: boolean }) =>
       post(`/api/artefacts/${encodeURIComponent(id)}/messages`, body),
   },
 

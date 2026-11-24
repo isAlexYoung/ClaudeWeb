@@ -456,7 +456,7 @@ function mapCliOptionsToSDK(options: AnyRecord = {}) {
 
   sdkOptions.disallowedTools = settings.disallowedTools || [];
 
-  sdkOptions.model = options.model || CLAUDE_PREDEFINED_MODELS.DEFAULT;
+  sdkOptions.model = options.model || options.effortModels?.DEFAULT || CLAUDE_PREDEFINED_MODELS.DEFAULT;
 
   applyClaudeEffort(sdkOptions, resolveClaudeEffort(
     sdkOptions.model,
@@ -1329,6 +1329,7 @@ async function queryClaudeSDK(
   // The client is told the turn is over as soon as `result` lands, even though
   // the process lingers, so the UI never waits out the idle hold.
   let turnCompleteSent = false;
+  let errorEventSent = false;
   // Set when a turn starts background work, cleared when the next `result`
   // arrives — only turns with work still outstanding hold their process open.
   let backgroundWorkPending = false;
@@ -1848,14 +1849,34 @@ async function queryClaudeSDK(
         const stillOutstanding = backgroundWork.hasOutstanding(sessionKey()!);
         if (!turnCompleteSent && !abortPending) {
           turnCompleteSent = true;
-          ws.send(createCompleteMessage({ provider: 'claude', sessionId: capturedSessionId || sessionId || null, exitCode: 0 }));
-          notifyRunStopped({
-            userId: ws?.userId || null,
-            provider: 'claude',
-            sessionId: sessionId || capturedSessionId || null,
-            sessionName: sessionSummary,
-            stopReason: 'completed'
-          });
+          if (message.is_error) {
+            const errorParts = Array.isArray(message.errors)
+              ? message.errors.filter((entry: unknown): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+              : [];
+            const resultError = errorParts.join('; ')
+              || (typeof message.result === 'string' && message.result.trim())
+              || (typeof message.subtype === 'string' && message.subtype)
+              || 'Claude Code returned an error result.';
+            errorEventSent = true;
+            ws.send(createNormalizedMessage({ kind: 'error', content: resultError, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
+            ws.send(createCompleteMessage({ provider: 'claude', sessionId: capturedSessionId || sessionId || null, exitCode: 1 }));
+            notifyRunFailed({
+              userId: ws?.userId || null,
+              provider: 'claude',
+              sessionId: sessionId || capturedSessionId || null,
+              sessionName: sessionSummary,
+              error: new Error(resultError)
+            });
+          } else {
+            ws.send(createCompleteMessage({ provider: 'claude', sessionId: capturedSessionId || sessionId || null, exitCode: 0 }));
+            notifyRunStopped({
+              userId: ws?.userId || null,
+              provider: 'claude',
+              sessionId: sessionId || capturedSessionId || null,
+              sessionName: sessionSummary,
+              stopReason: 'completed'
+            });
+          }
         } else if (heldForBackgroundWork && !abortPending && !stillOutstanding) {
           // A result after the turn already reported complete means the work we
           // held the process open for has finished and pushed a follow-up turn
@@ -1982,18 +2003,22 @@ async function queryClaudeSDK(
 
     // Send error to WebSocket, then the terminal complete. A run that already
     // reported completion and then failed during its post-turn hold still
-    // surfaces the error, but must not emit a second terminal complete.
-    ws.send(createNormalizedMessage({ kind: 'error', content: errorContent, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
+    // surfaces the error, but must not emit a second terminal complete or
+    // duplicate an error already emitted from an error `result` frame.
+    if (!errorEventSent) {
+      errorEventSent = true;
+      ws.send(createNormalizedMessage({ kind: 'error', content: errorContent, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
+      notifyRunFailed({
+        userId: ws?.userId || null,
+        provider: 'claude',
+        sessionId: sessionId || capturedSessionId || null,
+        sessionName: sessionSummary,
+        error
+      });
+    }
     if (!turnCompleteSent) {
       ws.send(createCompleteMessage({ provider: 'claude', sessionId: capturedSessionId || sessionId || null, exitCode: 1 }));
     }
-    notifyRunFailed({
-      userId: ws?.userId || null,
-      provider: 'claude',
-      sessionId: sessionId || capturedSessionId || null,
-      sessionName: sessionSummary,
-      error
-    });
   } finally {
     if (suggestionReleaseTimer) clearTimeout(suggestionReleaseTimer);
     // Always close stdin — otherwise an aborted or failed run leaves the CLI

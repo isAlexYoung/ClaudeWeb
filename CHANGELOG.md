@@ -5,6 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.2 - 2026-11-24 (stable)
+
+- Database migration & session resume: stop `addProviderSessionIdMapping` from backfilling `provider_session_id = session_id` on every restart for pending app sessions with no transcript yet (which caused newly created spreadsheet/chat sessions to fail after an upgrade/restart with `No conversation found with session ID`), and automatically heal already-affected rows on startup.
+- Detached runs & spreadsheet error visibility: propagate runtime-emitted `error` / non-zero `complete` events (and SDK `result.is_error` frames) from `dispatchRun` to detached callers (`artefacts`, scheduled tasks, scheduled messages) instead of silently reporting success; surface failed-run errors in the spreadsheet editor notice and right-hand conversation drawer.
+- Spreadsheet model/settings & transcript sync: forward the user's selected Claude model, reasoning effort and Chat MCP preference from the spreadsheet editor, respect the merged provider catalog default (including custom-models-only) when no explicit model is passed, and locate newly written Claude JSONL transcripts on disk before the periodic watcher indexes `jsonl_path`.
+
 ## 2.3.1 - 2026-11-24 (stable)
 
 - Artefacts sidebar icon: synchronously propagate created/opened/renamed artefact sessions so conversations owned by an artefact immediately display the Artefacts icon instead of a chat bubble.

@@ -170,10 +170,39 @@ test('asking Claude reuses the spreadsheet\'s conversation and tells it which fi
     assert.ok(instructions.includes(path.join(directory, `${created.id}.sheet.json`)));
     assert.ok(instructions.includes(SHEET_FORMAT));
 
-    const second = artefactsService.sendMessage(userId, created.id, { text: '加一列备注' }, runtime);
+    const second = artefactsService.sendMessage(userId, created.id, {
+      text: '加一列备注',
+      model: 'claude-haiku-5-5',
+      effort: 'high',
+      mcpEnabled: false,
+    }, runtime);
     assert.equal(second.sessionId, first.sessionId, 'later requests continue the same conversation');
     await waitForIdle(userId, created.id);
     assert.equal(artefactsService.state(userId, created.id).sessionId, first.sessionId);
+    assert.equal(runs[1].options.model, 'claude-haiku-5-5');
+    assert.equal(runs[1].options.effort, 'high');
+    assert.equal(runs[1].options.mcpEnabled, false);
+    assert.equal(sessionsDb.getSessionById(first.sessionId)?.model, 'claude-haiku-5-5');
+    assert.equal(sessionsDb.getSessionById(first.sessionId)?.effort, 'high');
+  });
+});
+
+test('a provider error emitted on the writer without throwing is recorded in state.lastError', async () => {
+  await withArtefacts(async (userId) => {
+    const runtime = {
+      hasRuntime: () => true,
+      hasBackgroundWork: () => false,
+      run: async (_provider: string, _command: string, _options: Record<string, unknown>, writer: { send: (data: unknown) => void }) => {
+        writer.send({ kind: 'error', content: 'No conversation found with session ID: fake', provider: 'claude' });
+        writer.send({ kind: 'complete', exitCode: 1, provider: 'claude' });
+      },
+      abort: async () => true,
+    } as never;
+    const created = artefactsService.create(userId, { kind: 'sheet', title: '失败测试' });
+    artefactsService.sendMessage(userId, created.id, { text: '做一个预算表' }, runtime);
+    await waitForIdle(userId, created.id);
+
+    assert.equal(artefactsService.state(userId, created.id).lastError, 'No conversation found with session ID: fake');
   });
 });
 

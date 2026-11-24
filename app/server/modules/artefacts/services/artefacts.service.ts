@@ -267,6 +267,9 @@ export const artefactsService = {
     const preferredTitle = typeof body.sessionTitle === 'string' && body.sessionTitle.trim()
       ? body.sessionTitle.trim()
       : undefined;
+    const model = typeof body.model === 'string' && body.model.trim() ? body.model.trim() : undefined;
+    const effort = typeof body.effort === 'string' && body.effort.trim() ? body.effort.trim() : undefined;
+    const mcpEnabled = typeof body.mcpEnabled === 'boolean' ? body.mcpEnabled : undefined;
     const sessionId = ensureLinkedSession(userId, row, preferredTitle);
 
     pendingRuns.add(id);
@@ -278,6 +281,9 @@ export const artefactsService = {
         userId,
         content: text,
         options: {
+          ...(model ? { model } : {}),
+          ...(effort ? { effort } : {}),
+          ...(mcpEnabled === undefined ? {} : { mcpEnabled }),
           // Nobody approves anything mid-run: file edits are allowed, anything
           // else that would wait for an answer is refused.
           permissionMode: 'acceptEdits',

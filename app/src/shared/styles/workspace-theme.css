@@ -1171,6 +1171,7 @@ html[data-cw-login-wallpaper="1"] .cw-login-card {
 .sheet-conversation-message.user p { padding: 8px 11px; border-radius: 10px; background: var(--workspace-bubble); }
 .sheet-conversation-role { color: hsl(var(--muted-foreground)); font-size: 12px; }
 .sheet-conversation-tools { margin: 0 0 12px; color: hsl(var(--muted-foreground)); font-size: 12.5px; }
+.sheet-conversation-error { width: 100%; margin: 0 0 14px; padding: 9px 11px; border: 1px solid hsl(var(--destructive) / .28); border-radius: 10px; background: hsl(var(--destructive) / .08); color: hsl(var(--destructive)); font-size: 12.5px; line-height: 1.5; text-align: left; overflow-wrap: anywhere; }
 .sheet-conversation-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin: 12px; padding: 9px; border-radius: 10px; background: var(--workspace-bubble); color: hsl(var(--foreground)); font-size: 13.5px; }
 .sheet-conversation-open:hover { background: var(--workspace-hover); }
 

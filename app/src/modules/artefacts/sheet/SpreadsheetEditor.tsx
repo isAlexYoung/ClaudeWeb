@@ -7,6 +7,7 @@ import { ArrowUp, ChevronDown, Loader2, Maximize2, Minimize2, Sheet, X } from 'l
 
 import { ScheduledTaskMenu, ScheduledTaskMenuDivider, ScheduledTaskMenuItem } from '@/modules/scheduled-tasks';
 import { api } from '@/shared/api';
+import { readStoredUiPreferences } from '@/shared/uiPreferences';
 import type { ArtefactDetail, ArtefactState, SheetDocument } from '@/shared/types';
 import { formulaOrder, fromGridSheets, sheetToCsv, toGridSheets } from '@/modules/artefacts/sheet/sheetFormat';
 import type { GridSheet } from '@/modules/artefacts/sheet/sheetFormat';
@@ -33,6 +34,17 @@ const SAVE_DELAY_MS = 800;
 const POLL_RUNNING_MS = 1500;
 const POLL_IDLE_MS = 4000;
 const NOTICE_MS = 3200;
+const ERROR_NOTICE_MS = 8000;
+
+function readStoredPreferenceValue(key: string): string | undefined {
+  try {
+    if (typeof localStorage === 'undefined') return undefined;
+    const value = localStorage.getItem(key)?.trim();
+    return value || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** FortuneSheet's language code for the interface language. */
 function gridLanguage(language: string): string {
@@ -58,6 +70,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
   const [saveState, setSaveState] = useState<SaveState>('idle');
   // A short line above the composer: a reload, an invalid file, a failed run.
   const [notice, setNotice] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(true);
@@ -79,10 +92,14 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
   const runningRef = useRef(false);
   useEffect(() => { runningRef.current = running; }, [running]);
 
-  const showNotice = useCallback((text: string) => setNotice(text), []);
+  const noticeDurationRef = useRef(NOTICE_MS);
+  const showNotice = useCallback((text: string, durationMs = NOTICE_MS) => {
+    noticeDurationRef.current = durationMs;
+    setNotice(text);
+  }, []);
   useEffect(() => {
     if (!notice) return undefined;
-    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
+    const timer = setTimeout(() => setNotice(null), noticeDurationRef.current);
     return () => clearTimeout(timer);
   }, [notice]);
 
@@ -223,8 +240,9 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
         if (cancelled) return;
         setRunning(state.running);
         setSessionId(state.sessionId);
+        setLastError(state.running ? null : state.lastError);
         if (wasRunning && !state.running && state.lastError) {
-          showNotice(t('artefacts.editor.failed', { error: state.lastError }));
+          showNotice(t('artefacts.editor.failed', { error: state.lastError }), ERROR_NOTICE_MS);
         }
         const changed = Boolean(revisionRef.current) && state.revision !== revisionRef.current;
         if (changed || (wasRunning && !state.running)) {
@@ -250,17 +268,26 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
     setSending(true);
     try {
       await save();
+      const model = readStoredPreferenceValue('claude-model');
+      const effort = readStoredPreferenceValue('claude-effort');
+      const mcpEnabled = readStoredUiPreferences().chatMcpEnabled;
       const result = await readArtefactResponse<{ sessionId: string }>(await api.artefacts.sendMessage(artefactId, {
         text,
         sessionTitle: t('artefacts.editor.sessionTitle', { title: detail.title }),
+        ...(model ? { model } : {}),
+        ...(effort && effort !== 'default' ? { effort } : {}),
+        mcpEnabled,
       }));
       setSessionId(result.sessionId);
+      setLastError(null);
       // Set now, not after the next render: a grid change in between must not be saved over Claude's run.
       runningRef.current = true;
       setRunning(true);
       setMessage('');
     } catch (caught) {
-      showNotice(t('artefacts.editor.sendFailed', { error: caught instanceof Error ? caught.message : String(caught) }));
+      const errorMessage = caught instanceof Error ? caught.message : String(caught);
+      setLastError(errorMessage);
+      showNotice(t('artefacts.editor.sendFailed', { error: errorMessage }), ERROR_NOTICE_MS);
     } finally {
       setSending(false);
     }
@@ -451,6 +478,7 @@ export default function SpreadsheetEditor({ artefactId, menuButton, onClose, onM
           <SheetConversation
             sessionId={sessionId}
             running={running}
+            error={lastError}
             onSelectSuggestion={selectSuggestion}
             onOpenInChat={(id) => { void save().then(() => onOpenSession(id)); }}
           />

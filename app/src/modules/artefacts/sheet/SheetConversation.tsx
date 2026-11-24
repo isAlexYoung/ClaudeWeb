@@ -11,6 +11,8 @@ type SheetConversationProps = {
   sessionId: string | null;
   /** Claude is working: the drawer refreshes until it stops. */
   running: boolean;
+  /** The last run's error, shown so a failed turn never looks like nothing happened. */
+  error?: string | null;
   /** Places a prompt suggestion into the editor's composer without sending it. */
   onSelectSuggestion: (prompt: string) => void;
   onOpenInChat: (sessionId: string) => void;
@@ -53,7 +55,7 @@ async function fetchConversation(sessionId: string): Promise<NormalizedMessage[]
  * illustrated prompt picker before any turns exist, or the conversation's
  * messages with a link to continue in full chat once turns exist.
  */
-export default function SheetConversation({ sessionId, running, onSelectSuggestion, onOpenInChat }: SheetConversationProps) {
+export default function SheetConversation({ sessionId, running, error, onSelectSuggestion, onOpenInChat }: SheetConversationProps) {
   const { t } = useTranslation('sidebar');
   // The latest page of the conversation; null until it has been read once.
   const [messages, setMessages] = useState<NormalizedMessage[] | null>(null);
@@ -84,6 +86,7 @@ export default function SheetConversation({ sessionId, running, onSelectSuggesti
       <div className={`sheet-conversation-body ${isEmpty ? 'is-empty' : ''}`}>
         {isEmpty ? (
           <div className="sheet-conversation-empty-state">
+            {error && <p role="alert" className="sheet-conversation-error">{t('artefacts.editor.failed', { error })}</p>}
             <EmptySheetSketch />
             <h3 className="sheet-conversation-empty-title">{t('artefacts.editor.conversation.emptyTitle')}</h3>
             <div className="sheet-conversation-suggestions">
@@ -115,6 +118,7 @@ export default function SheetConversation({ sessionId, running, onSelectSuggesti
               </div>
             )))}
             {running && <p className="sheet-conversation-tools" role="status">{t('artefacts.editor.working')}</p>}
+            {!running && error && <p role="alert" className="sheet-conversation-error">{t('artefacts.editor.failed', { error })}</p>}
           </>
         )}
       </div>

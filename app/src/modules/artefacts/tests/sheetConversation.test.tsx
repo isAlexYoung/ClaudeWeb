@@ -55,6 +55,21 @@ test('empty SheetConversation shows the heading and clickable suggestion pills w
   assert.deepEqual(onSelectSuggestion.mock.calls, [['包含总计和图表的月度预算']]);
 });
 
+test('SheetConversation displays the last run error alert when a run fails', async () => {
+  const view = render(
+    <SheetConversation
+      sessionId="session-1"
+      running={false}
+      error="No conversation found with session ID: abc"
+      onSelectSuggestion={vi.fn()}
+      onOpenInChat={vi.fn()}
+    />,
+  );
+
+  const alert = await view.findByRole('alert');
+  assert.match(alert.textContent ?? '', /No conversation found with session ID: abc/);
+});
+
 test('notifyArtefactsChanged with an upsert updates sidebar artefact session ids immediately', async () => {
   const { result } = renderHook(() => useArtefactSessionIds());
   await waitFor(() => assert.equal(result.current.size, 0));
