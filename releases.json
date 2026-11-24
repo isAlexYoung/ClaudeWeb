@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.2",
+   "channel": "stable",
+   "published_at": "2026-11-24T15:57:54Z",
+   "notes": "\u4fee\u590d\u5347\u7ea7\u91cd\u542f\u540e\u65b0\u5efa\u8868\u683c/\u7a7a\u767d\u4f1a\u8bdd\u62a5 No conversation found \u7684\u8fc1\u79fb Bug \u5e76\u81ea\u52a8\u4fee\u590d\u65e7\u4f1a\u8bdd\uff1b\u4fee\u590d\u540e\u53f0\u8fd0\u884c\u541e\u9519\u5e76\u5c55\u793a\u8868\u683c\u62a5\u9519\uff1b\u900f\u4f20\u6240\u9009\u6a21\u578b/\u63a8\u7406/MCP \u8bbe\u7f6e\u5e76\u652f\u6301\u5373\u65f6\u8bfb\u53d6\u65b0\u5efa\u5bf9\u8bdd\u8bb0\u5f55\u3002 / Fixed migration poisoning new sessions with \"No conversation found\" after restart (with auto-heal), surfaced detached Claude runtime errors in the spreadsheet editor & drawer, forwarded selected model/effort/MCP settings, and resolved new JSONL transcripts immediately.",
+   "package": {
+    "name": "claudeweb-2.3.2-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.2/claudeweb-2.3.2-linux-x64.tar.xz",
+    "bytes": 71701576,
+    "sha256": "03b04ecffaa270de2651353194e9edee26c66c7bfb1a1453b415c17538814df1"
+   }
+  },
+  {
    "version": "2.3.1",
    "channel": "stable",
    "published_at": "2026-11-24T14:42:18Z",
@@ -206,5 +218,5 @@
    }
   }
  ],
- "generated_at": "2026-11-24T14:42:19Z"
+ "generated_at": "2026-11-24T15:57:55Z"
 }
