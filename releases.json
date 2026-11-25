@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.7",
+   "channel": "stable",
+   "published_at": "2026-11-25T10:54:46Z",
+   "notes": "\u4fee\u590d\u957f\u5bf9\u8bdd\u5411\u4e0a\u6eda\u52a8\u52a0\u8f7d\u5386\u53f2\u6d88\u606f\u65f6\u753b\u9762\u4e0d\u52a8\u3001\u8df3\u52a8\u7684\u95ee\u9898\u3002",
+   "package": {
+    "name": "claudeweb-2.3.7-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.7/claudeweb-2.3.7-linux-x64.tar.xz",
+    "bytes": 109561780,
+    "sha256": "f1dc7be965f2dc59dd0882fe80a3e5a2b517675891c31a845e7036139c12ae5c"
+   }
+  },
+  {
    "version": "2.3.6",
    "channel": "stable",
    "published_at": "2026-11-25T07:37:31Z",
@@ -266,5 +278,5 @@
    }
   }
  ],
- "generated_at": "2026-11-25T07:37:32Z"
+ "generated_at": "2026-11-25T10:54:47Z"
 }
