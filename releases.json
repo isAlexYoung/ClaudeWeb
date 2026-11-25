@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.5",
+   "channel": "stable",
+   "published_at": "2026-11-25T05:06:27Z",
+   "notes": "\u5c55\u5f00\u6216\u9690\u85cf\u5bf9\u8bdd\u65f6\uff0c\u5de6\u4fa7\u4f5c\u54c1\u4e0e\u5bf9\u8bdd\u540c\u6b65\u6536\u7a84\u6216\u53d8\u5bbd\uff1b\u4fee\u590d\u5206\u5c4f\u5bf9\u8bdd\u6807\u9898\u663e\u793a\u9519\u8bef\u3002 / The artefact editor now resizes together with the conversation slide; fixed the split-view conversation title.",
+   "package": {
+    "name": "claudeweb-2.3.5-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.5/claudeweb-2.3.5-linux-x64.tar.xz",
+    "bytes": 109560292,
+    "sha256": "5bc614489014c7d6e98a27304c142eed67fdeb7b9f03cb9dd886bc72f9b93170"
+   }
+  },
+  {
    "version": "2.3.4",
    "channel": "stable",
    "published_at": "2026-11-24T18:29:10Z",
@@ -242,5 +254,5 @@
    }
   }
  ],
- "generated_at": "2026-11-24T18:29:10Z"
+ "generated_at": "2026-11-25T05:06:28Z"
 }
