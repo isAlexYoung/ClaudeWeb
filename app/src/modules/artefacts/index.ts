@@ -15,6 +15,7 @@ export {
   getCachedArtefact,
   notifyArtefactsChanged,
   useArtefactBySessionId,
+  useArtefactKindsBySession,
   useArtefactSessionIds,
 } from '@/modules/artefacts/useArtefacts';
 
@@ -23,7 +24,7 @@ export { SheetConversationEmptyState } from '@/modules/artefacts/sheet/SheetConv
 
 // The i18n key of a string that differs by artefact kind (e.g. the Chat composer's placeholder).
 export { kindTextKey } from '@/modules/artefacts/editor/kindText';
-export { isEditableKind } from '@/modules/artefacts/artefactKinds';
+export { artefactKind, isEditableKind } from '@/modules/artefacts/artefactKinds';
 
 // SpreadsheetEditor: kept for callers that open a spreadsheet directly. Loaded on
 // demand, so FortuneSheet (and its styles) only download when a spreadsheet opens.

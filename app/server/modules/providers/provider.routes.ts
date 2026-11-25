@@ -11,6 +11,7 @@ import { providerSkillsService } from '@/modules/providers/services/skills.servi
 import { removeProviderSkillEntry, setProviderSkillEnabled } from '@/modules/providers/services/skill-state.service.js';
 import { sessionConversationsSearchService } from '@/modules/providers/services/session-conversations-search.service.js';
 import { sessionsService } from '@/modules/providers/services/sessions.service.js';
+import type { RecentSessionsQuery } from '@/modules/providers/services/sessions.service.js';
 import { yourClaudeService } from '@/modules/providers/services/your-claude.service.js';
 import type {
   CustomProviderModelEffort,
@@ -425,6 +426,34 @@ const parseBoundedIntegerQuery = <T extends number | null>(
   }
 
   return parsed;
+};
+
+/** One of `allowed`, or undefined when the parameter is absent; anything else is a 400. */
+const parseChoiceQuery = <T extends string>(value: unknown, name: string, allowed: readonly T[]): T | undefined => {
+  const raw = readOptionalQueryString(value);
+  if (raw === undefined) {
+    return undefined;
+  }
+  if (!(allowed as readonly string[]).includes(raw)) {
+    throw new AppError(`${name} must be one of: ${allowed.join(', ')}.`, {
+      code: 'INVALID_QUERY_PARAMETER',
+      statusCode: 400,
+    });
+  }
+  return raw as T;
+};
+
+/** The sidebar's Recents filters: scope (with the Chat directory), status, period and sort. */
+const parseRecentSessionsQuery = (query: Request['query']): RecentSessionsQuery => {
+  const chatPath = readOptionalQueryString(query.chatPath);
+  return {
+    scope: parseChoiceQuery(query.scope, 'scope', ['all', 'chat', 'project'] as const),
+    chatPath: chatPath?.trim() || undefined,
+    status: parseChoiceQuery(query.status, 'status', ['active', 'archived', 'all'] as const),
+    sinceDays: parseBoundedIntegerQuery(query.sinceDays, 'sinceDays', null, 1, 3650),
+    sort: parseChoiceQuery(query.sort, 'sort', ['activity', 'created', 'name'] as const),
+    order: parseChoiceQuery(query.order, 'order', ['asc', 'desc'] as const),
+  };
 };
 
 const parseSessionModelPayload = (payload: unknown): string => {
@@ -962,7 +991,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const limit = parseBoundedIntegerQuery(req.query.limit, 'limit', 40, 1, 100);
     const offset = parseBoundedIntegerQuery(req.query.offset, 'offset', 0, 0);
-    const page = sessionsService.listRecentSessions(limit, offset);
+    const page = sessionsService.listRecentSessions(limit, offset, parseRecentSessionsQuery(req.query));
     res.json(createApiSuccessResponse(page));
   }),
 );

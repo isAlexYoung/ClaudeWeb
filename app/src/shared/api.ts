@@ -3,7 +3,7 @@ import {
   getStoredAuthToken,
   storeAuthToken,
 } from '@/shared/authToken';
-import type { ScheduledTaskInput, UsageDashboardRange } from '@/shared/types';
+import type { RecentConversationsQuery, ScheduledTaskInput, UsageDashboardRange } from '@/shared/types';
 
 /** GraphicalPanel uses the authenticated same-origin relay for browser and ClaudeDesktop screens. */
 export function graphicalSocketUrl(application: 'browser' | 'desktop', sid: string, width: number, height: number): string | null {
@@ -314,8 +314,8 @@ export const api = {
   sessionDetails: (sessionId: string) =>
     get(`/api/providers/sessions/${encodeURIComponent(sessionId)}`),
   runningSessions: () => get('/api/providers/sessions/running'),
-  recentConversations: ({ limit = 40, offset = 0 }: { limit?: number; offset?: number } = {}) =>
-    get(`/api/providers/sessions/recent${query({ limit, offset })}`),
+  recentConversations: ({ limit = 40, offset = 0, ...filters }: { limit?: number; offset?: number } & RecentConversationsQuery = {}) =>
+    get(`/api/providers/sessions/recent${query({ limit, offset, ...filters })}`),
   providerSessionId: (sessionId: string) =>
     get(`/api/providers/sessions/${encodeURIComponent(sessionId)}/provider-id`),
   restoreSession: (sessionId: string) => post(`/api/providers/sessions/${sessionId}/restore`),

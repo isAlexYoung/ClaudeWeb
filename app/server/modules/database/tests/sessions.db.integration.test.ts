@@ -173,6 +173,36 @@ test('recent sessions are globally ordered, paginated, and limited to visible co
   });
 });
 
+test('recent sessions narrow to Chat or Code, by status and period, and sort by name, creation or activity', async () => {
+  await withIsolatedDatabase(() => {
+    const day = 24 * 60 * 60 * 1000;
+    const ago = (days: number) => new Date(Date.now() - days * day).toISOString();
+    sessionsDb.createSession('chat-new', 'claude', '/home/claudeweb', 'banana', ago(10), ago(0.5));
+    sessionsDb.createSession('chat-old', 'claude', '/home/claudeweb/', 'Apple', ago(1), ago(5));
+    sessionsDb.createSession('chat-archived', 'claude', '/home/claudeweb', 'cherry', ago(20), ago(20));
+    sessionsDb.updateSessionIsArchived('chat-archived', true);
+    sessionsDb.createSession('code-a', 'claude', '/workspace/app', 'Fix login', ago(3), ago(2));
+    sessionsDb.createSession('code-b', 'claude', '/workspace/app', undefined, ago(4), ago(4));
+
+    const ids = (options: Parameters<typeof sessionsDb.getRecentSessionsPage>[2]) => (
+      sessionsDb.getRecentSessionsPage(20, 0, options).sessions.map((session) => session.session_id)
+    );
+    const chat = { chatPath: '/home/claudeweb' } as const;
+
+    assert.deepEqual(ids({ ...chat, scope: 'chat' }), ['chat-new', 'chat-old']);
+    assert.deepEqual(ids({ ...chat, scope: 'project' }), ['code-a', 'code-b']);
+    assert.deepEqual(ids({ ...chat, scope: 'chat', status: 'archived' }), ['chat-archived']);
+    assert.deepEqual(ids({ ...chat, scope: 'chat', status: 'all' }), ['chat-new', 'chat-old', 'chat-archived']);
+    assert.deepEqual(ids({ ...chat, scope: 'chat', sinceDays: 3 }), ['chat-new']);
+    assert.deepEqual(ids({ ...chat, scope: 'chat', status: 'all', sort: 'name' }), ['chat-old', 'chat-new', 'chat-archived']);
+    assert.deepEqual(ids({ ...chat, scope: 'chat', sort: 'created' }), ['chat-old', 'chat-new']);
+    assert.deepEqual(ids({ ...chat, scope: 'project', order: 'asc' }), ['code-b', 'code-a']);
+    assert.equal(sessionsDb.getRecentSessionsPage(1, 0, { ...chat, scope: 'chat' }).total, 2);
+    // Without a Chat directory the scope cannot be told apart, so nothing is filtered by it.
+    assert.equal(sessionsDb.getRecentSessionsPage(20, 0, { scope: 'chat' }).total, 4);
+  });
+});
+
 test('inactive sessions are listed for the archiver, oldest first, without archived or scheduled ones', async () => {
   await withIsolatedDatabase(() => {
     const day = 24 * 60 * 60 * 1000;

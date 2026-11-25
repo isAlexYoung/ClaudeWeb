@@ -2119,7 +2119,21 @@ export type ArchivedSessionListItem = {
 export type RecentConversationListItem = Pick<
   ArchivedSessionListItem,
   'sessionId' | 'provider' | 'projectId' | 'projectDisplayName' | 'sessionTitle' | 'lastActivity'
->;
+> & {
+  createdAt?: string | null;
+  isArchived?: boolean;
+};
+
+/** How the sidebar's Recents are narrowed and ordered on the server; see GET /api/providers/sessions/recent. */
+export type RecentConversationsQuery = {
+  /** `chat`: conversations in the Chat directory (`chatPath`); `project`: every other one. */
+  scope?: 'chat' | 'project';
+  chatPath?: string;
+  status?: 'active' | 'archived' | 'all';
+  sinceDays?: number | null;
+  sort?: 'activity' | 'created' | 'name';
+  order?: 'asc' | 'desc';
+};
 
 /**
  * The rename the sidebar currently has open, if any.

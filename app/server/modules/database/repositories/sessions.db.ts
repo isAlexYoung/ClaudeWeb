@@ -20,6 +20,20 @@ type SessionRow = {
   updated_at: string;
 };
 
+/** How the sidebar's Recents list is narrowed and ordered; every field is optional. */
+export type RecentSessionsQuery = {
+  /** `chat`: sessions in `chatPath`; `project`: every other session. Ignored without `chatPath`. */
+  scope?: 'all' | 'chat' | 'project';
+  chatPath?: string;
+  /** `active` (default): neither the session nor its project is archived. */
+  status?: 'active' | 'archived' | 'all';
+  /** Only sessions active within this many days. */
+  sinceDays?: number | null;
+  sort?: 'activity' | 'created' | 'name';
+  /** Defaults to newest first, or A to Z for names. */
+  order?: 'asc' | 'desc';
+};
+
 type RecentSessionsPage = {
   sessions: SessionRow[];
   total: number;
@@ -544,31 +558,61 @@ export const sessionsDb = {
    * and correctly ordered across projects instead of flattening only the
    * per-project slices already loaded by the client.
    */
-  getRecentSessionsPage(limit: number, offset: number): RecentSessionsPage {
+  getRecentSessionsPage(limit: number, offset: number, options: RecentSessionsQuery = {}): RecentSessionsPage {
     const db = getConnection();
-    const visibilityClause = `
+    const activeClause = `(
       sessions.isArchived = 0
       AND (projects.isArchived IS NULL OR projects.isArchived = 0)
-    `;
+    )`;
+    const conditions: string[] = [];
+    const parameters: Array<string | number> = [];
+    const status = options.status ?? 'active';
+    if (status === 'active') conditions.push(activeClause);
+    else if (status === 'archived') conditions.push('sessions.isArchived = 1');
+    else conditions.push(`(${activeClause} OR sessions.isArchived = 1)`);
+
+    // The Chat workspace is one directory; every other directory (and a session without one) is Code.
+    // Stored paths are normalized when written, so the directory is normalized the same way here.
+    const chatPath = options.chatPath ? normalizeProjectPath(options.chatPath) : '';
+    if (options.scope === 'chat' && chatPath) {
+      conditions.push('sessions.project_path = ?');
+      parameters.push(chatPath);
+    } else if (options.scope === 'project' && chatPath) {
+      conditions.push('(sessions.project_path IS NULL OR sessions.project_path != ?)');
+      parameters.push(chatPath);
+    }
+
+    if (options.sinceDays && options.sinceDays > 0) {
+      conditions.push('julianday(COALESCE(sessions.updated_at, sessions.created_at)) >= julianday(\'now\') - ?');
+      parameters.push(options.sinceDays);
+    }
+
+    const direction = (options.order ?? (options.sort === 'name' ? 'asc' : 'desc')) === 'asc' ? 'ASC' : 'DESC';
+    const orderBy = options.sort === 'name'
+      ? `lower(COALESCE(NULLIF(trim(sessions.custom_name), ''), sessions.session_id)) ${direction}, sessions.session_id ${direction}`
+      : options.sort === 'created'
+        ? `julianday(sessions.created_at) ${direction}, sessions.session_id ${direction}`
+        : `julianday(COALESCE(sessions.updated_at, sessions.created_at)) ${direction}, sessions.session_id ${direction}`;
+
+    const where = conditions.join(' AND ');
     const rows = db
       .prepare(
         `SELECT sessions.*
          FROM sessions
          LEFT JOIN projects ON projects.project_path = sessions.project_path
-         WHERE ${visibilityClause}
-         ORDER BY julianday(COALESCE(sessions.updated_at, sessions.created_at)) DESC,
-                  sessions.session_id DESC
+         WHERE ${where}
+         ORDER BY ${orderBy}
          LIMIT ? OFFSET ?`
       )
-      .all(limit, offset) as SessionRow[];
+      .all(...parameters, limit, offset) as SessionRow[];
     const countRow = db
       .prepare(
         `SELECT COUNT(*) AS count
          FROM sessions
          LEFT JOIN projects ON projects.project_path = sessions.project_path
-         WHERE ${visibilityClause}`
+         WHERE ${where}`
       )
-      .get() as { count: number } | undefined;
+      .get(...parameters) as { count: number } | undefined;
 
     return {
       sessions: normalizeSessionRows(rows),

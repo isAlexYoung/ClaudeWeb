@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { api } from '@/shared/api';
 import { CHAT_WORKSPACE_PATH } from '@/shared/constants';
 import { subscribeToUserPreferences } from '@/shared/userSettings';
 import { usePaletteOps } from '@/modules/command-palette';
-import type { ArchivedProjectListItem, ArchivedSessionListItem, ConversationProjectResult, ConversationSearchResults, LLMProvider, Project, ProjectSession, ProjectSortOrder, RecentConversationListItem, SearchProgress, ActiveSidebarRename, PendingSidebarDeletion, SessionTitleSearchResult, SessionWithProvider, SidebarSearchMode, SidebarSessionSelection } from '@/shared/types';
+import type { ArchivedProjectListItem, ArchivedSessionListItem, ConversationProjectResult, ConversationSearchResults, LLMProvider, Project, ProjectSession, ProjectSortOrder, RecentConversationListItem, RecentConversationsQuery, SearchProgress, ActiveSidebarRename, PendingSidebarDeletion, SessionTitleSearchResult, SessionWithProvider, SidebarSearchMode, SidebarSessionSelection } from '@/shared/types';
 import {
   filterProjects,
   getAllSessions,
@@ -76,6 +76,8 @@ type UseSidebarControllerArgs = {
   setSidebarVisible: (visible: boolean) => void;
   sidebarVisible: boolean;
   keepProjectsExpanded?: boolean;
+  /** Which conversations Recents lists and in what order (the current mode's filters). */
+  recentQuery?: RecentConversationsQuery;
 };
 
 /** Used by Sidebar to coordinate project navigation, expansion and session actions. */
@@ -98,7 +100,11 @@ export function useSidebarController({
   setSidebarVisible,
   sidebarVisible,
   keepProjectsExpanded = false,
+  recentQuery,
 }: UseSidebarControllerArgs) {
+  // Read when a page is fetched, so a new query takes effect on the next (re)load.
+  const recentQueryRef = useRef(recentQuery);
+  useLayoutEffect(() => { recentQueryRef.current = recentQuery; }, [recentQuery]);
   const paletteOps = usePaletteOps();
   // Remember whether a saved set existed before the first persistence effect.
   const restoredExpandedProjects = useRef<Set<string> | null>(null);
@@ -305,7 +311,7 @@ export function useSidebarController({
     setRecentConversationsError(false);
 
     try {
-      const response = await api.recentConversations({ limit: 40, offset });
+      const response = await api.recentConversations({ limit: 40, offset, ...recentQueryRef.current });
       if (!response.ok) {
         throw new Error(`Failed to load recent conversations: ${response.status}`);
       }

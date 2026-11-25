@@ -66,7 +66,13 @@ type ArchivedSessionListItem = {
 type RecentSessionListItem = Pick<
   ArchivedSessionListItem,
   'sessionId' | 'provider' | 'projectId' | 'projectDisplayName' | 'sessionTitle' | 'lastActivity'
->;
+> & {
+  createdAt: string | null;
+  isArchived: boolean;
+};
+
+/** Narrowing and ordering for the sidebar's Recents list (scope, status, period, sort). */
+export type RecentSessionsQuery = NonNullable<Parameters<typeof sessionsDb.getRecentSessionsPage>[2]>;
 
 type RecentSessionsPage = {
   conversations: RecentSessionListItem[];
@@ -225,8 +231,8 @@ export const sessionsService = {
   /**
    * Returns the active conversation feed in true global activity order.
    */
-  listRecentSessions(limit: number, offset: number): RecentSessionsPage {
-    const page = sessionsDb.getRecentSessionsPage(limit, offset);
+  listRecentSessions(limit: number, offset: number, query: RecentSessionsQuery = {}): RecentSessionsPage {
+    const page = sessionsDb.getRecentSessionsPage(limit, offset, query);
     const projectCache = new Map<string, ReturnType<typeof projectsDb.getProjectPath>>();
     const conversations = page.sessions.map((session) => {
       const projectPath = session.project_path?.trim() ? session.project_path : null;
@@ -246,6 +252,8 @@ export const sessionsService = {
         projectDisplayName: resolveProjectDisplayName(projectPath, project?.custom_project_name),
         sessionTitle: session.custom_name?.trim() || session.session_id,
         lastActivity: session.updated_at ?? session.created_at ?? null,
+        createdAt: session.created_at ?? null,
+        isArchived: Boolean(session.isArchived),
       };
     });
 

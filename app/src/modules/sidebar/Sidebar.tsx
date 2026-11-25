@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useDeviceSettings } from '@/shared/hooks/useDeviceSettings';
@@ -9,6 +9,8 @@ import { usePaletteOps } from '@/modules/command-palette';
 import { useBackgroundSessionIdSet, useBusySessionIdSet } from '@/shared/context/SessionProtectionContext';
 import type { LLMProvider, LoadingProgress, MCPServerStatus, Project, ProjectSession, SettingsMainTab, SidebarProjectListProps } from '@/shared/types';
 import IntegratedSidebar from '@/modules/sidebar/IntegratedSidebar';
+import { recentsQuery, useSidebarConversationPrefs } from '@/modules/sidebar/conversationView';
+import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceContext';
 import SidebarModals from '@/modules/sidebar/SidebarModals';
 
 type SidebarProps = {
@@ -75,6 +77,11 @@ function Sidebar({
   // would re-render the whole tree on every provider status frame.
   const activeSessions = useBusySessionIdSet();
   const backgroundSessionIds = useBackgroundSessionIdSet();
+  // Chat and Code keep separate Recents, each with its own filters and order.
+  const { mode } = useWorkspaceExperience();
+  const [conversationPrefs] = useSidebarConversationPrefs();
+  const recentQuery = useMemo(() => recentsQuery(mode, conversationPrefs), [mode, conversationPrefs]);
+  const recentQueryKey = JSON.stringify(recentQuery);
 
   const {
     isSidebarCollapsed,
@@ -151,6 +158,7 @@ function Sidebar({
     setSidebarVisible: (visible) => setPreference('sidebarVisible', visible),
     sidebarVisible,
     keepProjectsExpanded: preferences.keepProjectsExpanded,
+    recentQuery,
   });
 
   useEffect(() => {
@@ -165,7 +173,7 @@ function Sidebar({
   const recentSessionSignature = projects
     .map((project) => `${project.projectId}:${project.sessions?.[0]?.id ?? ''}:${project.sessions?.length ?? 0}`)
     .join('|');
-  useEffect(() => { reloadRecentConversations(); }, [reloadRecentConversations, recentSessionSignature]);
+  useEffect(() => { reloadRecentConversations(); }, [reloadRecentConversations, recentSessionSignature, recentQueryKey]);
 
   const handleProjectCreated = (project?: Record<string, unknown>) => {
     void paletteOps.refreshProjects();
@@ -262,6 +270,7 @@ function Sidebar({
         recentHasMore={recentConversationsHasMore}
         isLoadingMoreRecent={isLoadingMoreRecentConversations}
         onLoadMoreRecent={loadMoreRecentConversations}
+        onReloadRecent={reloadRecentConversations}
         archivedProjects={archivedProjects}
         archivedSessions={archivedSessions}
         searchFilter={searchFilter}

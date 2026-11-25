@@ -5,6 +5,10 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.6 - 2026-11-25 (stable)
+
+- Sidebar Recents: Chat and Code now keep separate Recents lists (Chat shows chats and artefacts, Code shows project conversations), and the separate Chats list is gone. Rows no longer start with a chat or artefact icon; conversations owned by an artefact show a small kind icon at the end of the row instead. The Recents header has a collapse toggle and a filter button. In Chat the filter offers status (active, archived, all), last activity (1, 3, 7 or 30 days, or all time), scheduled runs (shown, grouped or hidden), grouping (date, unread, status or none), sorting (name, created or last activity) and New section. Sections are named folders that conversations can be moved into from the row's "…" menu, and they can be collapsed, renamed or deleted. In Code the button offers sorting only (last updated, created or name, ascending or descending). Filters, sections and collapsed state are saved with your preferences.
+
 ## 2.3.5 - 2026-11-25 (stable)
 
 - Artefacts split view: showing or hiding the conversation now narrows or widens the spreadsheet, document or whiteboard together with the sliding conversation, instead of resizing it only once the slide has finished. The compact conversation header shows "Conversation" instead of a missing-translation message.

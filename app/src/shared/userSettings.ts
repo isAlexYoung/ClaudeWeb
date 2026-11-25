@@ -33,6 +33,8 @@ export type UserPreferences = {
   composerFastMode: boolean;
   /** Settings > Tasks and sessions: days without activity before the server archives a session; 0 = never. */
   autoArchiveInactiveDays: number;
+  /** The sidebar's Recents filters and the user's conversation sections; see modules/sidebar/conversationView. */
+  sidebarConversations: unknown;
 };
 
 export type UserPreferenceKey = keyof UserPreferences;
@@ -76,6 +78,7 @@ const LEGACY_STORAGE_KEYS: Record<UserPreferenceKey, string> = {
   workspaceProfile: '',
   composerFastMode: '',
   autoArchiveInactiveDays: '',
+  sidebarConversations: '',
 };
 
 const PREFERENCE_KEYS = Object.keys(LEGACY_STORAGE_KEYS) as UserPreferenceKey[];

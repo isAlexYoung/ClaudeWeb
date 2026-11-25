@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Archive,
@@ -10,6 +10,7 @@ import {
   Files,
   Folder,
   FolderOpen,
+  ListFilter,
   MessageCircle,
   MessagesSquare,
   MoreHorizontal,
@@ -26,8 +27,26 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import { useArtefactSessionIds } from '@/modules/artefacts';
-import { useScheduledTaskSessionIds } from '@/modules/scheduled-tasks';
+import { artefactKind, useArtefactKindsBySession } from '@/modules/artefacts';
+import {
+  ScheduledTaskMenu,
+  ScheduledTaskMenuDivider,
+  ScheduledTaskMenuItem,
+  ScheduledTaskSubmenu,
+  useScheduledTaskSessionIds,
+} from '@/modules/scheduled-tasks';
+import {
+  addSection,
+  groupRecents,
+  isConversationUnread,
+  markSessionViewed,
+  moveToSection,
+  removeSection,
+  renameSection,
+  useSessionViews,
+  useSidebarConversationPrefs,
+} from '@/modules/sidebar/conversationView';
+import type { ChatRecentsFilter, CodeRecentsFilter, SidebarConversationPrefs } from '@/modules/sidebar/conversationView';
 import { useModeSwapMotion } from '@/modules/sidebar/hooks/useModeSwapMotion';
 import { api } from '@/shared/api';
 import { CHAT_WORKSPACE_PATH } from '@/shared/constants';
@@ -62,6 +81,8 @@ type IntegratedSidebarProps = {
   recentHasMore: boolean;
   isLoadingMoreRecent: boolean;
   onLoadMoreRecent: () => void;
+  /** Reloads Recents from the first page (after an archive, a restore, ...). */
+  onReloadRecent?: () => void;
   archivedProjects: ArchivedProjectListItem[];
   archivedSessions: ArchivedSessionListItem[];
   searchFilter: string;
@@ -78,6 +99,9 @@ type IntegratedSidebarProps = {
 };
 
 type PinnedSessionRow = { session: ProjectSession; projectId: string };
+
+/** Where the row menu's "New section…" was chosen from, so the new section can take that conversation. */
+type SectionDialogState = { mode: 'create'; moveSessionId: string | null } | { mode: 'rename'; id: string };
 
 const normalizePath = (value: string | undefined) => (value || '').replace(/\/+$/, '');
 
@@ -106,14 +130,31 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
   const [extraPins, setExtraPins] = useState<Record<string, PinnedSessionRow | null>>({});
   // Remember the clicked occurrence when a conversation appears in several sections.
   const [selectedOccurrence, setSelectedOccurrence] = useState<{ sessionId: string; key: string } | null>(null);
-  // Conversations owned by an artefact carry the Artefacts icon; scheduled task runs carry a clock.
-  const artefactSessionIds = useArtefactSessionIds();
+  // Rows carry no leading icon; an artefact's conversation names its kind at the end of the row.
+  const artefactKinds = useArtefactKindsBySession();
   const scheduledSessionIds = useScheduledTaskSessionIds();
+  // Recents filters, the user's sections and what is collapsed; saved as a preference.
+  const [conversationPrefs, updateConversationPrefs] = useSidebarConversationPrefs();
+  const sessionViews = useSessionViews();
+  const [sectionDialog, setSectionDialog] = useState<SectionDialogState | null>(null);
+  const isChatMode = experience.mode === 'chat';
+
+  // The open conversation counts as read when it is opened and again when it is left.
+  const viewedSessionId = list.selectedSession?.id ?? null;
+  useEffect(() => {
+    if (!viewedSessionId) return undefined;
+    markSessionViewed(viewedSessionId);
+    return () => markSessionViewed(viewedSessionId);
+  }, [viewedSessionId]);
 
   const allSessions = list.projects.flatMap((project) => list.getProjectSessions(project)
     .map((session) => ({ session, projectId: project.projectId })));
-  const missingPins = experience.pinnedSessionIds
-    .filter((id) => !allSessions.some((row) => row.session.id === id) && !(id in extraPins))
+  // Pins and filed conversations can be older than anything loaded; they are looked up once by id.
+  const sectionSessionIds = Object.keys(conversationPrefs.sessionSections);
+  const missingPins = [...new Set([...experience.pinnedSessionIds, ...sectionSessionIds])]
+    .filter((id) => !allSessions.some((row) => row.session.id === id)
+      && !props.recent.some((row) => row.sessionId === id)
+      && !(id in extraPins))
     .join('\n');
 
   useEffect(() => {
@@ -186,35 +227,136 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
       else props.onSessionArchived?.(id);
       if (kind === 'session' && experience.pinnedSessionIds.includes(id)) experience.toggleSessionPin(id);
       props.onRefresh();
+      props.onReloadRecent?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t('workspace.archiveFailed'));
     }
   };
 
-  const renderSessionRow = (session: ProjectSession, projectId: string, section: string, nested = false) => {
+  // Recents can list archived conversations (Status: Archived or All); their menu restores them.
+  const restore = async (id: string) => {
+    setError(null);
+    try {
+      const response = await api.restoreSession(id);
+      if (!response.ok) throw new Error(t('workspace.archiveFailed'));
+      props.onRefresh();
+      props.onReloadRecent?.();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t('workspace.archiveFailed'));
+    }
+  };
+
+  const updatePrefs = (change: (prefs: SidebarConversationPrefs) => SidebarConversationPrefs) => updateConversationPrefs(change);
+  const setChatFilter = (change: Partial<ChatRecentsFilter>) => updatePrefs((prefs) => ({ ...prefs, chat: { ...prefs.chat, ...change } }));
+  const setCodeFilter = (change: Partial<CodeRecentsFilter>) => updatePrefs((prefs) => ({ ...prefs, code: { ...prefs.code, ...change } }));
+
+  /** Chat rows: the hover menu with pin, rename, sections, archive or restore, and delete. */
+  const renderConversationMenu = (session: ProjectSession, projectId: string, title: string, busy: boolean, archived: boolean) => {
+    const pinned = experience.pinnedSessionIds.includes(session.id);
+    const currentSection = conversationPrefs.sessionSections[session.id] ?? null;
+    return (
+      <div className="workspace-row-tools workspace-row-menu">
+        <ScheduledTaskMenu
+          trigger={<MoreHorizontal size={16} />}
+          ariaLabel={t('workspace.conversationActions', { name: title })}
+          title={t('workspace.conversationActions', { name: title })}
+          panelClassName="workspace-conversation-menu"
+        >
+          {(close) => (
+            <>
+              <ScheduledTaskMenuItem
+                icon={<Pin size={15} />}
+                label={pinned ? t('workspace.unpinSession') : t('workspace.pinSession')}
+                onSelect={() => { close(); experience.toggleSessionPin(session.id); }}
+              />
+              <ScheduledTaskMenuItem
+                icon={<Pencil size={15} />}
+                label={t('workspace.renameSession')}
+                onSelect={() => { close(); list.onStartEditingSession(projectId, session.id, sessionTitle(session)); }}
+              />
+              <ScheduledTaskSubmenu label={t('workspace.conversationSections.moveTo')}>
+                {conversationPrefs.sections.map((section) => (
+                  <ScheduledTaskMenuItem
+                    key={section.id}
+                    label={section.name}
+                    selected={currentSection === section.id}
+                    onSelect={() => { close(); updatePrefs((prefs) => moveToSection(prefs, session.id, section.id)); }}
+                  />
+                ))}
+                {currentSection && (
+                  <ScheduledTaskMenuItem
+                    label={t('workspace.conversationSections.removeFrom')}
+                    onSelect={() => { close(); updatePrefs((prefs) => moveToSection(prefs, session.id, null)); }}
+                  />
+                )}
+                {(conversationPrefs.sections.length > 0 || currentSection) && <ScheduledTaskMenuDivider />}
+                <ScheduledTaskMenuItem
+                  label={t('workspace.conversationSections.newWithConversation')}
+                  onSelect={() => { close(); setSectionDialog({ mode: 'create', moveSessionId: session.id }); }}
+                />
+              </ScheduledTaskSubmenu>
+              <ScheduledTaskMenuDivider />
+              {archived ? (
+                <ScheduledTaskMenuItem
+                  icon={<Archive size={15} />}
+                  label={t('workspace.restoreSession')}
+                  onSelect={() => { close(); void restore(session.id); }}
+                />
+              ) : (
+                <ScheduledTaskMenuItem
+                  icon={<Archive size={15} />}
+                  label={t('workspace.archiveSession')}
+                  onSelect={() => { close(); if (!busy) void archive('session', session.id); }}
+                />
+              )}
+              <ScheduledTaskMenuItem
+                icon={<Trash2 size={15} />}
+                label={t('workspace.deleteSession')}
+                danger
+                onSelect={() => { close(); if (!busy) list.onDeleteSession(session.id, title); }}
+              />
+            </>
+          )}
+        </ScheduledTaskMenu>
+      </div>
+    );
+  };
+
+  const renderSessionRow = (
+    session: ProjectSession,
+    projectId: string,
+    section: string,
+    nested = false,
+    row: { archived?: boolean; lastActivity?: string | null } = {},
+  ) => {
     const title = sessionTitle(session) || t('workspace.untitled');
     const busy = list.activeSessions.has(session.id);
     const pinned = experience.pinnedSessionIds.includes(session.id);
     const occurrence = `${section}:${projectId}:${session.id}`;
+    const kind = artefactKinds.get(session.id);
+    const KindIcon = kind ? artefactKind(kind).icon : null;
+    const unread = session.id !== viewedSessionId && (list.attentionSessionIds.has(session.id)
+      || (row.lastActivity !== undefined && isConversationUnread({ sessionId: session.id, lastActivity: row.lastActivity }, sessionViews)));
     return (
       <div
         key={occurrence}
         className={`workspace-nav-row ${nested ? 'workspace-session-child' : ''} ${selectedRowKey === occurrence ? 'selected' : ''}`}
+        data-archived={row.archived || undefined}
       >
         <button
           className="workspace-nav-main"
           title={title}
-          data-artefact={artefactSessionIds.has(session.id) || undefined}
+          data-artefact={kind ? true : undefined}
           data-scheduled={scheduledSessionIds.has(session.id) || undefined}
+          data-unread={unread || undefined}
           onClick={() => openSession(session, projectId, occurrence)}
         >
-          {!nested && (artefactSessionIds.has(session.id)
-            ? <Shapes size={18} />
-            : scheduledSessionIds.has(session.id) ? <Clock size={18} /> : <MessageCircle size={18} />)}
           <span>{title}</span>
           {busy && <i className="workspace-busy-dot" />}
-          {list.attentionSessionIds.has(session.id) && <i className="workspace-attention-dot" />}
+          {unread && <i className="workspace-attention-dot" />}
+          {KindIcon && <KindIcon size={15} className="workspace-row-kind" aria-label={t(`artefacts.kinds.${kind}`)} />}
         </button>
+        {isChatMode ? renderConversationMenu(session, projectId, title, busy, Boolean(row.archived)) : (
         <div className="workspace-row-tools">
           <button
             className={pinned ? 'pinned' : ''}
@@ -249,6 +391,7 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
             <Trash2 size={14} />
           </button>
         </div>
+        )}
       </div>
     );
   };
@@ -342,18 +485,50 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
 
   // The reserved Chat directory backs standalone conversations, including those created before mode preferences existed.
   const projects = list.projects.filter((project) => !isChatWorkspace(project));
-  const pinnedProjects = projects.filter((project) => list.isProjectStarred(project.projectId));
+  // Chat and Code do not share conversations: Chat pins Chat conversations, Code pins projects and theirs.
+  const pinnedProjects = isChatMode ? [] : projects.filter((project) => list.isProjectStarred(project.projectId));
   const unpinnedProjects = projects.filter((project) => !list.isProjectStarred(project.projectId));
-  const chatProjectsWithMore = list.projects.filter((project) => isChatWorkspace(project) && project.sessionMeta?.hasMore);
-  const pinnedRows = [
-    ...allSessions,
-    ...Object.values(extraPins).filter((row): row is PinnedSessionRow => row !== null
-      && !allSessions.some((loaded) => loaded.session.id === row.session.id)
-      && list.projects.some((project) => project.projectId === row.projectId)),
-  ].filter(({ session }) => experience.pinnedSessionIds.includes(session.id));
-  const chatRows = allSessions.filter(({ session, projectId }) => getWorkspaceSessionMode(session.id,
-    list.projects.find((project) => project.projectId === projectId), experience.chatSessionIds) === 'chat'
-    && !experience.pinnedSessionIds.includes(session.id));
+  const modeOf = (sessionId: string, projectId: string) => getWorkspaceSessionMode(sessionId,
+    list.projects.find((project) => project.projectId === projectId), experience.chatSessionIds);
+
+  // Every conversation the sidebar can show by id (for pins and sections). Recents rows add their
+  // last activity (for unread) and archive state.
+  type KnownRow = PinnedSessionRow & { item?: RecentConversationListItem };
+  const knownRows = new Map<string, KnownRow>();
+  for (const row of allSessions) knownRows.set(row.session.id, row);
+  for (const item of props.recent) {
+    const loaded = knownRows.get(item.sessionId);
+    knownRows.set(item.sessionId, loaded ? { ...loaded, item } : {
+      session: { id: item.sessionId, summary: item.sessionTitle, __provider: item.provider as ProjectSession['__provider'] },
+      projectId: item.projectId || '',
+      item,
+    });
+  }
+  for (const [id, row] of Object.entries(extraPins)) {
+    if (row && !knownRows.has(id) && list.projects.some((project) => project.projectId === row.projectId)) knownRows.set(id, row);
+  }
+  const pinnedRows = experience.pinnedSessionIds
+    .map((id) => knownRows.get(id))
+    .filter((row): row is KnownRow => Boolean(row) && modeOf(row!.session.id, row!.projectId) === experience.mode);
+
+  // Sections hold Chat conversations; a filed conversation leaves Recents.
+  const sectionRows = (sectionId: string) => Object.entries(conversationPrefs.sessionSections)
+    .filter(([, id]) => id === sectionId)
+    .map(([sessionId]) => knownRows.get(sessionId))
+    .filter((row): row is KnownRow => Boolean(row));
+  const recentItems = isChatMode
+    ? props.recent.filter((item) => !conversationPrefs.sessionSections[item.sessionId])
+    : props.recent;
+  const recentGroups = isChatMode
+    ? groupRecents(recentItems, {
+      groupBy: conversationPrefs.chat.groupBy,
+      scheduled: conversationPrefs.chat.scheduled,
+      scheduledIds: scheduledSessionIds,
+      isUnread: (item) => item.sessionId !== viewedSessionId
+        && (list.attentionSessionIds.has(item.sessionId) || isConversationUnread(item, sessionViews)),
+    })
+    : recentItems.length > 0 ? [{ key: 'all' as const, items: recentItems }] : [];
+  const recentCollapsed = isChatMode ? conversationPrefs.collapsed.chatRecent : conversationPrefs.collapsed.codeRecent;
 
   // Route-driven selections use the first visible occurrence until a row is clicked.
   const selectedId = list.selectedSession?.id;
@@ -364,8 +539,9 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
       .flatMap((project) => list.getProjectSessions(project)
         .filter((session) => getWorkspaceSessionMode(session.id, project, experience.chatSessionIds) === 'project')
         .map((session) => ({ session, key: `project:${project.projectId}:${session.id}` }))),
-    ...(experience.mode === 'chat' ? chatRows : []).map(({ session, projectId }) => ({ session, key: `chat:${projectId}:${session.id}` })),
-    ...props.recent.map((session) => ({ session: { id: session.sessionId }, key: `recent:${session.projectId || ''}:${session.sessionId}` })),
+    ...(isChatMode ? conversationPrefs.sections : []).flatMap((section) => sectionRows(section.id)
+      .map(({ session, projectId }) => ({ session, key: `section-${section.id}:${projectId}:${session.id}` }))),
+    ...recentItems.map((session) => ({ session: { id: session.sessionId }, key: `recent:${session.projectId || ''}:${session.sessionId}` })),
   ].filter(({ session }) => session.id === selectedId);
   const selectedRowKey = occurrences.find(({ key }) => selectedOccurrence?.sessionId === selectedId && selectedOccurrence?.key === key)?.key
     ?? occurrences[0]?.key;
@@ -481,42 +657,125 @@ export default function IntegratedSidebar(props: IntegratedSidebarProps) {
         {(pinnedProjects.length > 0 || pinnedRows.length > 0) && <section>
           <h2>{t('workspace.sections.pinned')}</h2>
           {pinnedProjects.map((project) => renderProjectTree(project, true))}
-          {pinnedRows.map(({ session, projectId }) => renderSessionRow(session, projectId, 'pinned'))}
+          {pinnedRows.map(({ session, projectId, item }) => renderSessionRow(session, projectId, 'pinned', false,
+            { archived: item?.isArchived, lastActivity: item?.lastActivity }))}
         </section>}
-        {experience.mode === 'project' && unpinnedProjects.length > 0 && <section>
+        {!isChatMode && unpinnedProjects.length > 0 && <section>
           <h2>{t('workspace.sections.projects')}</h2>
           {unpinnedProjects.map((project) => renderProjectTree(project))}
         </section>}
-        {experience.mode === 'chat' && (chatRows.length > 0 || chatProjectsWithMore.length > 0) && <section>
-          <h2>{t('workspace.sections.chats')}</h2>
-          {chatRows.map(({ session, projectId }) => renderSessionRow(session, projectId, 'chat'))}
-          {chatProjectsWithMore.map((project) => (
+        {isChatMode && conversationPrefs.sections.map((section) => {
+          const rows = sectionRows(section.id);
+          const collapsed = conversationPrefs.collapsed.sections[section.id] === true;
+          return (
+            <section key={section.id} className="workspace-conversation-section" aria-label={section.name}>
+              <div className="workspace-recents-head">
+                <button
+                  className="workspace-recents-toggle"
+                  aria-expanded={!collapsed}
+                  title={t('workspace.conversationSections.toggle', { name: section.name })}
+                  onClick={() => updatePrefs((prefs) => ({
+                    ...prefs,
+                    collapsed: { ...prefs.collapsed, sections: { ...prefs.collapsed.sections, [section.id]: !collapsed } },
+                  }))}
+                >
+                  <span>{section.name}</span>
+                  <ChevronDown size={13} />
+                </button>
+                <ScheduledTaskMenu
+                  trigger={<MoreHorizontal size={15} />}
+                  ariaLabel={t('workspace.conversationSections.actions', { name: section.name })}
+                  title={t('workspace.conversationSections.actions', { name: section.name })}
+                  triggerClassName="workspace-recents-action workspace-section-action"
+                >
+                  {(close) => (
+                    <>
+                      <ScheduledTaskMenuItem
+                        icon={<Pencil size={15} />}
+                        label={t('workspace.conversationSections.rename')}
+                        onSelect={() => { close(); setSectionDialog({ mode: 'rename', id: section.id }); }}
+                      />
+                      <ScheduledTaskMenuItem
+                        icon={<Trash2 size={15} />}
+                        label={t('workspace.conversationSections.delete')}
+                        danger
+                        onSelect={() => { close(); updatePrefs((prefs) => removeSection(prefs, section.id)); }}
+                      />
+                    </>
+                  )}
+                </ScheduledTaskMenu>
+              </div>
+              <MotionSurface open={!collapsed} kind="disclosure">
+                <div className="workspace-recents-list">
+                  {rows.map(({ session, projectId, item }) => renderSessionRow(session, projectId, `section-${section.id}`, false,
+                    { archived: item?.isArchived, lastActivity: item?.lastActivity }))}
+                  {rows.length === 0 && <p className="workspace-recents-empty">{t('workspace.conversationSections.empty')}</p>}
+                </div>
+              </MotionSurface>
+            </section>
+          );
+        })}
+        <section className="workspace-recents" aria-label={t('workspace.sections.recent')}>
+          <div className="workspace-recents-head">
             <button
-              key={project.projectId}
-              className="workspace-empty-project"
-              disabled={list.loadingMoreProjects.has(project.projectId)}
-              onClick={() => list.onLoadMoreSessions(project.projectId)}
+              className="workspace-recents-toggle"
+              aria-expanded={!recentCollapsed}
+              title={t('workspace.recents.toggle')}
+              onClick={() => updatePrefs((prefs) => ({
+                ...prefs,
+                collapsed: { ...prefs.collapsed, [isChatMode ? 'chatRecent' : 'codeRecent']: !recentCollapsed },
+              }))}
             >
-              {t('workspace.loadMoreChats')}
+              <span>{t('workspace.sections.recent')}</span>
+              <ChevronDown size={13} />
             </button>
-          ))}
-        </section>}
-        {(props.recent.length > 0 || props.recentHasMore) && <section>
-          <h2>{t('workspace.sections.recent')}</h2>
-          {props.recent.map((session) => renderSessionRow(
-            { id: session.sessionId, summary: session.sessionTitle, __provider: session.provider as ProjectSession['__provider'] },
-            session.projectId || '',
-            'recent',
-          ))}
-          {props.recentHasMore && (
-            <button className="workspace-empty-project" disabled={props.isLoadingMoreRecent} onClick={props.onLoadMoreRecent}>
-              {t('workspace.loadMoreRecent')}
-            </button>
-          )}
-        </section>}
+            {isChatMode ? (
+              <ChatRecentsMenu
+                filter={conversationPrefs.chat}
+                onChange={setChatFilter}
+                onNewSection={() => setSectionDialog({ mode: 'create', moveSessionId: null })}
+              />
+            ) : (
+              <CodeRecentsMenu filter={conversationPrefs.code} onChange={setCodeFilter} />
+            )}
+          </div>
+          <MotionSurface open={!recentCollapsed} kind="disclosure">
+            <div className="workspace-recents-list">
+              {recentGroups.map((group) => (
+                <div key={group.key} className="workspace-recents-group">
+                  {group.key !== 'all' && <h3>{t(`workspace.recents.groups.${group.key}`)}</h3>}
+                  {group.items.map((item) => renderSessionRow(
+                    { id: item.sessionId, summary: item.sessionTitle, __provider: item.provider as ProjectSession['__provider'] },
+                    item.projectId || '',
+                    'recent',
+                    false,
+                    { archived: item.isArchived, lastActivity: item.lastActivity },
+                  ))}
+                </div>
+              ))}
+              {props.recentHasMore && (
+                <button className="workspace-empty-project" disabled={props.isLoadingMoreRecent} onClick={props.onLoadMoreRecent}>
+                  {t('workspace.loadMoreRecent')}
+                </button>
+              )}
+            </div>
+          </MotionSurface>
+        </section>
       </nav>
       </div>
       <WorkspaceAccount onSettings={props.onSettings} />
+      <SectionDialog
+        state={sectionDialog}
+        prefs={conversationPrefs}
+        onClose={() => setSectionDialog(null)}
+        onSubmit={(name) => {
+          const dialog = sectionDialog;
+          setSectionDialog(null);
+          if (!dialog) return;
+          if (dialog.mode === 'rename') updatePrefs((prefs) => renameSection(prefs, dialog.id, name));
+          else updatePrefs((prefs) => addSection(prefs, { id: crypto.randomUUID(), name }, dialog.moveSessionId));
+        }}
+      />
       <SidebarSearchDialog {...props} open={searchOpen} onOpenChange={setSearchOpen} projects={list.filteredProjects.filter(project => !isChatWorkspace(project))} onOpenSession={openSession} />
       <RenameDialogs list={list} />
       <ProjectFilesPage project={filesProject} onClose={() => setFilesProject(null)} />
@@ -599,6 +858,155 @@ function SidebarSearchDialog({ open, onOpenChange, projects, onOpenSession, ...p
             </>
           )}
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** A submenu row showing its current choice on the right: "Status    Active ›". */
+function MenuChoice({ label, value }: { label: ReactNode; value: ReactNode }) {
+  return (
+    <span className="workspace-menu-choice">
+      <span>{label}</span>
+      <small>{value}</small>
+    </span>
+  );
+}
+
+const SINCE_DAYS: Array<{ value: ChatRecentsFilter['sinceDays']; key: string }> = [
+  { value: 1, key: 'day1' },
+  { value: 3, key: 'day3' },
+  { value: 7, key: 'day7' },
+  { value: 30, key: 'day30' },
+  { value: null, key: 'allTime' },
+];
+
+/** Chat's Recents menu: status, period, scheduled tasks, grouping, sort and New section. */
+function ChatRecentsMenu({ filter, onChange, onNewSection }: {
+  filter: ChatRecentsFilter;
+  onChange: (change: Partial<ChatRecentsFilter>) => void;
+  onNewSection: () => void;
+}) {
+  const { t } = useTranslation('sidebar');
+  const r = (key: string) => t(`workspace.recents.${key}`);
+  const statusKey = { active: 'statusActive', archived: 'statusArchived', all: 'statusAll' } as const;
+  const scheduledKey = { shown: 'scheduledShown', grouped: 'scheduledGrouped', hidden: 'scheduledHidden' } as const;
+  const groupKey = { date: 'groupDate', unread: 'groupUnread', status: 'groupStatus', none: 'groupNone' } as const;
+  const sortKey = { name: 'sortName', created: 'sortCreated', activity: 'sortActivity' } as const;
+  const sinceKey = SINCE_DAYS.find((option) => option.value === filter.sinceDays)?.key ?? 'allTime';
+  return (
+    <ScheduledTaskMenu
+      trigger={<ListFilter size={16} />}
+      ariaLabel={r('filter')}
+      title={r('filter')}
+      triggerClassName="workspace-recents-action"
+      panelClassName="workspace-recents-menu"
+    >
+      {(close) => (
+        <>
+          <ScheduledTaskSubmenu label={<MenuChoice label={r('status')} value={r(statusKey[filter.status])} />}>
+            {(['active', 'archived', 'all'] as const).map((status) => (
+              <ScheduledTaskMenuItem key={status} label={r(statusKey[status])} selected={filter.status === status} onSelect={() => onChange({ status })} />
+            ))}
+          </ScheduledTaskSubmenu>
+          <ScheduledTaskSubmenu label={<MenuChoice label={r('activity')} value={r(sinceKey)} />}>
+            {SINCE_DAYS.map((option) => (
+              <ScheduledTaskMenuItem key={option.key} label={r(option.key)} selected={filter.sinceDays === option.value} onSelect={() => onChange({ sinceDays: option.value })} />
+            ))}
+          </ScheduledTaskSubmenu>
+          <ScheduledTaskSubmenu label={<MenuChoice label={r('scheduled')} value={r(scheduledKey[filter.scheduled])} />}>
+            {(['shown', 'grouped', 'hidden'] as const).map((scheduled) => (
+              <ScheduledTaskMenuItem key={scheduled} label={r(scheduledKey[scheduled])} selected={filter.scheduled === scheduled} onSelect={() => onChange({ scheduled })} />
+            ))}
+          </ScheduledTaskSubmenu>
+          <ScheduledTaskMenuDivider />
+          <ScheduledTaskSubmenu label={<MenuChoice label={r('groupBy')} value={r(groupKey[filter.groupBy])} />}>
+            {(['date', 'unread', 'status'] as const).map((groupBy) => (
+              <ScheduledTaskMenuItem key={groupBy} label={r(groupKey[groupBy])} selected={filter.groupBy === groupBy} onSelect={() => onChange({ groupBy })} />
+            ))}
+            <ScheduledTaskMenuDivider />
+            <ScheduledTaskMenuItem label={r('groupNone')} selected={filter.groupBy === 'none'} onSelect={() => onChange({ groupBy: 'none' })} />
+          </ScheduledTaskSubmenu>
+          <ScheduledTaskSubmenu label={<MenuChoice label={r('sortBy')} value={r(sortKey[filter.sort])} />}>
+            {(['name', 'created', 'activity'] as const).map((sort) => (
+              <ScheduledTaskMenuItem key={sort} label={r(sortKey[sort])} selected={filter.sort === sort} onSelect={() => onChange({ sort })} />
+            ))}
+          </ScheduledTaskSubmenu>
+          <ScheduledTaskMenuDivider />
+          <ScheduledTaskMenuItem label={r('newSection')} onSelect={() => { close(); onNewSection(); }} />
+        </>
+      )}
+    </ScheduledTaskMenu>
+  );
+}
+
+/** Code's Recents menu: only the order (last updated, date created or name; descending or ascending). */
+function CodeRecentsMenu({ filter, onChange }: { filter: CodeRecentsFilter; onChange: (change: Partial<CodeRecentsFilter>) => void }) {
+  const { t } = useTranslation('sidebar');
+  const r = (key: string) => t(`workspace.recents.${key}`);
+  const sortKey = { activity: 'sortUpdated', created: 'sortCreated', name: 'sortName' } as const;
+  return (
+    <ScheduledTaskMenu
+      trigger={<ListFilter size={16} />}
+      ariaLabel={r('sort')}
+      title={r('sort')}
+      triggerClassName="workspace-recents-action"
+      panelClassName="workspace-recents-menu"
+    >
+      {() => (
+        <ScheduledTaskSubmenu label={<MenuChoice label={r('sortBy')} value={r(sortKey[filter.sort])} />}>
+          {(['activity', 'created', 'name'] as const).map((sort) => (
+            <ScheduledTaskMenuItem key={sort} label={r(sortKey[sort])} selected={filter.sort === sort} onSelect={() => onChange({ sort })} />
+          ))}
+          <ScheduledTaskMenuDivider />
+          <ScheduledTaskMenuItem label={r('orderDesc')} selected={filter.order === 'desc'} onSelect={() => onChange({ order: 'desc' })} />
+          <ScheduledTaskMenuItem label={r('orderAsc')} selected={filter.order === 'asc'} onSelect={() => onChange({ order: 'asc' })} />
+        </ScheduledTaskSubmenu>
+      )}
+    </ScheduledTaskMenu>
+  );
+}
+
+/** Names a new section (optionally filing the conversation it was started from) or renames one. */
+function SectionDialog({ state, prefs, onClose, onSubmit }: {
+  state: SectionDialogState | null;
+  prefs: SidebarConversationPrefs;
+  onClose: () => void;
+  onSubmit: (name: string) => void;
+}) {
+  const { t } = useTranslation('sidebar');
+  const current = state?.mode === 'rename' ? prefs.sections.find((section) => section.id === state.id)?.name ?? '' : '';
+  const [draft, setDraft] = useState(current);
+  // Start the field from the current name each time the dialog opens.
+  const [openedFor, setOpenedFor] = useState(state);
+  if (state !== openedFor) {
+    setOpenedFor(state);
+    if (state) setDraft(current);
+  }
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const name = draft.trim();
+    if (name) onSubmit(name);
+  };
+  const creating = state?.mode === 'create';
+  const title = creating ? t('workspace.conversationSections.newTitle') : t('workspace.conversationSections.renameTitle');
+  return (
+    <Dialog open={Boolean(state)} onOpenChange={(value) => { if (!value) onClose(); }}>
+      <DialogContent className="workspace-account-dialog" aria-label={title}>
+        <DialogTitle>{title}</DialogTitle>
+        <form onSubmit={submit}>
+          <input
+            autoFocus
+            maxLength={60}
+            aria-label={t('workspace.conversationSections.name')}
+            placeholder={t('workspace.conversationSections.name')}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <button className="workspace-primary-button" type="submit" disabled={!draft.trim()}>
+            {creating ? t('workspace.conversationSections.create') : t('workspace.conversationSections.save')}
+          </button>
+        </form>
       </DialogContent>
     </Dialog>
   );

@@ -137,6 +137,17 @@ export function useArtefactSessionIds(): Set<string> {
   );
 }
 
+/** Used by the sidebar to show, at the end of a conversation row, which kind of artefact owns it. */
+export function useArtefactKindsBySession(): Map<string, ArtefactSummary['kind']> {
+  const { artefacts } = useArtefacts();
+  return useMemo(
+    () => new Map((artefacts ?? [])
+      .filter((item) => Boolean(item.sessionId))
+      .map((item) => [item.sessionId as string, item.kind])),
+    [artefacts],
+  );
+}
+
 /** Used by ChatInterface to display a minimized artefact card at the top of its conversation. */
 export function useArtefactBySessionId(sessionId: string | null | undefined): ArtefactSummary | null {
   const { artefacts } = useArtefacts();
