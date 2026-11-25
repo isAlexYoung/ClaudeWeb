@@ -80,6 +80,20 @@ const SNAPSHOT: BackupDatabaseSnapshot = {
       projectPath: '/p/two', sessionId: null, createdAt: null,
     },
   ],
+  artefacts: [
+    {
+      id: 'art-1', kind: 'sheet', title: 'Budget', fileName: 'art-1.json', sessionId: 'app-1', pinned: true,
+      createdAt: '2026-11-01 10:00:00', updatedAt: '2026-11-02 10:00:00', openedAt: '2026-11-03 10:00:00',
+    },
+    {
+      id: 'art-2', kind: 'doc', title: 'Notes', fileName: 'art-2.md', sessionId: 'app-2', pinned: false,
+      createdAt: null, updatedAt: null, openedAt: null,
+    },
+    {
+      id: 'art-known', kind: 'whiteboard', title: 'From backup', fileName: 'art-known.excalidraw', sessionId: null, pinned: false,
+      createdAt: null, updatedAt: null, openedAt: null,
+    },
+  ],
 };
 
 test('merge fills gaps without replacing what the new installation already has', async () => {
@@ -105,7 +119,7 @@ test('merge fills gaps without replacing what the new installation already has',
       now: new Date('2026-11-14T08:00:00Z'),
     });
     assert.deepEqual(result, {
-      projects: 0, sessions: 1, preferences: 1, drafts: 2, scheduledMessages: 2, overdueScheduledMessages: 1, scheduledTasks: 1, providerModels: 1, uploadedFiles: 1,
+      projects: 0, sessions: 1, preferences: 1, drafts: 2, scheduledMessages: 2, overdueScheduledMessages: 1, scheduledTasks: 1, providerModels: 1, uploadedFiles: 1, artefacts: 0,
     });
     assert.deepEqual(db.prepare(`SELECT stored_name, original_name, project_path, session_id, created_at FROM uploaded_files ORDER BY stored_name`).all(), [
       {
@@ -150,7 +164,7 @@ test('merge fills gaps without replacing what the new installation already has',
     const again = backupDb.mergeSnapshot(SNAPSHOT, {
       userId, projectPaths: new Set(['/p/one']), restoredSessions: new Map(), now: new Date('2026-11-14T08:00:00Z'),
     });
-    assert.deepEqual(again, { projects: 0, sessions: 0, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0 });
+    assert.deepEqual(again, { projects: 0, sessions: 0, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0, artefacts: 0 });
   });
 });
 
@@ -191,5 +205,48 @@ test('export reads back the rows and restoreSessionFlags undoes indexer changes'
       ['1763000000000-2-known.txt', 'known.txt', null],
     ]);
     assert.deepEqual(backupDb.findKnownProviderSessionIds(['prov-1', 'prov-2', 'app-1']), new Set(['prov-1', 'app-1']));
+    assert.deepEqual(exported.artefacts, []);
+  });
+});
+
+test('artefacts come back for the importing account, linked to a restored chat, never replacing one already here', async () => {
+  await withIsolatedDatabase(() => {
+    const db = getConnection();
+    const userId = Number(db.prepare(`INSERT INTO users (username, password_hash) VALUES ('owner', 'x')`).run().lastInsertRowid);
+    db.prepare(
+      `INSERT INTO artefacts (id, user_id, kind, title, file_path, created_at, updated_at, opened_at)
+       VALUES ('art-known', ?, 'whiteboard', 'Mine', '/mine/art-known.excalidraw', '2026-11-20 00:00:00', '2026-11-20 00:00:00', '2026-11-20 00:00:00')`,
+    ).run(userId);
+    const directory = path.join('/home/u', 'Artefacts');
+    const result = backupDb.mergeSnapshot(SNAPSHOT, {
+      userId,
+      projectPaths: new Set(['/p/one']),
+      restoredSessions: new Map([['prov-1', '/h/prov-1.jsonl']]),
+      now: new Date('2026-11-14T08:00:00Z'),
+      artefacts: { directory, records: SNAPSHOT.artefacts },
+    });
+    assert.equal(result.artefacts, 2);
+    const rows = db.prepare(
+      `SELECT id, user_id, kind, title, file_path, session_id, pinned, created_at, opened_at FROM artefacts ORDER BY id`,
+    ).all() as Array<Record<string, unknown>>;
+    assert.deepEqual(rows.map((row) => [row.id, row.user_id, row.kind, row.title, row.file_path, row.session_id, row.pinned]), [
+      ['art-1', userId, 'sheet', 'Budget', path.join(directory, 'art-1.json'), 'app-1', 1],
+      // app-2's chat was not restored, so the artefact stands on its own.
+      ['art-2', userId, 'doc', 'Notes', path.join(directory, 'art-2.md'), null, 0],
+      ['art-known', userId, 'whiteboard', 'Mine', '/mine/art-known.excalidraw', null, 0],
+    ]);
+    assert.equal(rows[0].created_at, '2026-11-01 10:00:00');
+    assert.equal(rows[0].opened_at, '2026-11-03 10:00:00');
+    assert.ok(typeof rows[1].created_at === 'string' && rows[1].created_at.length > 0);
+
+    const exported = backupDb.exportSnapshot(userId).artefacts
+      .map((row) => [row.id, row.fileName, row.sessionId, row.pinned])
+      .sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+    assert.deepEqual(exported, [
+      ['art-1', 'art-1.json', 'app-1', true],
+      ['art-2', 'art-2.md', null, false],
+      ['art-known', 'art-known.excalidraw', null, false],
+    ]);
+    assert.deepEqual(backupDb.findKnownArtefactIds(['art-1', 'art-9', 'art-known']), new Set(['art-1', 'art-known']));
   });
 });

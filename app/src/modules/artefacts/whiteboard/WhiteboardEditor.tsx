@@ -8,10 +8,8 @@ import {
   MainMenu,
   WelcomeScreen,
   convertToExcalidrawElements,
-  exportToBlob,
   getSceneVersion,
   restoreElements,
-  serializeAsJSON,
 } from '@excalidraw/excalidraw';
 // The package exports its stylesheet only under the "development" and "production"
 // conditions, which Vite uses and oxlint's resolver does not.
@@ -21,11 +19,10 @@ import type { BinaryFiles, ExcalidrawImperativeAPI, ExcalidrawProps } from '@exc
 import { useTranslation } from 'react-i18next';
 import { Shapes } from 'lucide-react';
 
-import { ScheduledTaskMenuItem } from '@/modules/scheduled-tasks';
 import { useTheme } from '@/shared/context/ThemeContext';
 import type { ArtefactDetail, WhiteboardDocument } from '@/shared/types';
 import ArtefactEditorFrame from '@/modules/artefacts/editor/ArtefactEditorFrame';
-import { downloadBlob, fileBaseName } from '@/modules/artefacts/editor/download';
+import { ArtefactDownloadSubmenu } from '@/modules/artefacts/transfer/ArtefactDownloadMenu';
 import { useArtefactFileSync } from '@/modules/artefacts/editor/useArtefactFileSync';
 import type { ArtefactEditorProps } from '@/modules/artefacts/editor/useArtefactFileSync';
 import { prepareScene, toSceneFile, whiteboardLanguage } from '@/modules/artefacts/whiteboard/whiteboardScene';
@@ -145,26 +142,12 @@ export default function WhiteboardEditor({
     }
   }, [splitAnimating]);
 
-  const title = fileBaseName(sync.detail?.title ?? '');
-
-  const downloadPng = async () => {
+  /** What the board shows now, as its file; the last loaded file before Excalidraw has mounted. */
+  const currentScene = (): WhiteboardDocument | null => {
     const api = apiRef.current;
-    if (!api) return;
-    const blob = await exportToBlob({
-      elements: api.getSceneElements(),
-      appState: { ...api.getAppState(), exportBackground: true, exportWithDarkMode: false },
-      files: api.getFiles(),
-      mimeType: 'image/png',
-      exportPadding: 24,
-    });
-    downloadBlob(blob, `${title}.png`);
-  };
-
-  const downloadFile = () => {
-    const api = apiRef.current;
-    if (!api) return;
-    const json = serializeAsJSON(api.getSceneElements(), api.getAppState(), api.getFiles(), 'local');
-    downloadBlob(new Blob([json], { type: 'application/json' }), `${title}.excalidraw`);
+    if (api) return toSceneFile(api.getSceneElements() as never, api.getAppState(), api.getFiles() as Record<string, unknown>);
+    const text = sync.currentText();
+    return text ? JSON.parse(text) as WhiteboardDocument : null;
   };
 
   const uiOptions = useMemo<ExcalidrawProps['UIOptions']>(() => ({
@@ -189,10 +172,13 @@ export default function WhiteboardEditor({
       onOpenSession={onOpenSession}
       surfaceClassName="whiteboard-editor-surface"
       titleMenuItems={(closeMenu) => (
-        <>
-          <ScheduledTaskMenuItem label={t('artefacts.whiteboardEditor.downloadPng')} onSelect={() => { closeMenu(); void downloadPng(); }} />
-          <ScheduledTaskMenuItem label={t('artefacts.whiteboardEditor.downloadFile')} onSelect={() => { closeMenu(); downloadFile(); }} />
-        </>
+        <ArtefactDownloadSubmenu
+          kind="whiteboard"
+          title={sync.detail?.title ?? ''}
+          getContent={currentScene}
+          onError={sync.showNotice}
+          close={closeMenu}
+        />
       )}
     >
       <div className="whiteboard-editor-canvas">

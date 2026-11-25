@@ -867,7 +867,7 @@
       "started": "正在下载 {{fileName}}。对话很多时需要一些时间。",
       "passwordTooShort_other": "密码至少需要 {{count}} 位。",
       "passwordMismatch": "两次输入的密码不一样。",
-      "includes": "包含：Claude 对话记录、项目记忆、代码检查点、任务清单、聊天里的图片，对话标题、归档、草稿、定时消息和偏好设置，以及 Claude 用户设置（去掉密钥的 settings.json、CLAUDE.md、自定义命令、智能体、技能和输出风格）。",
+      "includes": "包含：Claude 对话记录、项目记忆、代码检查点、任务清单、聊天里的图片，对话标题、归档、草稿、定时消息和偏好设置，作品（电子表格、文档和白板），以及 Claude 用户设置（去掉密钥的 settings.json、CLAUDE.md、自定义命令、智能体、技能和输出风格）。",
       "excludes": "不包含：Claude 登录信息、ClaudeWeb 账户和密钥、插件的代码和密钥（只记下插件清单，用于重新安装）；项目文件夹只有在下面勾选后才包含。",
       "projectFiles": "包含项目文件夹",
       "projectFilesDescription": "按现在的样子加入所选文件夹，包括 Git 历史。文件夹大，备份文件也会大；导入时不会覆盖已有文件。",
@@ -916,7 +916,13 @@
       "pluginInstalled": "已安装",
       "pluginRetry": "失败，重试",
       "finish": "完成",
-      "chooseAgain": "重新选择文件"
+      "chooseAgain": "重新选择文件",
+      "artefacts": "作品",
+      "artefactsNew_one": "{{count}} 个作品待恢复（{{size}}）。这里已有的作品保持不变。",
+      "artefactsNew_other": "{{count}} 个作品待恢复（{{size}}）。这里已有的作品保持不变。",
+      "artefactsExisting": "这些作品这里都已存在，保持不变。",
+      "artefactsDone_one": "已恢复 {{count}} 个作品。",
+      "artefactsDone_other": "已恢复 {{count}} 个作品。"
     },
     "errors": {
       "generic": "出了点问题，请重试。",

@@ -674,6 +674,44 @@
           "mindmap": "A mind map for planning a product launch"
         }
       }
+    },
+    "download": {
+      "label": "Download",
+      "empty": "There is nothing to download yet.",
+      "failed": "Could not download: {{error}}",
+      "formats": {
+        "xlsx": "Excel workbook (.xlsx)",
+        "csv": "CSV (current sheet)",
+        "docx": "Word document (.docx)",
+        "pdf": "PDF (print)",
+        "md": "Markdown (.md)",
+        "png": "PNG image",
+        "svg": "SVG image",
+        "excalidraw": "Excalidraw file (.excalidraw)"
+      }
+    },
+    "import": {
+      "action": "Import files…",
+      "drop": "Drop to import",
+      "importing": "Importing…",
+      "done_one": "Imported {{count}} artefact.",
+      "done_other": "Imported {{count}} artefacts.",
+      "failed": "{{name}}: {{reason}}.",
+      "partial": "{{name}}: {{items}} could not be imported.",
+      "listSeparator": ", ",
+      "errors": {
+        "unsupported": "this kind of file cannot be imported",
+        "legacy": "old .xls and .doc files are not supported; save them as .xlsx or .docx first",
+        "invalid": "the file could not be read",
+        "tooLarge": "it is larger than the {{limit}} limit"
+      },
+      "warnings": {
+        "images": "images",
+        "conditionalFormatting": "conditional formatting",
+        "dataValidation": "data validation",
+        "comments": "comments",
+        "docImages": "images (the document would be too large)"
+      }
     }
   }
 }

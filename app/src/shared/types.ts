@@ -1728,6 +1728,8 @@ export type BackupImportResult = {
   skippedExistingSessions: number;
   restoredFiles: number;
   skippedExistingFiles: number;
+  /** Rows the import added; only the counts the settings page reports are typed. */
+  database?: { artefacts?: number };
 };
 
 /** Full status of one import, used by the settings backup hook and the backup tab. */

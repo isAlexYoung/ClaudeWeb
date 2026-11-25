@@ -17,6 +17,8 @@ import { cn } from '@/shared/utils';
 const MIN_PASSWORD_LENGTH = 8;
 // The preview entry the server uses for Claude's user settings.
 const CLAUDE_USER_ID = '@claude-user';
+/** The preview entry for artefacts: `sessionCount` is how many the backup holds, `existingSessionCount` how many are already here. */
+const ARTEFACTS_ID = '@artefacts';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -216,6 +218,26 @@ function PreviewPanel({
           {preview.projects.map((project) => {
             const checked = !excluded.includes(project.id);
             const newSessions = project.sessionCount - project.existingSessionCount;
+            // Artefacts are listed like a project, so they can be left out too.
+            if (project.id === ARTEFACTS_ID) {
+              const newArtefacts = project.sessionCount - project.existingSessionCount;
+              return (
+                <li key={project.id}>
+                  <label className="flex cursor-pointer items-start gap-3 px-4 py-3">
+                    <input type="checkbox" className="mt-1 h-4 w-4 flex-shrink-0 accent-primary" checked={checked} onChange={() => toggle(project.id)} />
+                    <span className="min-w-0 flex-1 space-y-1">
+                      <span className="block text-sm font-medium text-foreground">{t('backup.import.artefacts')}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {newArtefacts > 0
+                          ? t('backup.import.artefactsNew', { count: newArtefacts, size: formatBytes(project.fileBytes) })
+                          : t('backup.import.artefactsExisting')}
+                        {newArtefacts > 0 && project.existingSessionCount > 0 && ` · ${t('backup.import.existing', { count: project.existingSessionCount })}`}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              );
+            }
             // Claude's user settings are listed like a project, so they can be left out too.
             if (project.id === CLAUDE_USER_ID) {
               return (
@@ -426,6 +448,9 @@ function ImportSection() {
         </p>
         {status.result.skippedExistingSessions > 0 && (
           <p className="text-sm text-muted-foreground">{t('backup.import.skipped', { count: status.result.skippedExistingSessions })}</p>
+        )}
+        {(status.result.database?.artefacts ?? 0) > 0 && (
+          <p className="text-sm text-muted-foreground">{t('backup.import.artefactsDone', { count: status.result.database?.artefacts ?? 0 })}</p>
         )}
         <p className="text-sm text-muted-foreground">{t('backup.import.doneHint')}</p>
         {status.preview?.plugins && <PluginsToReinstall plugins={status.preview.plugins} />}

@@ -99,6 +99,8 @@ type ScheduledTaskMenuProps = {
   panelClassName?: string;
   /** Which edge of the trigger the panel lines up with. */
   align?: 'start' | 'end';
+  /** The trigger's tab order, e.g. -1 while the surface holding it is hidden. */
+  triggerTabIndex?: number;
   /** Receives `close` so an item can shut the menu after acting. */
   children: (close: () => void) => ReactNode;
 };
@@ -109,7 +111,7 @@ type ScheduledTaskMenuProps = {
  * fixed position so the editor dialog's scroll area cannot clip it, and Escape
  * closes only the menu, not the dialog around it.
  */
-export function ScheduledTaskMenu({ trigger, ariaLabel, title, triggerClassName, panelClassName, align = 'start', children }: ScheduledTaskMenuProps) {
+export function ScheduledTaskMenu({ trigger, ariaLabel, title, triggerClassName, panelClassName, align = 'start', triggerTabIndex, children }: ScheduledTaskMenuProps) {
   // The trigger the open panel hangs from, or null while closed. Kept as state (not a ref)
   // because rendering the panel needs it.
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
@@ -153,6 +155,7 @@ export function ScheduledTaskMenu({ trigger, ariaLabel, title, triggerClassName,
         className={triggerClassName}
         aria-label={ariaLabel}
         title={title}
+        tabIndex={triggerTabIndex}
         aria-haspopup="menu"
         aria-expanded={open}
         data-open={open ? 'true' : undefined}

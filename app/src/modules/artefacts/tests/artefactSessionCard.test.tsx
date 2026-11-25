@@ -27,7 +27,7 @@ test('the minimized artefact card opens the full editor on click', () => {
   const view = render(<ArtefactSessionCard artefact={artefact} onOpen={onOpen} />);
   fireEvent.click(view.getByRole('button', { name: /Untitled/ }));
   assert.deepEqual(onOpen.mock.calls, [['sheet-1']]);
-  assert.notEqual(view.queryByRole('button', { name: 'Download CSV' }), null);
+  assert.notEqual(view.queryByRole('button', { name: 'Download' }), null);
 });
 
 test('banner card fades out and header pill fades in as scrollProgress moves between 0 and 1', () => {

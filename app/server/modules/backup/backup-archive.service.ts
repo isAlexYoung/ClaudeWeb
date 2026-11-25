@@ -49,6 +49,8 @@ export const BACKUP_AREAS = [
   { area: 'fileHistory', prefix: 'claude/file-history/' },
   { area: 'todos', prefix: 'claude/todos/' },
   { area: 'assets', prefix: 'claudeweb/assets/' },
+  // ~/Artefacts: the files of spreadsheets, documents and whiteboards (since 2.3.8).
+  { area: 'artefacts', prefix: 'claudeweb/artefacts/' },
   { area: 'claudeUser', prefix: 'claude/user/' },
   { area: 'workspace', prefix: 'files/' },
 ] as const;

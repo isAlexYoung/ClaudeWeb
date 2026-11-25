@@ -5,3 +5,6 @@ export { default as artefactsRoutes } from './artefacts.routes.js';
 
 // Gives artefact runs the provider runtime; started with the server.
 export { initializeArtefacts } from './services/artefacts.service.js';
+
+// Where the files live (~/Artefacts); the Backup module includes this folder.
+export { getArtefactsDirectory } from './services/artefacts.service.js';

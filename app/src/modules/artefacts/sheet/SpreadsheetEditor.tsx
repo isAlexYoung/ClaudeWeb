@@ -9,7 +9,8 @@ import { ScheduledTaskMenu, ScheduledTaskMenuDivider, ScheduledTaskMenuItem } fr
 import { api } from '@/shared/api';
 import { readStoredUiPreferences } from '@/shared/uiPreferences';
 import type { ArtefactDetail, ArtefactState, SheetDocument } from '@/shared/types';
-import { formulaOrder, fromGridSheets, sheetToCsv, toGridSheets } from '@/modules/artefacts/sheet/sheetFormat';
+import { formulaOrder, fromGridSheets, toGridSheets } from '@/modules/artefacts/sheet/sheetFormat';
+import { ArtefactDownloadSubmenu } from '@/modules/artefacts/transfer/ArtefactDownloadMenu';
 import type { GridSheet } from '@/modules/artefacts/sheet/sheetFormat';
 import SheetConversation from '@/modules/artefacts/sheet/SheetConversation';
 import SheetToolbar from '@/modules/artefacts/sheet/SheetToolbar';
@@ -512,15 +513,16 @@ export default function SpreadsheetEditor({
     }
   };
 
-  const downloadCsv = () => {
+  /** The workbook as its file, including edits not saved yet. */
+  const currentDocument = (): SheetDocument | null => {
     const text = pendingTextRef.current ?? savedTextRef.current;
-    if (!text || !detail) return;
-    const document = JSON.parse(text) as SheetDocument;
-    const blob = new Blob([`﻿${sheetToCsv(document.sheets[0])}`], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = Object.assign(window.document.createElement('a'), { href: url, download: `${detail.title}.csv` });
-    link.click();
-    URL.revokeObjectURL(url);
+    return text ? JSON.parse(text) as SheetDocument : null;
+  };
+
+  /** The sheet on screen, so a CSV holds what the user is looking at. */
+  const activeSheetIndex = (): number | undefined => {
+    const sheet = (workbookRef.current as unknown as { getSheet?: () => { order?: number } } | null)?.getSheet?.();
+    return typeof sheet?.order === 'number' ? sheet.order : undefined;
   };
 
   const minimize = async () => {
@@ -586,7 +588,14 @@ export default function SpreadsheetEditor({
             {(closeMenu) => (
               <>
                 <ScheduledTaskMenuItem label={t('artefacts.rename')} onSelect={() => { closeMenu(); setTitleDraft(detail?.title ?? ''); }} />
-                <ScheduledTaskMenuItem label={t('artefacts.editor.downloadCsv')} onSelect={() => { closeMenu(); downloadCsv(); }} />
+                <ArtefactDownloadSubmenu
+                  kind="sheet"
+                  title={detail?.title ?? ''}
+                  getContent={currentDocument}
+                  getSheetIndex={activeSheetIndex}
+                  onError={(message) => showNotice(message)}
+                  close={closeMenu}
+                />
                 <ScheduledTaskMenuDivider />
                 <ScheduledTaskMenuItem label={t('artefacts.delete')} danger onSelect={() => { closeMenu(); void remove(); }} />
               </>

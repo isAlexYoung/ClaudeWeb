@@ -230,3 +230,34 @@ test('with nothing yet the page shows the empty state under the create tiles', a
   assert.equal(view.getByRole('heading', { name: 'Create new' }).tagName, 'H2');
   assert.equal(view.container.querySelectorAll('.artefacts-tile').length, 7);
 });
+
+// jsdom's File has no arrayBuffer(); a browser's does.
+const file = (name: string, content: string) => {
+  const bytes = new TextEncoder().encode(content);
+  return { name, size: bytes.length, arrayBuffer: async () => Uint8Array.from(bytes).buffer } as unknown as File;
+};
+
+test('importing one file creates the artefact with its content and opens it; several files are summed up instead', async () => {
+  harness.api.create.mockImplementation(async ({ kind, title }: { kind: string; title: string }) => (
+    json(summary({ id: `imported-${title}`, kind: kind as ArtefactSummary['kind'], title }))
+  ));
+  const { view, props } = renderPage();
+  await view.findByRole('list', { name: 'Artefacts' });
+  fireEvent.click(view.getByRole('button', { name: 'New' }));
+  assert.notEqual(view.queryByRole('menuitem', { name: 'Import files…' }), null);
+
+  const input = view.getByTestId('artefacts-import-input') as HTMLInputElement;
+  fireEvent.change(input, { target: { files: [file('Notes.md', '# Notes\n')] } });
+  await waitFor(() => assert.deepEqual(props.onOpenArtefact.mock.calls, [['imported-Notes']]));
+  assert.deepEqual(harness.api.create.mock.calls, [[{ kind: 'doc', title: 'Notes', content: '# Notes\n' }]]);
+
+  fireEvent.change(input, { target: { files: [file('Sales.csv', 'a,b\n1,2\n'), file('photo.png', 'x'), file('old.xls', 'x')] } });
+  await waitFor(() => assert.match(view.getByRole('status').textContent ?? '', /^Imported 1 artefact\./));
+  const notice = view.getByRole('status').textContent ?? '';
+  assert.match(notice, /photo\.png: this kind of file cannot be imported\./);
+  assert.match(notice, /old\.xls: old \.xls and \.doc files are not supported/);
+  assert.equal(props.onOpenArtefact.mock.calls.length, 1, 'a batch does not open anything');
+  assert.deepEqual(harness.api.create.mock.calls.at(-1), [{
+    kind: 'sheet', title: 'Sales', content: { format: 'claudeweb-sheet@1', sheets: [{ name: 'Sales', cells: { A1: 'a', B1: 'b', A2: 1, B2: 2 } }] },
+  }]);
+});

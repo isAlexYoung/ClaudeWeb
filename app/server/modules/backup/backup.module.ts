@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { createBackupDownloadRouter, createBackupRouter } from '@/modules/backup/backup.routes.js';
 import { createBackupService } from '@/modules/backup/backup.service.js';
+import { getArtefactsDirectory } from '@/modules/artefacts/index.js';
 import { backupDb } from '@/modules/database/index.js';
 import { scanPlugins } from '@/modules/plugins/index.js';
 import { sessionSynchronizerService } from '@/modules/providers/index.js';
@@ -16,9 +17,11 @@ const backupService = createBackupService({
   claudeHome: path.join(homeDirectory, '.claude'),
   claudewebHome: path.join(homeDirectory, '.claudeweb'),
   uploadsDirectory: path.join(homeDirectory, '.claudeweb', 'backup-imports'),
+  artefactsDirectory: getArtefactsDirectory(),
   database: {
     exportSnapshot: (userId) => backupDb.exportSnapshot(userId),
     findKnownProviderSessionIds: (ids) => backupDb.findKnownProviderSessionIds(ids),
+    findKnownArtefactIds: (ids) => backupDb.findKnownArtefactIds(ids),
     mergeSnapshot: (snapshot, selection) => backupDb.mergeSnapshot(snapshot, selection),
     restoreSessionFlags: (sessions) => backupDb.restoreSessionFlags(sessions),
   },

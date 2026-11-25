@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { DragEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Folder, LayoutGrid, List, ListFilter, MessageCircle, MoreHorizontal, Pin, Plus, Search, X } from 'lucide-react';
+import { Check, Folder, LayoutGrid, List, ListFilter, MessageCircle, MoreHorizontal, Pin, Plus, Search, Upload, X } from 'lucide-react';
 
 import {
   ScheduledTaskMenu,
@@ -15,6 +15,7 @@ import type { ArtefactKind, ArtefactSummary } from '@/shared/types';
 import { Dialog, DialogContent, DialogTitle } from '@/shared/ui';
 import { ARTEFACT_KINDS, CREATABLE_KINDS, artefactKind, isEditableKind } from '@/modules/artefacts/artefactKinds';
 import { useArtefacts } from '@/modules/artefacts/useArtefacts';
+import { ArtefactImportError, IMPORT_ACCEPT, readImportFile } from '@/modules/artefacts/transfer/artefactTransfer';
 
 type ArtefactsPageProps = {
   /** The mobile menu button, shown before the title on small screens. */
@@ -160,6 +161,11 @@ export default function ArtefactsPage({ menuButton, onOpenArtefact, onArtefactCr
   // The artefact being renamed (with the text typed so far) or about to be deleted.
   const [renaming, setRenaming] = useState<{ artefact: ArtefactSummary; title: string } | null>(null);
   const [deleting, setDeleting] = useState<ArtefactSummary | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Files dragged over the page: the drop hint shows while any are; dragenter/leave fire per child element.
+  const [dropActive, setDropActive] = useState(false);
+  const dragDepthRef = useRef(0);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -217,6 +223,51 @@ export default function ArtefactsPage({ menuButton, onOpenArtefact, onArtefactCr
       setCreating(false);
     }
   };
+
+  const importErrorText = (caught: unknown) => {
+    if (caught instanceof ArtefactImportError) {
+      return caught.code === 'tooLarge'
+        ? t('artefacts.import.errors.tooLarge', { limit: `${Math.round((caught.limitBytes ?? 0) / (1024 * 1024))} MB` })
+        : t(`artefacts.import.errors.${caught.code}`);
+    }
+    return caught instanceof Error ? caught.message : String(caught);
+  };
+
+  /**
+   * Turns each file into an artefact of its kind. One file that came in whole
+   * is opened; otherwise the page stays and says what was imported, what was
+   * left out of a file, and why any file failed.
+   */
+  const importFiles = async (files: File[]) => {
+    if (importing || files.length === 0) return;
+    setImporting(true);
+    setNotice(t('artefacts.import.importing'));
+    const created: ArtefactSummary[] = [];
+    const problems: string[] = [];
+    for (const file of files) {
+      try {
+        const imported = await readImportFile(file);
+        const artefact = await createArtefact(imported.kind, imported.title, imported.content);
+        onArtefactCreated?.(artefact);
+        created.push(artefact);
+        if (imported.warnings.length > 0) {
+          const items = imported.warnings.map((warning) => t(`artefacts.import.warnings.${warning}`)).join(t('artefacts.import.listSeparator'));
+          problems.push(t('artefacts.import.partial', { name: file.name, items }));
+        }
+      } catch (caught) {
+        problems.push(t('artefacts.import.failed', { name: file.name, reason: importErrorText(caught) }));
+      }
+    }
+    setImporting(false);
+    if (files.length === 1 && created.length === 1 && problems.length === 0) {
+      setNotice(null);
+      onOpenArtefact(created[0].id);
+      return;
+    }
+    setNotice([created.length > 0 ? t('artefacts.import.done', { count: created.length }) : '', ...problems].filter(Boolean).join(' '));
+  };
+
+  const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files');
 
   const toggleKind = (kind: ArtefactKind) => {
     setKinds((current) => {
@@ -325,7 +376,52 @@ export default function ArtefactsPage({ menuButton, onOpenArtefact, onArtefactCr
   const hasAny = (artefacts?.length ?? 0) > 0;
 
   return (
-    <div className="workspace-main artefacts-page flex h-full flex-col">
+    <div
+      className="workspace-main artefacts-page flex h-full flex-col"
+      onDragEnter={(event) => {
+        if (!hasFiles(event)) return;
+        event.preventDefault();
+        dragDepthRef.current += 1;
+        setDropActive(true);
+      }}
+      onDragOver={(event) => {
+        if (!hasFiles(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
+      onDragLeave={(event) => {
+        if (!hasFiles(event)) return;
+        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+        if (dragDepthRef.current === 0) setDropActive(false);
+      }}
+      onDrop={(event) => {
+        if (!hasFiles(event)) return;
+        event.preventDefault();
+        dragDepthRef.current = 0;
+        setDropActive(false);
+        void importFiles(Array.from(event.dataTransfer.files));
+      }}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={IMPORT_ACCEPT}
+        multiple
+        hidden
+        data-testid="artefacts-import-input"
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          // Cleared so choosing the same file again still fires a change.
+          event.target.value = '';
+          void importFiles(files);
+        }}
+      />
+      {dropActive && (
+        <div className="artefacts-drop-overlay" aria-hidden="true">
+          <Upload size={28} />
+          <span>{t('artefacts.import.drop')}</span>
+        </div>
+      )}
       <div className="artefacts-scroll">
         <div className="artefacts-inner">
           <header className="artefacts-header">
@@ -421,6 +517,11 @@ export default function ArtefactsPage({ menuButton, onOpenArtefact, onArtefactCr
                       icon={<Folder size={16} />}
                       label={t('artefacts.newFolder')}
                       onSelect={() => { close(); setNotice(t('artefacts.comingSoon', { name: t('artefacts.newFolder') })); }}
+                    />
+                    <ScheduledTaskMenuItem
+                      icon={<Upload size={16} />}
+                      label={t('artefacts.import.action')}
+                      onSelect={() => { close(); fileInputRef.current?.click(); }}
                     />
                     <ScheduledTaskMenuDivider />
                     {CREATABLE_KINDS.map((definition) => {

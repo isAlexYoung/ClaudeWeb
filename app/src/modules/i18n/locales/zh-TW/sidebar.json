@@ -604,6 +604,44 @@
           "mindmap": "規劃產品發表的心智圖"
         }
       }
+    },
+    "download": {
+      "label": "下載",
+      "empty": "還沒有可下載的內容。",
+      "failed": "無法下載：{{error}}",
+      "formats": {
+        "xlsx": "Excel 活頁簿（.xlsx）",
+        "csv": "CSV（目前工作表）",
+        "docx": "Word 文件（.docx）",
+        "pdf": "PDF（列印）",
+        "md": "Markdown（.md）",
+        "png": "PNG 圖片",
+        "svg": "SVG 圖片",
+        "excalidraw": "Excalidraw 檔案（.excalidraw）"
+      }
+    },
+    "import": {
+      "action": "匯入檔案…",
+      "drop": "放開以匯入",
+      "importing": "正在匯入…",
+      "done_one": "已匯入 {{count}} 個作品。",
+      "done_other": "已匯入 {{count}} 個作品。",
+      "failed": "{{name}}：{{reason}}。",
+      "partial": "{{name}}：{{items}}未能匯入。",
+      "listSeparator": "、",
+      "errors": {
+        "unsupported": "不支援匯入這種檔案",
+        "legacy": "不支援舊版 .xls 和 .doc 檔案，請先另存為 .xlsx 或 .docx",
+        "invalid": "無法讀取檔案內容",
+        "tooLarge": "超過 {{limit}} 的大小上限"
+      },
+      "warnings": {
+        "images": "圖片",
+        "conditionalFormatting": "條件式格式設定",
+        "dataValidation": "資料驗證",
+        "comments": "註解",
+        "docImages": "圖片（文件會超過大小上限）"
+      }
     }
   }
 }

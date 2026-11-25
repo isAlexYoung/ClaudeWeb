@@ -70,9 +70,13 @@ type BackupServiceDependencies = {
   claudewebHome: string;
   /** Where uploads are kept. Not /tmp: /tmp may be a small memory-backed mount. */
   uploadsDirectory: string;
+  /** The artefacts' files (~/Artefacts); defaults to that folder under the home folder. */
+  artefactsDirectory?: string;
   database: {
     exportSnapshot(userId: number): BackupDatabaseSnapshot;
     findKnownProviderSessionIds(providerSessionIds: string[]): Set<string>;
+    /** The artefact ids this installation already has; absent in tests that do not restore artefacts. */
+    findKnownArtefactIds?(ids: string[]): Set<string>;
     mergeSnapshot(snapshot: BackupDatabaseSnapshot, selection: BackupMergeSelection): BackupMergeResult;
     restoreSessionFlags(sessions: BackupSessionRecord[]): void;
   };
@@ -300,6 +304,24 @@ function parseSnapshot(raw: unknown): BackupDatabaseSnapshot {
         sessionId: stringOrNull(row.sessionId),
         createdAt: stringOrNull(row.createdAt),
       })),
+    // Older backups have none. The file name must be one safe segment of the
+    // artefacts folder, like an upload's stored name.
+    artefacts: rows('artefacts')
+      .filter((row) => typeof row.id === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(row.id)
+        && (row.kind === 'sheet' || row.kind === 'doc' || row.kind === 'whiteboard')
+        && typeof row.title === 'string' && row.title.trim().length > 0 && row.title.length <= 200
+        && typeof row.fileName === 'string' && /^[A-Za-z0-9._-]{1,255}$/.test(row.fileName) && !row.fileName.startsWith('.'))
+      .map((row) => ({
+        id: row.id as string,
+        kind: row.kind as 'sheet' | 'doc' | 'whiteboard',
+        title: (row.title as string).trim(),
+        fileName: row.fileName as string,
+        sessionId: stringOrNull(row.sessionId),
+        pinned: row.pinned === true,
+        createdAt: stringOrNull(row.createdAt),
+        updatedAt: stringOrNull(row.updatedAt),
+        openedAt: stringOrNull(row.openedAt),
+      })),
   };
 }
 
@@ -425,6 +447,13 @@ function manifestPlugins(value: unknown): Array<Omit<BackupPlugin, 'installed'>>
 
 /** The preview entry for Claude's user settings; chosen or not like a project. */
 const CLAUDE_USER_ID = '@claude-user';
+
+/**
+ * The preview entry for artefacts, chosen or not like a project: `sessionCount`
+ * counts the artefacts in the backup, `existingSessionCount` the ones already
+ * here, and the file fields their files not here yet.
+ */
+const ARTEFACTS_ID = '@artefacts';
 
 /** `env` entries that hold secrets are left out of a backup, like the sign-in itself. */
 const SECRET_SETTING = /KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH/i;
@@ -593,6 +622,7 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     fileHistory: path.join(dependencies.claudeHome, 'file-history'),
     todos: path.join(dependencies.claudeHome, 'todos'),
     assets: path.join(dependencies.claudewebHome, 'assets'),
+    artefacts: path.resolve(dependencies.artefactsDirectory ?? path.join(dependencies.homeDirectory, 'Artefacts')),
     claudeUser: dependencies.claudeHome,
     workspace: path.resolve(dependencies.homeDirectory),
   };
@@ -1146,9 +1176,34 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     }
     workspaceDirs.sort((left, right) => right.dir.length - left.dir.length);
 
+    // Artefacts are one entry: their records from the snapshot, their files from the archive.
+    const artefactsEntry = (): BackupPreviewProject => {
+      let entry = projects.get(ARTEFACTS_ID);
+      if (!entry) {
+        const records = checkedSnapshot.artefacts;
+        const known = dependencies.database.findKnownArtefactIds?.(records.map((record) => record.id)) ?? new Set<string>();
+        entry = {
+          id: ARTEFACTS_ID, name: 'Artefacts', path: null, pathExists: true,
+          sessionCount: records.length, existingSessionCount: records.filter((record) => known.has(record.id)).length,
+          newBytes: 0, fileCount: 0, fileBytes: 0,
+        };
+        projects.set(ARTEFACTS_ID, entry);
+      }
+      return entry;
+    };
+    if (checkedSnapshot.artefacts.length > 0) artefactsEntry();
+
     let sharedNewBytes = 0;
     for (const file of files) {
       const target = { kind: 'file' as const, area: file.area, segments: file.segments };
+      if (file.area === 'artefacts') {
+        const entry = artefactsEntry();
+        if (await exists(destinationOf(target))) continue;
+        entry.newBytes += file.size;
+        entry.fileBytes += file.size;
+        entry.fileCount += 1;
+        continue;
+      }
       if (file.area === 'claudeUser') {
         let settings = projects.get(CLAUDE_USER_ID);
         if (!settings) {
@@ -1182,7 +1237,7 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     }
 
     for (const project of projects.values()) {
-      if (project.id === CLAUDE_USER_ID) continue;
+      if (project.id === CLAUDE_USER_ID || project.id === ARTEFACTS_ID) continue;
       project.pathExists = project.path ? await exists(project.path) : false;
     }
 
@@ -1254,6 +1309,16 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
       async onManifest(entry) { entry.resume(); },
       async onData(entry) { entry.resume(); },
       async onFile(entry, target) {
+        if (target.area === 'artefacts') {
+          if (!selectedFolders.has(ARTEFACTS_ID)) {
+            entry.resume();
+            return;
+          }
+          await prepareParent(target);
+          if (await writeNewFile(entry, destinationOf(target))) restoredFiles += 1;
+          else skippedExistingFiles += 1;
+          return;
+        }
         if (target.area === 'claudeUser') {
           const settingsFile = target.segments.length === 1 && target.segments[0] === 'settings.json';
           // A file only at a listed file name or inside a listed folder.
@@ -1317,11 +1382,21 @@ export function createBackupService(dependencies: BackupServiceDependencies) {
     for (const project of job.preview?.projects ?? []) {
       if (selectedFolders.has(project.id) && project.path) projectPaths.add(project.path);
     }
+    // An artefact's record comes back only with its file in place (written now, or already here under its name).
+    let artefacts: { directory: string; records: BackupDatabaseSnapshot['artefacts'] } | undefined;
+    if (selectedFolders.has(ARTEFACTS_ID)) {
+      const records: BackupDatabaseSnapshot['artefacts'] = [];
+      for (const record of plan.snapshot.artefacts) {
+        if (await exists(path.join(areaRoots.artefacts, record.fileName))) records.push(record);
+      }
+      artefacts = { directory: areaRoots.artefacts, records };
+    }
     const database = dependencies.database.mergeSnapshot(plan.snapshot, {
       userId: job.userId,
       projectPaths,
       restoredSessions: restored,
       now: now(),
+      ...(artefacts ? { artefacts } : {}),
     });
 
     for (const transcript of restored.values()) {

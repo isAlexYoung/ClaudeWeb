@@ -97,8 +97,8 @@ export function useArtefacts() {
     });
   }, [reload]);
 
-  const createArtefact = useCallback(async (kind: EditableArtefactKind, title: string) => {
-    const created = await readArtefactResponse<ArtefactSummary>(await api.artefacts.create({ kind, title }));
+  const createArtefact = useCallback(async (kind: EditableArtefactKind, title: string, content?: unknown) => {
+    const created = await readArtefactResponse<ArtefactSummary>(await api.artefacts.create({ kind, title, ...(content === undefined ? {} : { content }) }));
     notifyArtefactsChanged({ upsert: created });
     await reload();
     return created;

@@ -308,3 +308,21 @@ test('the format check names what is wrong', () => {
     /Two sheets/,
   );
 });
+
+test('an imported file is created with its content, checked like a save, and nothing is left behind when it is refused', async () => {
+  await withArtefacts((userId, directory) => {
+    const imported = sheet({ A1: '名称', B1: 42 });
+    const created = artefactsService.create(userId, { kind: 'sheet', title: '导入', content: imported });
+    assert.deepEqual(artefactsService.open(userId, created.id).content, imported);
+
+    const doc = artefactsService.create(userId, { kind: 'doc', title: 'README', content: '# Hello\n' });
+    assert.equal(fs.readFileSync(path.join(directory, `${doc.id}.md`), 'utf8'), '# Hello\n');
+
+    const before = artefactsService.list(userId).length;
+    expectAppError(() => artefactsService.create(userId, { kind: 'sheet', content: { format: 'nope' } }), 'ARTEFACT_INVALID_CONTENT');
+    expectAppError(() => artefactsService.create(userId, { kind: 'whiteboard', content: { type: 'excalidraw', elements: [{ x: 1 }] } }), 'ARTEFACT_INVALID_CONTENT');
+    expectAppError(() => artefactsService.create(userId, { kind: 'doc', content: 'x'.repeat(2 * 1024 * 1024 + 1) }), 'ARTEFACT_TOO_LARGE');
+    assert.equal(artefactsService.list(userId).length, before);
+    assert.equal(fs.readdirSync(directory).length, 2);
+  });
+});

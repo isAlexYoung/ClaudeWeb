@@ -1,19 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download } from 'lucide-react';
 
 import { api } from '@/shared/api';
 import type { ArtefactDetail, ArtefactSummary } from '@/shared/types';
 import { artefactKind, isEditableKind } from '@/modules/artefacts/artefactKinds';
-import { artefactDownload, downloadBlob } from '@/modules/artefacts/editor/download';
+import { ArtefactDownloadButton } from '@/modules/artefacts/transfer/ArtefactDownloadMenu';
 import { readArtefactResponse } from '@/modules/artefacts/useArtefacts';
-
-/** The download button's label for each kind that has a file to save. */
-const DOWNLOAD_LABEL_KEYS = {
-  sheet: 'artefacts.editor.downloadCsv',
-  doc: 'artefacts.docEditor.downloadMarkdown',
-  whiteboard: 'artefacts.whiteboardEditor.downloadFile',
-} as const;
 
 type ArtefactSessionCardProps = {
   artefact: ArtefactSummary;
@@ -32,8 +24,8 @@ function clamp01(value: number): number {
 /**
  * Shown at the top of an artefact's own Chat conversation (and smoothly docked
  * into the workspace header bar as the user scrolls down). Clicking opens the
- * artefact in split view; the action on the right downloads its file (CSV for a
- * spreadsheet, Markdown for a document, .excalidraw for a whiteboard).
+ * artefact in split view; the action on the right offers its downloads (Excel
+ * or CSV, Word, PDF or Markdown, PNG, SVG or .excalidraw).
  */
 export default function ArtefactSessionCard({
   artefact,
@@ -42,24 +34,36 @@ export default function ArtefactSessionCard({
   scrollProgress = 0,
 }: ArtefactSessionCardProps) {
   const { t } = useTranslation('sidebar');
-  const [downloading, setDownloading] = useState(false);
+  // The last failed download, shown as the button's tooltip until the next try.
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const definition = artefactKind(artefact.kind);
   const Icon = definition.icon;
   const progress = clamp01(scrollProgress);
+  const downloadable = isEditableKind(artefact.kind);
 
-  const downloadLabel = isEditableKind(artefact.kind) ? t(DOWNLOAD_LABEL_KEYS[artefact.kind]) : null;
+  // The card has only the summary; the file is read when a format is chosen.
+  const readContent = useCallback(async () => {
+    setDownloadError(null);
+    const detail = await readArtefactResponse<ArtefactDetail>(await api.artefacts.open(artefact.id));
+    if (detail.content === null) throw new Error(detail.contentError ?? t('artefacts.download.empty'));
+    return detail.content;
+  }, [artefact.id, t]);
 
-  const downloadFile = async () => {
-    if (downloading || !downloadLabel) return;
-    setDownloading(true);
-    try {
-      const detail = await readArtefactResponse<ArtefactDetail>(await api.artefacts.open(artefact.id));
-      const file = artefactDownload(detail);
-      if (file) downloadBlob(file.blob, file.filename);
-    } finally {
-      setDownloading(false);
-    }
-  };
+  const downloadButton = (className: string, iconSize: number, tabIndex: number | undefined) => (
+    downloadable ? (
+      <span className="artefact-download-slot" title={downloadError ?? undefined}>
+        <ArtefactDownloadButton
+          kind={artefact.kind as 'sheet' | 'doc' | 'whiteboard'}
+          title={artefact.title}
+          getContent={readContent}
+          onError={setDownloadError}
+          className={className}
+          iconSize={iconSize}
+          tabIndex={tabIndex}
+        />
+      </span>
+    ) : null
+  );
 
   if (variant === 'header') {
     const headerProgress = clamp01((progress - 0.18) / 0.82);
@@ -90,19 +94,7 @@ export default function ArtefactSessionCard({
               <small>{t(`artefacts.kinds.${artefact.kind}`)}</small>
             </span>
           </button>
-          {downloadLabel && (
-            <button
-              type="button"
-              className="artefact-icon-button artefact-header-pill-action"
-              aria-label={downloadLabel}
-              title={downloadLabel}
-              tabIndex={visible ? 0 : -1}
-              disabled={downloading}
-              onClick={() => void downloadFile()}
-            >
-              <Download size={14} />
-            </button>
-          )}
+          {downloadButton('artefact-icon-button artefact-header-pill-action', 14, visible ? 0 : -1)}
         </div>
       </div>
     );
@@ -139,19 +131,7 @@ export default function ArtefactSessionCard({
             <small>{t(`artefacts.kinds.${artefact.kind}`)}</small>
           </span>
         </button>
-        {downloadLabel && (
-          <button
-            type="button"
-            className="artefact-icon-button artefact-session-card-action"
-            aria-label={downloadLabel}
-            title={downloadLabel}
-            tabIndex={hidden ? -1 : undefined}
-            disabled={downloading}
-            onClick={() => void downloadFile()}
-          >
-            <Download size={16} />
-          </button>
-        )}
+        {downloadButton('artefact-icon-button artefact-session-card-action', 16, hidden ? -1 : undefined)}
       </div>
     </div>
   );

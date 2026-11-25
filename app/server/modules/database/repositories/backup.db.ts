@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { getConnection } from '@/modules/database/connection.js';
 import type {
+  BackupArtefactRecord,
   BackupDatabaseSnapshot,
   BackupMergeResult,
   BackupMergeSelection,
@@ -97,6 +98,14 @@ export const backupDb = {
       project_path: string | null; session_id: string | null; created_at: string | null;
     }>;
 
+    const artefacts = db.prepare(
+      `SELECT id, kind, title, file_path, session_id, pinned, created_at, updated_at, opened_at
+       FROM artefacts WHERE user_id = ? ORDER BY created_at, id`
+    ).all(userId) as Array<{
+      id: string; kind: BackupArtefactRecord['kind']; title: string; file_path: string; session_id: string | null;
+      pinned: number; created_at: string | null; updated_at: string | null; opened_at: string | null;
+    }>;
+
     return {
       version: 1,
       projects: projects.map((row) => ({
@@ -164,7 +173,30 @@ export const backupDb = {
         sessionId: row.session_id,
         createdAt: row.created_at,
       })),
+      artefacts: artefacts.map((row) => ({
+        id: row.id,
+        kind: row.kind,
+        title: row.title,
+        fileName: path.basename(row.file_path),
+        sessionId: row.session_id,
+        pinned: row.pinned === 1,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        openedAt: row.opened_at,
+      })),
     };
+  },
+
+  /** The subset of the given artefact ids this database already holds (for any account). */
+  findKnownArtefactIds(ids: string[]): Set<string> {
+    const db = getConnection();
+    const known = new Set<string>();
+    for (let start = 0; start < ids.length; start += IN_CLAUSE_CHUNK) {
+      const chunk = ids.slice(start, start + IN_CLAUSE_CHUNK);
+      const rows = db.prepare(`SELECT id FROM artefacts WHERE id IN (${chunk.map(() => '?').join(', ')})`).all(...chunk) as Array<{ id: string }>;
+      for (const row of rows) known.add(row.id);
+    }
+    return known;
   },
 
   /** The subset of the given provider session ids this database already indexes. */
@@ -209,6 +241,7 @@ export const backupDb = {
       scheduledTasks: 0,
       providerModels: 0,
       uploadedFiles: 0,
+      artefacts: 0,
     };
 
     const restoredSessions = snapshot.sessions.filter((session) => selection.restoredSessions.has(session.providerSessionId));
@@ -282,6 +315,11 @@ export const backupDb = {
       `INSERT INTO uploaded_files (stored_name, original_name, mime_type, size, project_path, session_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP)) ON CONFLICT(stored_name) DO NOTHING`
     );
+    const insertArtefact = db.prepare(
+      `INSERT INTO artefacts (id, user_id, kind, title, file_path, session_id, pinned, created_at, updated_at, opened_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`
+    );
+    const sessionExists = db.prepare(`SELECT 1 FROM sessions WHERE session_id = ?`);
 
     db.transaction(() => {
       // Old project id -> id in this database, for drafts scoped to a project.
@@ -412,6 +450,27 @@ export const backupDb = {
           file.sessionId,
           file.createdAt,
         ).changes;
+      }
+
+      // Artefacts come back for the importing account. Each is linked to its
+      // conversation again when that session exists now (restored by this
+      // import or already here); otherwise opening it starts a new one.
+      if (selection.artefacts) {
+        const stamp = selection.now.toISOString();
+        for (const artefact of selection.artefacts.records) {
+          result.artefacts += insertArtefact.run(
+            artefact.id,
+            selection.userId,
+            artefact.kind,
+            artefact.title,
+            path.join(selection.artefacts.directory, artefact.fileName),
+            artefact.sessionId && sessionExists.get(artefact.sessionId) ? artefact.sessionId : null,
+            artefact.pinned ? 1 : 0,
+            artefact.createdAt ?? stamp,
+            artefact.updatedAt ?? stamp,
+            artefact.openedAt ?? stamp,
+          ).changes;
+        }
       }
     })();
 

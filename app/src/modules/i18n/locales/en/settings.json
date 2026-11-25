@@ -869,7 +869,7 @@
       "passwordTooShort_one": "The password needs at least {{count}} character.",
       "passwordTooShort_other": "The password needs at least {{count}} characters.",
       "passwordMismatch": "The two passwords do not match.",
-      "includes": "Included: Claude transcripts, project memory, code checkpoints, task lists, images attached to chats, chat titles, archive, drafts, scheduled messages and preferences, and Claude's user settings (settings.json without keys, CLAUDE.md, commands, agents, skills, output styles).",
+      "includes": "Included: Claude transcripts, project memory, code checkpoints, task lists, images attached to chats, chat titles, archive, drafts, scheduled messages and preferences, artefacts (spreadsheets, documents and whiteboards), and Claude's user settings (settings.json without keys, CLAUDE.md, commands, agents, skills, output styles).",
       "excludes": "Not included: the Claude sign-in, ClaudeWeb accounts and keys, plugin code and keys (only the list of plugins, to install them again), and project folders unless you choose them below.",
       "projectFiles": "Include project folders",
       "projectFilesDescription": "Adds the chosen folders as they are now, with their Git history. Large folders make a large backup; existing files are never replaced on import.",
@@ -923,7 +923,13 @@
       "pluginInstalled": "Installed",
       "pluginRetry": "Failed, try again",
       "finish": "Done",
-      "chooseAgain": "Choose a file again"
+      "chooseAgain": "Choose a file again",
+      "artefacts": "Artefacts",
+      "artefactsNew_one": "{{count}} artefact to restore ({{size}}). Artefacts already here stay as they are.",
+      "artefactsNew_other": "{{count}} artefacts to restore ({{size}}). Artefacts already here stay as they are.",
+      "artefactsExisting": "These artefacts are all here already and stay as they are.",
+      "artefactsDone_one": "Restored {{count}} artefact.",
+      "artefactsDone_other": "Restored {{count}} artefacts."
     },
     "errors": {
       "generic": "Something went wrong. Try again.",

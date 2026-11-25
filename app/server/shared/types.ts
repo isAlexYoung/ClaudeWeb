@@ -1720,6 +1720,20 @@ export type BackupUploadedFileRecord = {
   createdAt: string | null;
 };
 
+/** One artefact's record. Its file, named `fileName`, is in the `artefacts` area. */
+export type BackupArtefactRecord = {
+  id: string;
+  kind: 'sheet' | 'doc' | 'whiteboard';
+  title: string;
+  fileName: string;
+  /** The app session it is edited in; linked again only when that session exists after the import. */
+  sessionId: string | null;
+  pinned: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  openedAt: string | null;
+};
+
 /**
  * The ClaudeWeb database rows of one user, written to `claudeweb/data.json`.
  *
@@ -1739,6 +1753,8 @@ export type BackupDatabaseSnapshot = {
   providerModels: BackupProviderModelRecord[];
   /** Absent in backups made before ClaudeWeb 1.0.8; restarting the server lists those files again from the transcripts. */
   uploadedFiles: BackupUploadedFileRecord[];
+  /** Absent in backups made before ClaudeWeb 2.3.8. */
+  artefacts: BackupArtefactRecord[];
 };
 
 /**
@@ -1755,6 +1771,11 @@ export type BackupMergeSelection = {
   projectPaths: Set<string>;
   restoredSessions: Map<string, string>;
   now: Date;
+  /**
+   * Artefacts to add (their files are already in `directory`); absent when the
+   * user left artefacts out. An artefact this account already has is kept.
+   */
+  artefacts?: { directory: string; records: BackupArtefactRecord[] };
 };
 
 /** Row counts written by one merge, reported back to the user. */
@@ -1769,6 +1790,7 @@ export type BackupMergeResult = {
   scheduledTasks: number;
   providerModels: number;
   uploadedFiles: number;
+  artefacts: number;
 };
 
 //----------------- QUOTED TEXT AND SIDE CHATS ------------

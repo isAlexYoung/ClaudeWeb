@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { Suspense } from 'react';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { beforeAll, beforeEach, test, vi } from 'vitest';
 
 import { i18n } from '@/modules/i18n';
@@ -100,14 +100,17 @@ test('the empty conversation asks the question for each kind and offers its sugg
   assert.notEqual(board.queryByRole('button', { name: 'A mind map for planning a product launch' }), null);
 });
 
-test('the session card offers the download for each editable kind', () => {
-  const doc = render(<ArtefactSessionCard artefact={card('doc')} onOpen={vi.fn()} />);
-  assert.notEqual(doc.queryByRole('button', { name: 'Download Markdown' }), null);
-  doc.unmount();
-
-  const board = render(<ArtefactSessionCard artefact={card('whiteboard')} onOpen={vi.fn()} />);
-  assert.notEqual(board.queryByRole('button', { name: 'Download .excalidraw' }), null);
-  board.unmount();
+test('the session card offers every download format of each editable kind', () => {
+  const formatsOf = (kind: ArtefactSummary['kind']) => {
+    const view = render(<ArtefactSessionCard artefact={card(kind)} onOpen={vi.fn()} />);
+    fireEvent.click(view.getByRole('button', { name: 'Download' }));
+    const labels = view.getAllByRole('menuitem').map((item) => item.textContent);
+    view.unmount();
+    return labels;
+  };
+  assert.deepEqual(formatsOf('sheet'), ['Excel workbook (.xlsx)', 'CSV (current sheet)']);
+  assert.deepEqual(formatsOf('doc'), ['Word document (.docx)', 'PDF (print)', 'Markdown (.md)']);
+  assert.deepEqual(formatsOf('whiteboard'), ['PNG image', 'SVG image', 'Excalidraw file (.excalidraw)']);
 
   const slides = render(<ArtefactSessionCard artefact={card('slides')} onOpen={vi.fn()} />);
   assert.equal(slides.queryByRole('button', { name: /^Download/ }), null);

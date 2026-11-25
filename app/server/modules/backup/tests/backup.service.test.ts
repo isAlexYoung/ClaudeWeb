@@ -19,7 +19,7 @@ import type { BackupDatabaseSnapshot, BackupMergeSelection } from '@/shared/type
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 
 const EMPTY_SNAPSHOT: BackupDatabaseSnapshot = {
-  version: 1, projects: [], sessions: [], preferences: [], drafts: [], scheduledMessages: [], scheduledTasks: [], providerModels: [], uploadedFiles: [],
+  version: 1, projects: [], sessions: [], preferences: [], drafts: [], scheduledMessages: [], scheduledTasks: [], providerModels: [], uploadedFiles: [], artefacts: [],
 };
 
 function transcript(sessionId: string, cwd: string): string {
@@ -55,7 +55,7 @@ async function createHarness(options: { snapshot?: BackupDatabaseSnapshot; known
       findKnownProviderSessionIds: (ids) => new Set(ids.filter((id) => options.known?.includes(id))),
       mergeSnapshot: (snapshot, selection) => {
         merges.push({ snapshot, selection });
-        return { projects: 0, sessions: selection.restoredSessions.size, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0 };
+        return { projects: 0, sessions: selection.restoredSessions.size, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0, artefacts: 0 };
       },
       restoreSessionFlags: (sessions) => { restoredFlags.push(...sessions.map((session) => session.sessionId)); },
     },
@@ -471,7 +471,7 @@ test('export can include project folders, which import restores without replacin
         })),
       }),
       findKnownProviderSessionIds: () => new Set(),
-      mergeSnapshot: () => ({ projects: 0, sessions: 0, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0 }),
+      mergeSnapshot: () => ({ projects: 0, sessions: 0, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0, artefacts: 0 }),
       restoreSessionFlags: () => undefined,
     },
     reindexTranscript: async () => undefined,
@@ -520,7 +520,7 @@ test('a backup lists plugins installed from a repository, and the preview says w
     database: {
       exportSnapshot: () => EMPTY_SNAPSHOT,
       findKnownProviderSessionIds: () => new Set(),
-      mergeSnapshot: () => ({ projects: 0, sessions: 0, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0 }),
+      mergeSnapshot: () => ({ projects: 0, sessions: 0, preferences: 0, drafts: 0, scheduledMessages: 0, overdueScheduledMessages: 0, scheduledTasks: 0, providerModels: 0, uploadedFiles: 0, artefacts: 0 }),
       restoreSessionFlags: () => undefined,
     },
     reindexTranscript: async () => undefined,
@@ -616,3 +616,64 @@ test('Claude user settings are backed up without secrets and restored without re
 function chunkSize8MiB(): number {
   return 8 * 1024 * 1024;
 }
+
+test('artefacts are backed up with their records and restored only when chosen', async (t) => {
+  const record = {
+    id: 'art-1', kind: 'doc' as const, title: 'Notes', fileName: 'art-1.md', sessionId: 'app-aaaa', pinned: true,
+    createdAt: '2026-11-01 00:00:00', updatedAt: '2026-11-02 00:00:00', openedAt: null,
+  };
+  const elsewhere = { ...record, id: 'art-2', title: 'Elsewhere', fileName: 'art-2.md', pinned: false };
+  const source = await createHarness({ snapshot: { ...EMPTY_SNAPSHOT, artefacts: [record, elsewhere] } });
+  const chosen = await createHarness();
+  const skipped = await createHarness();
+  t.after(async () => {
+    for (const harness of [source, chosen, skipped]) await rm(harness.root, { recursive: true, force: true });
+  });
+  await writeTree(path.join(source.home, 'Artefacts'), { 'art-1.md': '# Notes', 'art-2.md': '# Elsewhere' });
+
+  const archive = await exportBackup(source);
+  const entries = await listEntries(gunzipSync(archive));
+  assert.equal(entries.get('claudeweb/artefacts/art-1.md')?.toString(), '# Notes');
+  const data = JSON.parse(entries.get('claudeweb/data.json')!.toString()) as BackupDatabaseSnapshot;
+  assert.deepEqual(data.artefacts.map((row) => row.id), ['art-1', 'art-2']);
+
+  // The target already has art-2 under its name: that file is kept, and counts as existing.
+  await writeTree(path.join(chosen.home, 'Artefacts'), { 'art-2.md': 'KEEP' });
+  const importId = await upload(chosen, archive);
+  chosen.service.startPreview(1, importId, undefined);
+  const preview = await waitForState(chosen, importId, ['ready']);
+  const entry = preview.preview?.projects.find((project) => project.id === '@artefacts');
+  assert.ok(entry, JSON.stringify(preview.preview?.projects));
+  assert.equal(entry.sessionCount, 2);
+  assert.equal(entry.fileCount, 1);
+  await chosen.service.startApply(1, importId, ['@artefacts']);
+  const status = await waitForState(chosen, importId, ['done', 'failed']);
+  assert.equal(status.state, 'done', JSON.stringify(status.error));
+  assert.equal(await readFile(path.join(chosen.home, 'Artefacts', 'art-1.md'), 'utf8'), '# Notes');
+  assert.equal(await readFile(path.join(chosen.home, 'Artefacts', 'art-2.md'), 'utf8'), 'KEEP');
+  assert.deepEqual(chosen.merges[0].selection.artefacts, {
+    directory: path.resolve(chosen.home, 'Artefacts'), records: [record, elsewhere],
+  });
+
+  const skippedId = await upload(skipped, archive);
+  skipped.service.startPreview(1, skippedId, undefined);
+  await waitForState(skipped, skippedId, ['ready']);
+  await skipped.service.startApply(1, skippedId, []);
+  assert.equal((await waitForState(skipped, skippedId, ['done', 'failed'])).state, 'done');
+  await assert.rejects(stat(path.join(skipped.home, 'Artefacts', 'art-1.md')), { code: 'ENOENT' });
+  assert.equal(skipped.merges[0].selection.artefacts, undefined);
+});
+
+test('a backup made before artefacts existed still restores', async (t) => {
+  const { artefacts: _artefacts, ...oldSnapshot } = { ...EMPTY_SNAPSHOT, preferences: [{ key: 'theme', value: '"dark"' }] };
+  const target = await createHarness();
+  t.after(() => rm(target.root, { recursive: true, force: true }));
+  const archive = handMadeArchive(tarFile('claudeweb/data.json', JSON.stringify(oldSnapshot)));
+  const importId = await upload(target, archive);
+  target.service.startPreview(1, importId, undefined);
+  const preview = await waitForState(target, importId, ['ready']);
+  assert.equal(preview.preview?.projects.some((project) => project.id === '@artefacts'), false);
+  await target.service.startApply(1, importId, []);
+  assert.equal((await waitForState(target, importId, ['done', 'failed'])).state, 'done');
+  assert.deepEqual(target.merges[0].snapshot.artefacts, []);
+});

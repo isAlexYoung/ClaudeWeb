@@ -1,22 +1,17 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import { Markdown } from '@tiptap/markdown';
-import { TableKit } from '@tiptap/extension-table';
-import { TaskItem, TaskList } from '@tiptap/extension-list';
-import Image from '@tiptap/extension-image';
 import { Placeholder } from '@tiptap/extensions';
 import { useTranslation } from 'react-i18next';
 import { File } from 'lucide-react';
 
-import { ScheduledTaskMenuItem } from '@/modules/scheduled-tasks';
 import type { ArtefactDetail } from '@/shared/types';
 import ArtefactEditorFrame from '@/modules/artefacts/editor/ArtefactEditorFrame';
-import { downloadBlob, fileBaseName } from '@/modules/artefacts/editor/download';
+import { ArtefactDownloadSubmenu } from '@/modules/artefacts/transfer/ArtefactDownloadMenu';
 import { useArtefactFileSync } from '@/modules/artefacts/editor/useArtefactFileSync';
 import type { ArtefactEditorProps } from '@/modules/artefacts/editor/useArtefactFileSync';
 import DocToolbar from '@/modules/artefacts/doc/DocToolbar';
+import { docExtensions } from '@/modules/artefacts/doc/docExtensions';
 
 /** Replaces what the editor shows without counting it as the user's change (nothing is saved). */
 function showMarkdown(editor: Editor, markdown: string): void {
@@ -76,14 +71,8 @@ export default function DocumentEditor({
 
   const editor = useEditor({
     extensions: [
-      // Underline has no Markdown syntax, so it is left out rather than lost on save.
-      StarterKit.configure({ underline: false, link: { openOnClick: false, autolink: true } }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      TableKit.configure({ table: { resizable: false } }),
-      Image,
+      ...docExtensions(),
       Placeholder.configure({ placeholder: t('artefacts.docEditor.placeholder') }),
-      Markdown,
     ],
     content: '',
     editable: false,
@@ -108,11 +97,6 @@ export default function DocumentEditor({
     if (editor && !editor.isDestroyed) editor.setEditable(loaded && !running, false);
   }, [editor, loaded, running]);
 
-  const downloadMarkdown = useCallback(() => {
-    const markdown = editorRef.current?.getMarkdown() ?? sync.currentText() ?? '';
-    downloadBlob(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }), `${fileBaseName(sync.detail?.title ?? '')}.md`);
-  }, [sync]);
-
   return (
     <ArtefactEditorFrame
       sync={sync as never}
@@ -122,7 +106,13 @@ export default function DocumentEditor({
       onOpenSession={onOpenSession}
       surfaceClassName="doc-editor-surface"
       titleMenuItems={(closeMenu) => (
-        <ScheduledTaskMenuItem label={t('artefacts.docEditor.downloadMarkdown')} onSelect={() => { closeMenu(); downloadMarkdown(); }} />
+        <ArtefactDownloadSubmenu
+          kind="doc"
+          title={sync.detail?.title ?? ''}
+          getContent={() => editorRef.current?.getMarkdown() ?? sync.currentText() ?? ''}
+          onError={sync.showNotice}
+          close={closeMenu}
+        />
       )}
       toolbar={(
         <DocToolbar

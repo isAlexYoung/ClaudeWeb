@@ -161,12 +161,19 @@ export const artefactsService = {
       throw new AppError('Only spreadsheets, documents and whiteboards can be created.', { code: 'ARTEFACT_KIND_UNSUPPORTED', statusCode: 400 });
     }
     const format = getArtefactFormat(body.kind);
+    // An imported file arrives already converted to the kind's own format; checked like any save.
+    let content = format.blank();
+    if (body.content !== undefined) {
+      const problem = format.validate(body.content);
+      if (problem) throw new AppError(problem, { code: 'ARTEFACT_INVALID_CONTENT', statusCode: 400 });
+      content = body.content;
+    }
     const id = randomUUID();
     const sessionId = randomUUID();
     const now = new Date().toISOString();
     const title = readTitle(body.title, 'Untitled');
     const filePath = path.join(getArtefactsDirectory(), `${id}${format.extension}`);
-    writeDocument(filePath, format, format.blank());
+    writeDocument(filePath, format, content);
     sessionsDb.createAppSession(sessionId, 'claude', getArtefactWorkspace(), title);
     artefactsDb.insert({
       id,
