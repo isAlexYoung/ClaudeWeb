@@ -122,7 +122,34 @@
     "title": "实施计划"
   },
   "usageLimit": {
-    "resetAt": "Claude 使用限制已达到。您的限制将在 **{{time}} {{timezone}}** - {{date}} 重置"
+    "resetAt": "Claude 使用限制已达到。您的限制将在 **{{time}} {{timezone}}** - {{date}} 重置",
+    "title": {
+      "fiveHour": "已用完 5 小时额度",
+      "weekly": "已用完每周额度",
+      "opusWeekly": "已用完 Opus 每周额度",
+      "sonnetWeekly": "已用完 Sonnet 每周额度",
+      "opus": "已用完 Opus 额度",
+      "named": "已用完{{label}}额度",
+      "generic": "额度已用完"
+    },
+    "resetsAt": "重置时间",
+    "timeLeft": "距离重置",
+    "hasReset": "额度已重置",
+    "unknownReset": "未知",
+    "duration": {
+      "days": "{{count}} 天",
+      "hours": "{{count}} 小时",
+      "minutes": "{{count}} 分钟",
+      "lessThanMinute": "不到 1 分钟",
+      "separator": " "
+    },
+    "resume": {
+      "label": "额度重置后自动发送消息，继续之前的任务",
+      "message": "我刚才的额度用完了，现在已经重置，请继续之前的任务。",
+      "sent": "已在 {{time}} 自动发送继续消息。",
+      "failed": "继续消息未发送：{{reason}}",
+      "scheduleFailed": "无法设置自动发送，请重试。"
+    }
   },
   "codex": {
     "permissionMode": "权限模式",
@@ -426,9 +453,6 @@
       "initTaskMaster": "初始化 TaskMaster",
       "initTaskMasterHint": "为当前项目启用任务管理",
       "moreModels": "其他模型",
-      "limitReached": "当前额度已达上限",
-      "limitExplanation": "请等待额度恢复。",
-      "limitReset": "重置时间：{{time}}",
       "acceptSuggestion": "接受建议"
     }
   },

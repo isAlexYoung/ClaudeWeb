@@ -5,6 +5,8 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+- Usage limits: Claude Code's "You've hit your 5-hour limit · resets 9:20pm (Asia/Singapore)" reply (and the weekly and Opus variants) is now shown as a card with the limit, the reset time in your time zone and a live countdown. A checkbox on the card schedules a message for a minute after the reset that asks Claude to continue the previous task; it is an ordinary scheduled message, so it also shows above the composer, can be cancelled there or by unticking, and is sent by the server even if the page is closed. Once sent, the card says when. The usage-limit banner at the top of the conversation is gone.
+
 ## 2.3.8 - 2026-11-25 (stable)
 
 - Artefacts import and export: the download menu (editor title menu and the conversation card's download button) now offers spreadsheets as Excel `.xlsx` (every sheet, with formulas, styles, merges, column widths, row heights and frozen panes) or CSV of the current sheet; documents as Word `.docx` (headings, lists, task lists, quotes, code, tables and images), PDF through the print dialog, or Markdown; and whiteboards as PNG, SVG or `.excalidraw`. The Artefacts page imports `.xlsx`, `.csv`, `.tsv`, `.docx`, `.md`/`.txt` and `.excalidraw` files from New → "Import files…" or by dropping them on the page; one file opens straight away, several are summed up, and anything a file held that the artefact cannot keep (images or conditional formatting in a workbook, for example) is named. Old `.xls`/`.doc` files are refused with a hint to save them in the newer format. CSV files in GBK are read correctly.

@@ -152,7 +152,34 @@
     "title": "Implementation Plan"
   },
   "usageLimit": {
-    "resetAt": "Claude usage limit reached. Your limit will reset at **{{time}} {{timezone}}** - {{date}}"
+    "resetAt": "Claude usage limit reached. Your limit will reset at **{{time}} {{timezone}}** - {{date}}",
+    "title": {
+      "fiveHour": "You've hit your 5-hour limit",
+      "weekly": "You've hit your weekly limit",
+      "opusWeekly": "You've hit your weekly Opus limit",
+      "sonnetWeekly": "You've hit your weekly Sonnet limit",
+      "opus": "You've hit your Opus limit",
+      "named": "You've hit your {{label}} limit",
+      "generic": "You've hit your usage limit"
+    },
+    "resetsAt": "Resets",
+    "timeLeft": "Time left",
+    "hasReset": "Your limit has reset",
+    "unknownReset": "Unknown",
+    "duration": {
+      "days": "{{count}} d",
+      "hours": "{{count}} h",
+      "minutes": "{{count}} min",
+      "lessThanMinute": "less than a minute",
+      "separator": " "
+    },
+    "resume": {
+      "label": "Continue automatically when the limit resets",
+      "message": "My usage limit ran out a moment ago and has now reset. Please continue with the previous task.",
+      "sent": "The continue message was sent at {{time}}.",
+      "failed": "The continue message was not sent: {{reason}}",
+      "scheduleFailed": "Could not schedule the continue message. Try again."
+    }
   },
   "codex": {
     "permissionMode": "Permission Mode",
@@ -514,9 +541,6 @@
       "initTaskMaster": "Initialize TaskMaster",
       "initTaskMasterHint": "Set up task management for this project",
       "moreModels": "More models",
-      "limitReached": "Usage limit reached",
-      "limitExplanation": "Wait for your usage limit to reset.",
-      "limitReset": "Resets: {{time}}",
       "acceptSuggestion": "Accept suggestion"
     }
   },

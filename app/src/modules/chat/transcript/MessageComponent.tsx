@@ -20,6 +20,8 @@ import MessageTime from '@/modules/chat/transcript/MessageTime';
 import { useIsExportingTranscript } from '@/modules/chat/context/TranscriptRenderContext';
 import { getIntrinsicMessageKey } from '@/modules/chat/utils/messageKeys';
 import { MemoryCitations } from '@/modules/chat/transcript/MemoryCitations';
+import UsageLimitCard from '@/modules/chat/transcript/UsageLimitCard';
+import { parseUsageLimitNotice } from '@/modules/chat/utils/usageLimitNotice';
 
 type MessageComponentProps = {
   message: ChatMessage;
@@ -71,6 +73,13 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, s
   const formattedMessageContent = useMemo(
     () => formatUsageLimitText(String(message.content || '')),
     [message.content]
+  );
+  // Claude Code's "You've hit your limit · resets …" reply, drawn as a card.
+  const usageLimitNotice = useMemo(
+    () => ((message.type === 'assistant' || message.type === 'error') && !message.isToolUse && !message.isThinking && !message.isStreaming
+      ? parseUsageLimitNotice(String(message.content || ''), message.timestamp)
+      : null),
+    [message.type, message.isToolUse, message.isThinking, message.isStreaming, message.content, message.timestamp]
   );
   const assistantCopyContent = message.isToolUse
     ? String(message.displayText || message.content || '')
@@ -339,6 +348,9 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, s
                 )}
 
                 {(() => {
+                  if (usageLimitNotice) {
+                    return <UsageLimitCard notice={usageLimitNotice} rawText={String(message.content || '').trim()} isExporting={isExporting} />;
+                  }
                   const content = formattedMessageContent;
 
                   // Detect if content is pure JSON (starts with { or [)

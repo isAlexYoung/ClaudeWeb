@@ -45,6 +45,8 @@ import PermissionRequestsBanner from '@/modules/chat/composer/PermissionRequests
 import { ChatHomeGreeting } from '@/modules/chat/ChatHomeGreeting';
 import { usePromptSuggestion } from '@/modules/chat/hooks/usePromptSuggestion';
 import CommandResultModal from '@/modules/chat/modals/CommandResultModal';
+import { UsageLimitResumeContext } from '@/modules/chat/context/UsageLimitResumeContext';
+import { usageLimitResumeSchedule } from '@/modules/chat/utils/usageLimitNotice';
 
 /** Key for a conversation that has no session id yet: one per project and New Chat request. */
 
@@ -125,9 +127,6 @@ function ChatInterface({
   onTranscriptScrollTop,
 }: ChatInterfaceProps) {
   const experience = useWorkspaceExperience();
-  // Keep the SDK limit event visible without clearing the conversation or inventing quota.
-  const [usageLimit, setUsageLimit] = useState<Record<string, unknown> | null>(null);
-  useEffect(() => setUsageLimit(null), [selectedSession?.id, selectedProject?.projectId, newSessionTrigger]);
   const { chatMcpEnabled, promptSuggestionsEnabled = true } = useUiPreferences();
   // Fast mode is one remembered choice for every conversation, as with Claude Code's /fast.
   // It costs more, so the model button shows it whenever it is on.
@@ -467,7 +466,6 @@ function ChatInterface({
 
   useChatRealtimeHandlers({
     onContextDetails: experience.setContextDetails,
-    onUsageLimit: setUsageLimit,
     isActive,
     subscribe,
     provider,
@@ -647,6 +645,18 @@ function ChatInterface({
   // Lets a workflow card fetch its agents' timelines for this session.
   const transcriptSessionValue = useMemo(() => ({ sessionId: currentSessionId }), [currentSessionId]);
 
+  // Lets a usage-limit card schedule "continue the task" for when the limit resets,
+  // as a scheduled message with this composer's model, effort and permission mode.
+  const resumeMessageText = t('usageLimit.resume.message');
+  const scheduleUsageLimitResume = useCallback((resetsAt: Date) => scheduleMessage(usageLimitResumeSchedule(
+    resetsAt,
+    resumeMessageText,
+    { model: currentProviderModel, effort: currentProviderEffort, permissionMode },
+  )), [currentProviderEffort, currentProviderModel, permissionMode, resumeMessageText, scheduleMessage]);
+  const usageLimitResumeValue = useMemo(() => (currentSessionId || selectedSession?.id
+    ? { scheduledMessages, scheduleResume: scheduleUsageLimitResume, cancel: cancelScheduledMessage }
+    : null), [cancelScheduledMessage, currentSessionId, scheduleUsageLimitResume, scheduledMessages, selectedSession?.id]);
+
   // A composer pick becomes the default for new chats and, when a session is
   // open, is recorded against that session so reopening it restores this model.
   const handleSelectComposerModel = useCallback(async (model: string) => {
@@ -703,13 +713,9 @@ function ChatInterface({
       <div className={`workspace-chat flex h-full min-h-0 flex-col ${isChatHome ? 'workspace-chat-home' : ''} ${isCodeHome ? 'workspace-code-home' : ''} ${compactLayout ? 'workspace-chat-compact' : ''}`}>
         {isChatHome && <ChatHomeGreeting key={experience.homeRequest} />}
         {isCodeHome && <div className="workspace-code-home-content">{homeContent}</div>}
-        {usageLimit?.status === 'rejected' && !usageLimit.isUsingOverage && usageLimit.overageStatus !== 'allowed' && usageLimit.overageStatus !== 'allowed_warning' && <div className="workspace-limit-notice" role="alert">
-          <strong>{t('workspace.composer.limitReached')}</strong>
-          <p>{t('workspace.composer.limitExplanation')}</p>
-          {typeof usageLimit.resetsAt === 'number' && <p>{t('workspace.composer.limitReset', { time: new Date(usageLimit.resetsAt * 1000).toLocaleString() })}</p>}
-        </div>}
         <MarkdownWorkspaceContext.Provider value={markdownWorkspaceValue}>
           <TranscriptSessionContext.Provider value={transcriptSessionValue}>
+          <UsageLimitResumeContext.Provider value={usageLimitResumeValue}>
             <div className="workspace-transcript-region relative flex min-h-0 flex-1">
             <ChatMessagesPane
               hideEmptyState
@@ -785,6 +791,7 @@ function ChatInterface({
                 />
               )}
             </div>
+          </UsageLimitResumeContext.Provider>
           </TranscriptSessionContext.Provider>
         </MarkdownWorkspaceContext.Provider>
 

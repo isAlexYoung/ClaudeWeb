@@ -106,7 +106,34 @@
     "title": "實作計畫"
   },
   "usageLimit": {
-    "resetAt": "Claude 使用限制已達到。您的限制將在 **{{time}} {{timezone}}** - {{date}} 重置"
+    "resetAt": "Claude 使用限制已達到。您的限制將在 **{{time}} {{timezone}}** - {{date}} 重置",
+    "title": {
+      "fiveHour": "已用完 5 小時額度",
+      "weekly": "已用完每週額度",
+      "opusWeekly": "已用完 Opus 每週額度",
+      "sonnetWeekly": "已用完 Sonnet 每週額度",
+      "opus": "已用完 Opus 額度",
+      "named": "已用完{{label}}額度",
+      "generic": "額度已用完"
+    },
+    "resetsAt": "重置時間",
+    "timeLeft": "距離重置",
+    "hasReset": "額度已重置",
+    "unknownReset": "未知",
+    "duration": {
+      "days": "{{count}} 天",
+      "hours": "{{count}} 小時",
+      "minutes": "{{count}} 分鐘",
+      "lessThanMinute": "不到 1 分鐘",
+      "separator": " "
+    },
+    "resume": {
+      "label": "額度重置後自動傳送訊息，繼續之前的任務",
+      "message": "我剛才的額度用完了，現在已經重置，請繼續之前的任務。",
+      "sent": "已在 {{time}} 自動傳送繼續訊息。",
+      "failed": "繼續訊息未傳送：{{reason}}",
+      "scheduleFailed": "無法設定自動傳送，請重試。"
+    }
   },
   "codex": {
     "permissionMode": "權限模式",

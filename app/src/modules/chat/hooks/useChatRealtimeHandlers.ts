@@ -18,7 +18,6 @@ const hasActionablePermissionRequests = (requests: Array<{ toolName?: unknown }>
 
 type UseChatRealtimeHandlersArgs = {
   onContextDetails?: (details: ContextUsageDetails) => void;
-  onUsageLimit?: (limit: Record<string, unknown>) => void;
   isActive: boolean;
   subscribe: (listener: (event: ServerEvent) => void) => () => void;
   provider: LLMProvider;
@@ -63,7 +62,6 @@ type UseChatRealtimeHandlersArgs = {
  */
 export function useChatRealtimeHandlers({
   onContextDetails,
-  onUsageLimit,
   isActive,
   subscribe,
   provider,
@@ -403,7 +401,7 @@ export function useChatRealtimeHandlers({
           if (msg.text === 'context_usage') {
             if (sid === activeViewSessionId && msg.contextUsage) onContextDetails?.(msg.contextUsage as ContextUsageDetails);
           } else if (msg.text === 'usage_limit') {
-            if (sid === activeViewSessionId && msg.usageLimit) onUsageLimit?.(msg.usageLimit as Record<string, unknown>);
+            // Shown in the transcript instead: the limit reply is drawn as a card (UsageLimitCard).
           } else if (msg.text === 'token_budget' && msg.tokenBudget) {
             // The counter shows the viewed session's context; budgets from
             // other concurrently running sessions must not overwrite it.
@@ -451,7 +449,6 @@ export function useChatRealtimeHandlers({
     return subscribe(handleEvent);
   }, [
     onContextDetails,
-    onUsageLimit,
     subscribe,
     provider,
     selectedSession,
