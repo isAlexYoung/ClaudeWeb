@@ -38,6 +38,13 @@ import { ResponseProcess } from '@/modules/chat/transcript/ResponseProcess';
  */
 const INITIAL_MOUNTED_TAIL_ROWS = 30;
 
+/**
+ * How many rows prepended above the previous start of the transcript mount
+ * with real content, so the ones that land in view after older history loads
+ * arrive at their real height.
+ */
+const PREPENDED_MOUNTED_ROWS = 30;
+
 type ChatMessagesPaneProps = {
   hideEmptyState?: boolean;
   /** Custom empty-state content shown when the session has no messages yet (e.g. spreadsheet prompt suggestions). */
@@ -73,6 +80,8 @@ type ChatMessagesPaneProps = {
   sessionMessagesCount: number;
   visibleMessageCount: number;
   visibleMessages: ChatMessage[];
+  /** The row that began the transcript when older history was last requested (its intrinsic key). */
+  historyBoundaryKey?: string | null;
   loadEarlierMessages: () => void;
   revealMessage: (message: ChatMessage) => void;
   /** The session's running background tasks from the activity map, for the strip to list ones whose rows are not loaded. */
@@ -150,6 +159,7 @@ function ChatMessagesPane({
   sessionMessagesCount,
   visibleMessageCount,
   visibleMessages,
+  historyBoundaryKey = null,
   loadEarlierMessages,
   revealMessage,
   backgroundTasks,
@@ -212,6 +222,10 @@ function ChatMessagesPane({
     [visibleMessages, showThinking],
   );
   const visiblePositions = useMemo(() => new WeakMap(visibleMessages.map((message, index) => [message, index] as const)), [visibleMessages]);
+  const historyBoundaryIndex = useMemo(
+    () => (historyBoundaryKey ? visibleMessages.findIndex((message) => getIntrinsicMessageKey(message) === historyBoundaryKey) : -1),
+    [historyBoundaryKey, visibleMessages],
+  );
 
   // Stable, deterministic keys for the messages rendered this pass.
   //
@@ -309,9 +323,11 @@ function ChatMessagesPane({
         />
       ) : (
         <>
-          {/* Loading indicator for older messages (hide when load-all is active) */}
+          {/* Loading indicator for older messages (hide when load-all is active).
+              It swaps with the count line below at the same fixed height, so the
+              swap does not move the transcript while older pages load. */}
           {isLoadingMoreMessages && !isLoadingAllMessages && !allMessagesLoaded && (
-            <div className="py-3 text-center text-gray-500 dark:text-gray-400">
+            <div className="flex h-10 items-center justify-center border-b border-transparent text-center text-gray-500 dark:text-gray-400">
               <div className="flex items-center justify-center space-x-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-400" />
                 <p className="text-sm">{t('session.loading.olderMessages')}</p>
@@ -321,7 +337,7 @@ function ChatMessagesPane({
 
           {/* Indicator showing there are more messages to load (hide when all loaded) */}
           {hasMoreMessages && !isLoadingMoreMessages && !allMessagesLoaded && (
-            <div className="border-b border-gray-200 py-2 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            <div className="flex h-10 items-center justify-center border-b border-gray-200 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
               {totalMessages > 0 && (
                 <span>
                   {t('session.messages.showingOf', { shown: sessionMessagesCount, total: totalMessages })}{' '}
@@ -366,7 +382,9 @@ function ChatMessagesPane({
                 // initial scroll-to-bottom measures real heights; older rows
                 // start as placeholders and mount when scrolled toward.
                 const rowMessage = isToolGroupItem(item) ? item.messages[item.messages.length - 1] : item;
-                const initiallyNearViewport = (visiblePositions.get(rowMessage) ?? 0) >= visibleMessages.length - INITIAL_MOUNTED_TAIL_ROWS;
+                const rowIndex = visiblePositions.get(rowMessage) ?? 0;
+                const initiallyNearViewport = rowIndex >= visibleMessages.length - INITIAL_MOUNTED_TAIL_ROWS
+                  || (historyBoundaryIndex >= 0 && rowIndex < historyBoundaryIndex && rowIndex >= historyBoundaryIndex - PREPENDED_MOUNTED_ROWS);
 
                 if (isToolGroupItem(item)) {
                   const groupPrevMessage = prevMessage;
@@ -431,7 +449,17 @@ function ChatMessagesPane({
               });
             };
             const last = turn.messages[turn.messages.length - 1];
-            return <section key={`${selectedSession?.id || currentSessionId}:${turn.key}`} className="workspace-response-turn space-y-3">
+            // Older history is prepended to the first turn, which changed its key
+            // (its first message) on every page: React remounted the section,
+            // collapsing its process, turning its rows back into estimated
+            // placeholders and dropping the scroll anchor, so the view jumped.
+            // A finished turn's last message never changes, and only the final
+            // turn grows at its end, so it gets a fixed key instead.
+            const keyMessage = last ?? turn.user;
+            const sectionKey = turnIndex === responseTurns.length - 1
+              ? 'live'
+              : keyMessage ? getMessageKey(keyMessage) : turn.key;
+            return <section key={`${selectedSession?.id || currentSessionId}:${sectionKey}`} className="workspace-response-turn space-y-3">
               {turn.user && renderMessages([turn.user])}
               {turn.process.length > 0 && <ResponseProcess running={running}>{renderMessages(turn.process, turn.user || null)}</ResponseProcess>}
               {renderMessages(turn.answer, turn.process[turn.process.length - 1] || turn.user || null)}

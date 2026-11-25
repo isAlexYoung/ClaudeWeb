@@ -5,6 +5,10 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.7 - 2026-11-25 (stable)
+
+- Long conversations: scrolling up through history is smooth. Older messages are now loaded a screen and a half before you reach the top, in larger pages while they keep landing inside a collapsed "Thinking and work" section, so new content actually appears above instead of only the "Showing X of Y" count going up. Loading no longer stalls at the top until you scroll down and back up. The view stays on what you were reading while pages arrive, the first turn on screen is no longer rebuilt (an opened "Thinking and work" stays open), and "Load all messages" no longer jumps to the start of the conversation. The load-all prompt and the loading line no longer push the transcript up and down when they appear.
+
 ## 2.3.6 - 2026-11-25 (stable)
 
 - Sidebar Recents: Chat and Code now keep separate Recents lists (Chat shows chats and artefacts, Code shows project conversations), and the separate Chats list is gone. Rows no longer start with a chat or artefact icon; conversations owned by an artefact show a small kind icon at the end of the row instead. The Recents header has a collapse toggle and a filter button. In Chat the filter offers status (active, archived, all), last activity (1, 3, 7 or 30 days, or all time), scheduled runs (shown, grouped or hidden), grouping (date, unread, status or none), sorting (name, created or last activity) and New section. Sections are named folders that conversations can be moved into from the row's "…" menu, and they can be collapsed, renamed or deleted. In Code the button offers sorting only (last updated, created or name, ascending or descending). Filters, sections and collapsed state are saved with your preferences.
