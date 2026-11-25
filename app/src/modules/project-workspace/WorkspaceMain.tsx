@@ -380,21 +380,16 @@ function WorkspaceMain({
       setSplitChatOpen(nextOpen);
       return;
     }
-    const currentWidth = sheetPaneRef.current?.getBoundingClientRect().width ?? 0;
-    const stageWidth = splitStageRef.current?.clientWidth ?? 0;
-    const targetWidth = stageWidth > 0
-      ? (nextOpen ? Math.max(320, stageWidth - computeChatPaneWidth(stageWidth)) : stageWidth)
-      : currentWidth;
-    const lock = Math.round(Math.max(currentWidth, targetWidth));
-    if (lock > 0) setSheetLockWidth(lock);
+    // The editor is not held at a fixed width here: it follows the pane frame by
+    // frame, so it narrows while the conversation slides in and widens while it
+    // slides out, instead of snapping to its new width once the slide is over.
+    // splitAnimating stays false so the editors keep resizing their canvases live.
+    setSheetLockWidth(null);
     setChatToggling(true);
-    setSplitAnimating(true);
     setSplitChatOpen(nextOpen);
     splitTimerRef.current = setTimeout(() => {
       splitTimerRef.current = null;
-      setSplitAnimating(false);
       setChatToggling(false);
-      setSheetLockWidth(null);
     }, SPLIT_TRANSITION_MS + 40);
   }, [clearSplitTimers, splitChatOpen]);
 
@@ -500,7 +495,7 @@ function WorkspaceMain({
       mobile={isMobile}
       inspectorOpen={inspectorOpen}
       compact={splitOpen}
-      compactTitle={t('sidebar:artefacts.editor.conversation')}
+      compactTitle={t('sidebar:artefacts.editor.conversation.title')}
       headerArtefact={sessionArtefact && !splitOpen ? (
         <ArtefactSessionCard
           variant="header"

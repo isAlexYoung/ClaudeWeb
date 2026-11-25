@@ -5,6 +5,10 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.5 - 2026-11-25 (stable)
+
+- Artefacts split view: showing or hiding the conversation now narrows or widens the spreadsheet, document or whiteboard together with the sliding conversation, instead of resizing it only once the slide has finished. The compact conversation header shows "Conversation" instead of a missing-translation message.
+
 ## 2.3.4 - 2026-11-25 (stable)
 
 - Artefacts: documents and whiteboards can now be created and edited, with the same split view, minimize card, scroll-docked header pill, floating composer, empty-state sketch with suggestions, read-only while Claude works, 800ms autosave and conflict reload as spreadsheets. Documents use Tiptap and are stored as Markdown (`~/Artefacts/<id>.md`) with a formatting toolbar and Markdown download; whiteboards use Excalidraw and are stored as `.excalidraw` scenes, follow the dark theme and interface language, download as PNG or `.excalidraw`, and ship their fonts with ClaudeWeb instead of loading them from a CDN. Claude may write simplified whiteboard shapes and arrows; arrows joined to shapes by id are drawn edge to edge and are not clipped by frames.
