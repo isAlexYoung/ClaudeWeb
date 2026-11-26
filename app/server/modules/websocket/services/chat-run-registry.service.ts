@@ -27,6 +27,12 @@ type ChatRun = {
   appSessionId: string;
   provider: LLMProvider;
   providerSessionId: string | null;
+  /**
+   * Set on a run that replaces the conversation's first prompt: the provider
+   * starts a new session for it, so the id it announces moves the app session
+   * onto that session and transcript (see `recordProviderSessionId`).
+   */
+  startsNewProviderSession?: boolean;
   status: ChatRunStatus;
   lastSeq: number;
   events: NormalizedMessage[];
@@ -148,10 +154,31 @@ function recordProviderSessionId(run: ChatRun, providerSessionId: string): void 
     return;
   }
 
+  const previousProviderSessionId = run.providerSessionId;
   run.providerSessionId = providerSessionId;
 
   try {
-    sessionsDb.assignProviderSessionId(run.appSessionId, providerSessionId);
+    if (run.startsNewProviderSession && previousProviderSessionId) {
+      // The first prompt was edited, so the provider began a new session for
+      // the replacement. The app session moves onto it — transcript included,
+      // which `assignProviderSessionId` would keep pointing at the old file —
+      // and the old session is recorded as left behind, so the indexer does
+      // not offer it back as a conversation of its own. Done only now that the
+      // new id exists: a replacement stopped before the provider started
+      // leaves the conversation as it was rather than empty.
+      const row = sessionsDb.getSessionById(run.appSessionId);
+      sessionsDb.markProviderSessionSuperseded({
+        providerSessionId: previousProviderSessionId,
+        provider: run.provider,
+        sessionId: run.appSessionId,
+        jsonlPath: row?.jsonl_path ?? null,
+      });
+      // The new transcript's path is filled in by the indexer when the file
+      // appears; until then history finds it by the provider id.
+      sessionsDb.repointSessionToProviderSession(run.appSessionId, { providerSessionId, jsonlPath: null });
+    } else {
+      sessionsDb.assignProviderSessionId(run.appSessionId, providerSessionId);
+    }
     void broadcastSessionUpserted(run.appSessionId).catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       console.error('[ChatRunRegistry] Failed to broadcast canonical session mapping', {

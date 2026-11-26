@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { closeConnection, initializeDatabase, sessionsDb } from '@/modules/database/index.js';
-import { sessionsService } from '@/modules/providers/index.js';
+import { sessionSynchronizerService, sessionsService } from '@/modules/providers/index.js';
 import { handleChatConnection } from '@/modules/websocket/services/chat-websocket.service.js';
 import { chatRunRegistry } from '@/modules/websocket/services/chat-run-registry.service.js';
 import { connectedClients } from '@/modules/websocket/services/websocket-state.service.js';
@@ -46,6 +46,9 @@ const TRANSCRIPT_ROWS = [
 
 type RunCall = { provider: string; command: string; options: Record<string, unknown> };
 
+/** What a stub run does with the gateway writer, e.g. announce the provider session it ran in. */
+type OnRun = (writer: { setSessionId(id: string): void }, options: Record<string, unknown>) => void | Promise<void>;
+
 /**
  * Set by a test that needs a run to still be in flight when the next frame
  * arrives; the stub runtime returns immediately otherwise. Released when the
@@ -63,8 +66,10 @@ async function withGateway(
   runTest: (context: {
     socket: ReturnType<typeof createFakeSocket>;
     runs: RunCall[];
+    transcriptPath: string;
   }) => Promise<void>,
   rows: unknown[] = TRANSCRIPT_ROWS,
+  onRun?: OnRun,
 ): Promise<void> {
   const previousDatabasePath = process.env.DATABASE_PATH;
   const tempDirectory = await mkdtemp(path.join(os.tmpdir(), 'chat-edit-send-'));
@@ -88,8 +93,9 @@ async function withGateway(
       {
         runtime: {
           hasRuntime: () => true,
-          run: async (runProvider: string, command: string, options: Record<string, unknown>) => {
+          run: async (runProvider: string, command: string, options: Record<string, unknown>, writer: { setSessionId(id: string): void }) => {
             runs.push({ provider: runProvider, command, options });
+            await onRun?.(writer, options);
             if (holdRun) {
               await holdRun;
             }
@@ -98,7 +104,7 @@ async function withGateway(
       },
     );
 
-    await runTest({ socket, runs });
+    await runTest({ socket, runs, transcriptPath });
   } finally {
     releaseHeldRun?.();
     releaseHeldRun = null;
@@ -198,4 +204,68 @@ test('an anchor the transcript does not hold is refused', async () => {
     assert.equal(runs.length, 0);
     assert.equal(socket.frames.at(-1)?.code, 'ANCHOR_NOT_FOUND');
   });
+});
+
+test('editing the first prompt moves the conversation onto the new provider session, leaving the old one behind', async () => {
+  // As Claude does when a conversation starts over: the replacement runs in a
+  // provider session of its own, announced on the writer.
+  const announceNewSession: OnRun = (writer, options) => {
+    if (options.resumeFromScratch) writer.setSessionId('replacement-native');
+  };
+  await withGateway('claude', async ({ socket, transcriptPath }) => {
+    socket.emit('message', JSON.stringify({
+      type: 'chat.edit-send',
+      sessionId: SESSION_ID,
+      anchorId: 'e-u1',
+      content: 'a better first prompt',
+    }));
+    await settle();
+
+    // This session was discovered from disk (its app id is the old provider
+    // id), the case where re-indexing the old file would point it back.
+    const row = sessionsDb.getSessionById(SESSION_ID);
+    assert.equal(row?.provider_session_id, 'replacement-native');
+    assert.equal(row?.jsonl_path, null, 'the new transcript is recorded by the indexer once it is on disk');
+    assert.equal(sessionsDb.isProviderSessionSuperseded(SESSION_ID, 'claude'), true);
+    assert.deepEqual(sessionsDb.getSupersededTranscriptPaths(SESSION_ID), [transcriptPath]);
+
+    // The pre-edit transcript is not offered back as a conversation, and the
+    // session keeps pointing at the replacement.
+    assert.equal((await sessionSynchronizerService.synchronizeProviderFile('claude', transcriptPath)).indexed, false);
+    assert.equal(sessionsDb.getSessionById(SESSION_ID)?.provider_session_id, 'replacement-native');
+  }, TRANSCRIPT_ROWS.map((row) => ({ ...row, cwd: '/tmp/edit-project' })), announceNewSession);
+});
+
+test('a first-prompt edit stopped before the provider started leaves the conversation where it was', async () => {
+  await withGateway('claude', async ({ socket, transcriptPath }) => {
+    socket.emit('message', JSON.stringify({
+      type: 'chat.edit-send',
+      sessionId: SESSION_ID,
+      anchorId: 'e-u1',
+      content: 'a better first prompt',
+    }));
+    await settle();
+
+    const row = sessionsDb.getSessionById(SESSION_ID);
+    assert.equal(row?.provider_session_id, SESSION_ID);
+    assert.equal(row?.jsonl_path, transcriptPath);
+    assert.equal(sessionsDb.isProviderSessionSuperseded(SESSION_ID, 'claude'), false);
+  });
+});
+
+test('an edit further down stays in the same provider session', async () => {
+  await withGateway('claude', async ({ socket, transcriptPath }) => {
+    socket.emit('message', JSON.stringify({
+      type: 'chat.edit-send',
+      sessionId: SESSION_ID,
+      anchorId: 'e-u2',
+      content: 'a better second prompt',
+    }));
+    await settle();
+
+    const row = sessionsDb.getSessionById(SESSION_ID);
+    assert.equal(row?.provider_session_id, SESSION_ID);
+    assert.equal(row?.jsonl_path, transcriptPath);
+    assert.equal(sessionsDb.isProviderSessionSuperseded(SESSION_ID, 'claude'), false);
+  }, TRANSCRIPT_ROWS, (writer) => writer.setSessionId(SESSION_ID));
 });

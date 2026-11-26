@@ -307,9 +307,10 @@ export const sessionsDb = {
   /**
    * Moves one session onto a different provider session and transcript.
    *
-   * Only editing a message on a provider that has to branch to rewind (Codex)
-   * does this — an ordinary run keeps the same provider session for its whole
-   * life. `assignProviderSessionId` cannot be used for it: that one keeps the
+   * Only editing a message does this: on a provider that has to branch to
+   * rewind (Codex), or editing the very first prompt on Claude, which starts a
+   * new session — an ordinary run keeps the same provider session for its
+   * whole life. `assignProviderSessionId` cannot be used for it: that one keeps the
    * existing `jsonl_path` on purpose, so a session repointed with it would
    * claim the new thread while still reading the old transcript.
    *
@@ -319,7 +320,9 @@ export const sessionsDb = {
    */
   repointSessionToProviderSession(
     sessionId: string,
-    input: { providerSessionId: string; jsonlPath: string },
+    // Null when the new transcript is not on disk yet; the indexer records it
+    // once it appears (the row is found by its provider id).
+    input: { providerSessionId: string; jsonlPath: string | null },
   ): void {
     const db = getConnection();
 

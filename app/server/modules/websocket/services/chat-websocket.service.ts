@@ -477,6 +477,14 @@ async function handleChatEditSend(
       ? {}
       : { resumeAnchorId: resumeThroughId ?? undefined, resumeFromScratch: resumeThroughId === null },
     async (run) => {
+      // Replacing the first prompt makes the provider start a new session. The
+      // run moves the app session onto it when its id is announced; without
+      // this the replacement ran in a transcript nothing pointed at (shown as
+      // a second conversation) while this one kept the pre-edit turns.
+      if (!rewinds && resumeThroughId === null) {
+        run.startsNewProviderSession = true;
+      }
+
       // Emitted through the run's writer so it is sequenced and replayed like
       // any other event — a second tab watching this session has to truncate
       // too.

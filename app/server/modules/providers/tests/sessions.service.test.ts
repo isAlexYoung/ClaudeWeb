@@ -476,3 +476,42 @@ test('an unreadable registry never fails the running-sessions poll', { concurren
     );
   });
 });
+
+test('deleting a conversation stops what is still writing to it before the transcript goes', { concurrency: false }, async () => {
+  await withIsolatedDatabase(async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'delete-running-'));
+    const transcript = path.join(directory, 'native-running.jsonl');
+    await writeFile(transcript, '{}\n', 'utf8');
+    sessionsDb.createAppSession('running-delete', 'claude', directory);
+    sessionsDb.assignProviderSessionId('running-delete', 'native-running');
+    sessionsDb.repointSessionToProviderSession('running-delete', { providerSessionId: 'native-running', jsonlPath: transcript });
+    const run = chatRunRegistry.startRun({
+      appSessionId: 'running-delete', provider: 'claude', providerSessionId: 'native-running', connection: null, userId: null,
+    });
+    assert.ok(run);
+
+    const stopped: Array<{ sessionId: string; transcriptStillThere: boolean }> = [];
+    const realResolve = providerRegistry.resolveProvider;
+    providerRegistry.resolveProvider = (() => ({
+      runtime: {
+        abort: async (sessionId: string) => {
+          const transcriptStillThere = await import('node:fs/promises').then((fs) => fs.access(transcript).then(() => true, () => false));
+          stopped.push({ sessionId, transcriptStillThere });
+          return true;
+        },
+      },
+    })) as never;
+    try {
+      const result = await sessionsService.deleteOrArchiveSessionById('running-delete', { force: true, deletedFromDisk: true });
+      assert.equal(result.action, 'deleted');
+      assert.equal(result.deletedFromDisk, true);
+    } finally {
+      providerRegistry.resolveProvider = realResolve;
+      chatRunRegistry.clearAll();
+      await rm(directory, { recursive: true, force: true });
+    }
+
+    assert.deepEqual(stopped, [{ sessionId: 'running-delete', transcriptStillThere: true }]);
+    assert.equal(run.status, 'completed', 'the run is ended, so every client stops showing it as running');
+  });
+});

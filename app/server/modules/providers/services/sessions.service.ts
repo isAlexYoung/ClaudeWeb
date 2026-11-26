@@ -716,6 +716,21 @@ export const sessionsService = {
       };
     }
 
+    // Stopped first: a reply still being written, or a background task the
+    // provider process holds, appends to the transcript after it is removed —
+    // which re-creates the file, and the indexer brings the deleted
+    // conversation straight back. Stopping also ends a held process with
+    // nothing running, and is a no-op when there is no process at all.
+    const run = chatRunRegistry.getRun(sessionId);
+    try {
+      await providerRegistry.resolveProvider(session.provider as LLMProvider).runtime.abort(sessionId);
+    } catch (error) {
+      console.warn(`[Sessions] Could not stop session ${sessionId} before deleting it:`, error instanceof Error ? error.message : error);
+    }
+    if (run?.status === 'running') {
+      chatRunRegistry.completeRunIfCurrent(run, { exitCode: 0, aborted: true });
+    }
+
     let removedFromDisk = false;
     if (options.deletedFromDisk) {
       // Every file the conversation has lived in, not just the one the row

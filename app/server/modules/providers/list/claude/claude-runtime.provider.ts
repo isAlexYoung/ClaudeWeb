@@ -1304,9 +1304,15 @@ async function queryClaudeSDK(
   // Callers pass the stable app session id; the SDK only understands the
   // provider-native id recorded on the session row.
   const providerSessionId = context.resolveProviderSessionId(sessionId);
+  // Replacing the first prompt starts the conversation over in a new provider
+  // session (see `resumeFromScratch` in mapCliOptionsToSDK), so its id has to
+  // be captured and announced like a brand-new session's, not assumed to be
+  // the old one: otherwise the session row keeps the old transcript and the
+  // replacement lands in a file nothing points at.
+  const startsNewProviderSession = Boolean(options.resumeFromScratch);
   // Provider-native id as the SDK reports it (starts as the resume id, or is
   // captured from the stream for brand-new sessions).
-  let capturedSessionId = providerSessionId;
+  let capturedSessionId = startsNewProviderSession ? null : providerSessionId;
   let sessionCreatedSent = false;
   // Process-map key: the app session id when the caller supplied one, else
   // the provider-native id once captured (legacy/direct API callers).
@@ -1710,7 +1716,7 @@ async function queryClaudeSDK(
         }
 
         // Send session-created event only once for sessions with nothing to resume
-        if (!providerSessionId && !sessionCreatedSent) {
+        if ((!providerSessionId || startsNewProviderSession) && !sessionCreatedSent) {
           sessionCreatedSent = true;
           ws.send(createNormalizedMessage({ kind: 'session_created', newSessionId: capturedSessionId, sessionId: capturedSessionId, provider: 'claude' }));
         }

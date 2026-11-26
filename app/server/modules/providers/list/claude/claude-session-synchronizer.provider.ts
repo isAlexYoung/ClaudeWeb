@@ -26,6 +26,17 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
   private readonly claudeHome = path.join(os.homedir(), '.claude');
 
   /**
+   * Whether a session has left this transcript behind: the conversation's
+   * first prompt was edited and it moved onto a new provider session. The file
+   * stays on disk (and is deleted with the conversation), but it is not a
+   * conversation of its own — and indexing it would point a session discovered
+   * from disk, whose app id is this provider id, back at the pre-edit turns.
+   */
+  private isSuperseded(providerSessionId: string): boolean {
+    return sessionsDb.isProviderSessionSuperseded(providerSessionId, this.provider);
+  }
+
+  /**
    * Returns true when a JSONL file is a subagent transcript or tool result
    * rather than a top-level session.
    *
@@ -60,7 +71,7 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
       }
 
       const parsed = await this.processSessionFile(filePath, nameMap);
-      if (!parsed) {
+      if (!parsed || this.isSuperseded(parsed.sessionId)) {
         continue;
       }
 
@@ -93,7 +104,7 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
 
     const nameMap = await buildLookupMap(path.join(this.claudeHome, 'history.jsonl'), 'sessionId', 'display');
     const parsed = await this.processSessionFile(filePath, nameMap);
-    if (!parsed) {
+    if (!parsed || this.isSuperseded(parsed.sessionId)) {
       return null;
     }
 
