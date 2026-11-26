@@ -73,7 +73,6 @@ afterEach(() => {
 
 type SessionActivity = {
   selectedProject?: Project | null;
-  keepProjectsExpanded?: boolean;
   activeSessions: ReadonlySet<string>;
   backgroundSessionIds: ReadonlySet<string>;
 };
@@ -82,7 +81,7 @@ const IDLE: SessionActivity = { activeSessions: NO_IDS, backgroundSessionIds: NO
 
 const renderController = (onSessionDelete = vi.fn(), initialActivity: SessionActivity = IDLE) =>
   renderHook(
-    ({ activeSessions, backgroundSessionIds, keepProjectsExpanded, selectedProject = null }: SessionActivity) =>
+    ({ activeSessions, backgroundSessionIds, selectedProject = null }: SessionActivity) =>
       useSidebarController({
         projects: PROJECTS,
         selectedProject,
@@ -101,7 +100,6 @@ const renderController = (onSessionDelete = vi.fn(), initialActivity: SessionAct
         setCurrentProject: noop,
         setSidebarVisible: noop,
         sidebarVisible: true,
-        keepProjectsExpanded,
       }),
     { initialProps: initialActivity },
   );
@@ -340,22 +338,23 @@ test('New chat selecting the chat directory does not open it as a project, a rea
   assert.equal(view.result.current.isProjectExpanded(PROJECTS[0].projectId), true);
 });
 
-test('project expansion remains an accordion by default', () => {
+test('several projects can be open at once, each opened and closed on its own', () => {
   const { result } = renderController();
   act(() => result.current.toggleProject('project-1'));
   act(() => result.current.toggleProject('project-2'));
+  assert.equal(result.current.isProjectExpanded('project-1'), true);
+  assert.equal(result.current.isProjectExpanded('project-2'), true);
+  act(() => result.current.toggleProject('project-1'));
   assert.equal(result.current.isProjectExpanded('project-1'), false);
   assert.equal(result.current.isProjectExpanded('project-2'), true);
 });
 
-test('opt-in multi-open groups survive reloads and toggle independently', () => {
-  const first = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
+test('open projects survive a reload', () => {
+  const first = renderController();
   act(() => first.result.current.toggleProject('project-1'));
   act(() => first.result.current.toggleProject('project-2'));
-  assert.equal(first.result.current.isProjectExpanded('project-1'), true);
-  assert.equal(first.result.current.isProjectExpanded('project-2'), true);
   first.unmount();
-  const restored = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
+  const restored = renderController();
   assert.equal(restored.result.current.isProjectExpanded('project-1'), true);
   assert.equal(restored.result.current.isProjectExpanded('project-2'), true);
   act(() => restored.result.current.toggleProject('project-1'));
@@ -363,27 +362,24 @@ test('opt-in multi-open groups survive reloads and toggle independently', () => 
   assert.equal(restored.result.current.isProjectExpanded('project-2'), true);
 });
 
-test('hydrating the preference restores groups before writing browser storage', () => {
-  localStorage.setItem('claudeweb-expanded-projects', JSON.stringify(['saved-1', 'saved-2']));
+test('selecting a project opens it without closing the others', () => {
   const controller = renderController();
-  controller.rerender({ ...IDLE, keepProjectsExpanded: true });
-  assert.equal(controller.result.current.isProjectExpanded('saved-1'), true);
-  assert.equal(controller.result.current.isProjectExpanded('saved-2'), true);
-  controller.rerender({ ...IDLE, keepProjectsExpanded: false });
-  assert.equal(controller.result.current.isProjectExpanded('saved-2'), false);
-  assert.deepEqual(JSON.parse(localStorage.getItem('claudeweb-expanded-projects')!), ['saved-1', 'saved-2']);
+  act(() => controller.result.current.toggleProject('project-2'));
+  controller.rerender({ ...IDLE, selectedProject: PROJECT });
+  assert.equal(controller.result.current.isProjectExpanded(PROJECT.projectId), true);
+  assert.equal(controller.result.current.isProjectExpanded('project-2'), true);
 });
 
 test('invalid saved expansion data does not break navigation', () => {
   localStorage.setItem('claudeweb-expanded-projects', 'invalid JSON');
-  const { result } = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
+  const { result } = renderController();
   act(() => result.current.toggleProject('project-1'));
   assert.equal(result.current.isProjectExpanded('project-1'), true);
 });
 
 test('only string project IDs are restored from browser storage', () => {
   localStorage.setItem('claudeweb-expanded-projects', JSON.stringify(['saved-1', 5, null, {}, 'saved-2']));
-  const { result } = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
+  const { result } = renderController();
   assert.equal(result.current.isProjectExpanded('saved-1'), true);
   assert.equal(result.current.isProjectExpanded('saved-2'), true);
   assert.deepEqual(JSON.parse(localStorage.getItem('claudeweb-expanded-projects')!), ['saved-1', 'saved-2']);
@@ -393,15 +389,15 @@ test('only string project IDs are restored from browser storage', () => {
 test('unavailable browser storage does not prevent opening projects', () => {
   vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage disabled'); });
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage disabled'); });
-  const { result } = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
+  const { result } = renderController();
   act(() => result.current.toggleProject('project-1'));
   act(() => result.current.toggleProject('project-2'));
   assert.equal(result.current.isProjectExpanded('project-1'), true);
   assert.equal(result.current.isProjectExpanded('project-2'), true);
 });
 
-test('Running groups keep their independent collapse state in multi-open mode', () => {
-  const { result } = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
+test('Running groups keep their own collapse state', () => {
+  const { result } = renderController();
   act(() => result.current.toggleProject('project-1'));
   act(() => result.current.setSearchMode('running'));
   assert.equal(result.current.isProjectExpanded('project-1'), true);
@@ -414,23 +410,23 @@ test('Running groups keep their independent collapse state in multi-open mode', 
 
 test('a selected project intentionally collapsed before reload stays collapsed', () => {
   localStorage.setItem('claudeweb-expanded-projects', JSON.stringify(['other-project']));
-  const controller = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true, selectedProject: PROJECT });
+  const controller = renderController(vi.fn(), { ...IDLE, selectedProject: PROJECT });
   assert.equal(controller.result.current.isProjectExpanded(PROJECT.projectId), false);
   assert.equal(controller.result.current.isProjectExpanded('other-project'), true);
   assert.deepEqual(JSON.parse(localStorage.getItem('claudeweb-expanded-projects')!), ['other-project']);
-  controller.rerender({ ...IDLE, keepProjectsExpanded: true, selectedProject: { ...PROJECT, projectId: 'new-selection' } });
+  controller.rerender({ ...IDLE, selectedProject: { ...PROJECT, projectId: 'new-selection' } });
   assert.equal(controller.result.current.isProjectExpanded('new-selection'), true);
 });
 
 test('an empty saved set also preserves a collapsed selection restored after mount', () => {
   localStorage.setItem('claudeweb-expanded-projects', '[]');
-  const controller = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true });
-  controller.rerender({ ...IDLE, keepProjectsExpanded: true, selectedProject: PROJECT });
+  const controller = renderController();
+  controller.rerender({ ...IDLE, selectedProject: PROJECT });
   assert.equal(controller.result.current.isProjectExpanded(PROJECT.projectId), false);
   assert.equal(localStorage.getItem('claudeweb-expanded-projects'), '[]');
 });
 
 test('without saved expansion, initial project selection still opens normally', () => {
-  const controller = renderController(vi.fn(), { ...IDLE, keepProjectsExpanded: true, selectedProject: PROJECT });
+  const controller = renderController(vi.fn(), { ...IDLE, selectedProject: PROJECT });
   assert.equal(controller.result.current.isProjectExpanded(PROJECT.projectId), true);
 });

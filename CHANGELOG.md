@@ -5,9 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.9 - 2026-11-26 (stable)
+
 - Usage limits: Claude Code's "You've hit your 5-hour limit · resets 9:20pm (Asia/Singapore)" reply (and the weekly and Opus variants) is now shown as a card with the limit, the reset time in your time zone and a live countdown. A checkbox on the card schedules a message for a minute after the reset that asks Claude to continue the previous task; it is an ordinary scheduled message, so it also shows above the composer, can be cancelled there or by unticking, and is sent by the server even if the page is closed. Once sent, the card says when. The usage-limit banner at the top of the conversation is gone.
 - Editing the first message of a Claude conversation works again. The replacement starts a new Claude session, and the conversation now moves onto it: before, it ran in a transcript nothing pointed at, so it showed up as a second conversation in the sidebar, the original message stayed in the conversation (and reappeared at the bottom after switching away and back), and the next message continued the conversation from before the edit. The transcript left behind is no longer offered as a conversation of its own and is deleted together with the conversation.
 - Deleting a conversation first stops a reply or background task still running in it. Before, the still-running process wrote to the deleted transcript again, and the conversation came back in the sidebar.
+- Sidebar Projects: several projects can be open at once. Opening a project no longer closes the others, and the open projects are remembered after reloading. The "Keep projects expanded" setting, which used to be needed for this, is gone.
 
 ## 2.3.8 - 2026-11-25 (stable)
 

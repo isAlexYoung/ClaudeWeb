@@ -75,7 +75,6 @@ type UseSidebarControllerArgs = {
   setCurrentProject: (project: Project) => void;
   setSidebarVisible: (visible: boolean) => void;
   sidebarVisible: boolean;
-  keepProjectsExpanded?: boolean;
   /** Which conversations Recents lists and in what order (the current mode's filters). */
   recentQuery?: RecentConversationsQuery;
 };
@@ -99,48 +98,27 @@ export function useSidebarController({
   setCurrentProject,
   setSidebarVisible,
   sidebarVisible,
-  keepProjectsExpanded = false,
   recentQuery,
 }: UseSidebarControllerArgs) {
   // Read when a page is fetched, so a new query takes effect on the next (re)load.
   const recentQueryRef = useRef(recentQuery);
   useLayoutEffect(() => { recentQueryRef.current = recentQuery; }, [recentQuery]);
   const paletteOps = usePaletteOps();
-  // Remember whether a saved set existed before the first persistence effect.
+  // Which projects are open. Any number can be at once, each opened and closed
+  // on its own, and the set is remembered in this browser so a reload opens
+  // the same ones. Whether a saved set existed is kept for the first selection.
   const restoredExpandedProjects = useRef<Set<string> | null>(null);
-  // Project expansion is browser-local; the opt-in preference follows the user.
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
-    restoredExpandedProjects.current = keepProjectsExpanded ? readExpandedProjects() : null;
+    restoredExpandedProjects.current = readExpandedProjects();
     return restoredExpandedProjects.current ?? new Set();
   });
-  // Detect preference hydration as well as a live toggle without overwriting saved groups.
-  const previousKeepProjectsExpanded = useRef(keepProjectsExpanded);
   // Distinguish the initial restored selection from subsequent navigation.
   const selectionExpansion = useRef<{ seenSelection: boolean; projectId?: string }>({ seenSelection: false });
   useEffect(() => {
-    const wasEnabled = previousKeepProjectsExpanded.current;
-    previousKeepProjectsExpanded.current = keepProjectsExpanded;
-    if (!keepProjectsExpanded) {
-      if (wasEnabled && expandedProjects.size > 1) {
-        const retainedId = selectedProject?.projectId && expandedProjects.has(selectedProject.projectId)
-          ? selectedProject.projectId
-          : [...expandedProjects][0];
-        setExpandedProjects(new Set([retainedId]));
-      }
-      return;
-    }
-    if (!wasEnabled) {
-      const saved = readExpandedProjects();
-      restoredExpandedProjects.current = saved;
-      if (saved) {
-        setExpandedProjects(saved);
-        return;
-      }
-    }
     try {
       localStorage.setItem(EXPANDED_PROJECTS_STORAGE_KEY, JSON.stringify([...expandedProjects]));
     } catch { /* Keep navigation working when browser storage is unavailable. */ }
-  }, [expandedProjects, keepProjectsExpanded, selectedProject?.projectId]);
+  }, [expandedProjects]);
   // Running groups start expanded and remember manual collapses independently of Projects.
   const [collapsedRunningProjects, setCollapsedRunningProjects] = useState<Set<string>>(new Set());
   // The one rename the sidebar has open, as a single value so a project and a
@@ -227,7 +205,7 @@ export function useSidebarController({
     // chat would look as if that project had been picked.
     if (selectedIsChatWorkspace) return;
     // A saved set is authoritative on reload, including an intentionally empty set.
-    if (isInitialSelection && keepProjectsExpanded && restoredExpandedProjects.current !== null) return;
+    if (isInitialSelection && restoredExpandedProjects.current !== null) return;
 
     setExpandedProjects((prev) => {
       if (prev.has(selectedProjectId)) {
@@ -237,7 +215,7 @@ export function useSidebarController({
       next.add(selectedProjectId);
       return next;
     });
-  }, [selectedProject?.projectId, keepProjectsExpanded, selectedIsChatWorkspace]);
+  }, [selectedProject?.projectId, selectedIsChatWorkspace]);
 
   useEffect(() => {
     if (projects.length > 0 && !isLoading) {
@@ -628,8 +606,9 @@ export function useSidebarController({
         return;
       }
 
+      // Other projects stay as they are: opening one never closes another.
       setExpandedProjects((prev) => {
-        const next = keepProjectsExpanded ? new Set(prev) : new Set<string>();
+        const next = new Set(prev);
         if (prev.has(projectId)) {
           next.delete(projectId);
         } else {
@@ -638,7 +617,7 @@ export function useSidebarController({
         return next;
       });
     },
-    [searchMode, keepProjectsExpanded],
+    [searchMode],
   );
 
   const isProjectExpanded = useCallback(

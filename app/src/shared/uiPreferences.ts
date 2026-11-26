@@ -14,7 +14,6 @@ export type UiPreferences = {
   showThinking: boolean;
   sendByCtrlEnter: boolean;
   sidebarVisible: boolean;
-  keepProjectsExpanded: boolean;
   chatMcpEnabled: boolean;
   promptSuggestionsEnabled: boolean;
   /** The card listing what a turn changed, under its last reply. */
@@ -32,7 +31,6 @@ const DEFAULTS: UiPreferences = {
   showThinking: true,
   sendByCtrlEnter: false,
   sidebarVisible: true,
-  keepProjectsExpanded: false,
   chatMcpEnabled: false,
   promptSuggestionsEnabled: true,
   changeSummaryEnabled: true,

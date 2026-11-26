@@ -195,11 +195,6 @@
         "description": "编辑器字体大小（px）"
       }
     },
-    "keepProjectsExpanded": {
-      "section": "侧边栏",
-      "label": "保持项目展开",
-      "description": "允许同时展开多个项目，并在刷新后记住展开状态。"
-    },
     "fonts": {
       "title": "字体",
       "ui": {
