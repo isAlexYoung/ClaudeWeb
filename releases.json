@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.9",
+   "channel": "stable",
+   "published_at": "2026-11-26T08:13:11Z",
+   "notes": "\u4fa7\u680f\u53ef\u4ee5\u540c\u65f6\u5c55\u5f00\u591a\u4e2a\u9879\u76ee\uff1b\u989d\u5ea6\u7528\u5b8c\u65f6\u663e\u793a\u989d\u5ea6\u5361\u7247\uff1b\u4fee\u590d\u4fee\u6539\u7b2c\u4e00\u6761\u6d88\u606f\u548c\u5220\u9664\u8fd0\u884c\u4e2d\u5bf9\u8bdd\u7684\u95ee\u9898\u3002",
+   "package": {
+    "name": "claudeweb-2.3.9-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.9/claudeweb-2.3.9-linux-x64.tar.xz",
+    "bytes": 114131536,
+    "sha256": "4f501b854cd914de35e9b687d5070181f0ba563d73901aa3682e569b58476ac7"
+   }
+  },
+  {
    "version": "2.3.8",
    "channel": "stable",
    "published_at": "2026-11-25T14:26:56Z",
@@ -290,5 +302,5 @@
    }
   }
  ],
- "generated_at": "2026-11-25T14:26:57Z"
+ "generated_at": "2026-11-26T08:13:12Z"
 }
