@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -5,8 +6,54 @@ import path from 'node:path';
 import type { McpConnectionStatus, ProviderMcpServer } from '@/shared/types.js';
 
 const CMCP_NAMES = new Set(['windows-pc-files', 'linux-pc-files', 'mac-pc-files']);
+const CMCP_CONNECTOR = /(?:connector\.py|cloudpc-connector[^/\\]*\.py)$/;
+// A CMCP name used as a path segment: no separators, no dot-only names.
+const CMCP_ROUTE_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
 type RelayReply = { ok?: boolean; connected?: boolean; pc?: unknown; msg?: { result?: { serverInfo?: { name?: unknown } } } };
+
+/**
+ * CMCP 4.25+ registers one connector per PC (`cmcp-pc-<id>`) that forwards to the URL
+ * route (`windows-pc-files`) and/or the SSH route (`cmcp-ssh-<id>`), as chosen in its
+ * connection-policy.json. Each route has its own relay socket beside the connector.
+ */
+type ManagedPolicy = { key: string; routes: string[]; root: string };
+
+async function readManagedPolicy(server: ProviderMcpServer): Promise<ManagedPolicy | null> {
+  const connector = server.args?.find((arg) => CMCP_CONNECTOR.test(arg));
+  if (!connector) return null;
+  const directory = path.dirname(connector);
+  if (path.basename(directory) !== server.name) return null;
+  try {
+    const policy: unknown = JSON.parse(await readFile(path.join(directory, 'connection-policy.json'), 'utf8'));
+    if (!policy || typeof policy !== 'object') return null;
+    const { key, name, ssh, web, primary, dual } = policy as Record<string, unknown>;
+    if (name !== server.name || typeof key !== 'string' || !key) return null;
+    if (typeof ssh !== 'string' || typeof web !== 'string' || !CMCP_ROUTE_NAME.test(ssh) || !CMCP_ROUTE_NAME.test(web)) return null;
+    if (primary !== 'url' && primary !== 'ssh') return null;
+    const order: Array<'url' | 'ssh'> = dual === true ? [primary, primary === 'url' ? 'ssh' : 'url'] : [primary];
+    return { key, root: path.dirname(directory), routes: order.map((route) => (route === 'url' ? web : ssh)) };
+  } catch {
+    return null;
+  }
+}
+
+/** The router's own test: a route counts only when its relay is connected to this PC. */
+async function readManaged(policy: ManagedPolicy): Promise<McpConnectionStatus['status']> {
+  let connecting = false;
+  for (const route of policy.routes) {
+    try {
+      const live = await exchange(path.join(policy.root, route, 'relay', 'link.sock'), { id: 1, op: 'status' });
+      if (live.ok !== true || live.connected !== true) continue;
+      const machine = live.pc && typeof live.pc === 'object' ? (live.pc as { machine?: unknown }).machine : undefined;
+      if (machine === policy.key) return 'connected';
+      if (!live.pc) connecting = true;
+    } catch {
+      // That route is offline; try the next one.
+    }
+  }
+  return connecting ? 'connecting' : 'disconnected';
+}
 
 /** Reads one bounded, read-only relay exchange; never executes a configured command. */
 function exchange(socketPath: string, request: Record<string, unknown>): Promise<RelayReply> {
@@ -62,8 +109,10 @@ export async function resolveMcpConnections(
 ): Promise<McpConnectionStatus[]> {
   const relays = new Map<string, ReturnType<typeof readRelay>>();
   return Promise.all(servers.map(async (server) => {
+    const managed = server.transport === 'stdio' ? await readManagedPolicy(server) : null;
+    if (managed) return { name: server.name, status: await readManaged(managed) };
     const isCmcp = CMCP_NAMES.has(server.name) && server.transport === 'stdio'
-      && server.args?.some((arg) => /(?:connector\.py|cloudpc-connector[^/\\]*\.py)$/.test(arg));
+      && server.args?.some((arg) => CMCP_CONNECTOR.test(arg));
     if (isCmcp) {
       const socketPath = server.env?.CLOUDPC_LINK_SOCKET || process.env.CLOUDPC_LINK_SOCKET
         || path.join(os.homedir(), '.local', 'share', 'cloudpc-link', 'link.sock');

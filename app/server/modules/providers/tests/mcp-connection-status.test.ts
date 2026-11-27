@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -50,6 +51,53 @@ test('an offline CMCP bridge cannot be marked online by cached SDK MCP configura
   assert.deepEqual(await resolveMcpConnections(servers, [{ name: 'linux-pc-files', status: 'connected' }]), [
     { name: 'linux-pc-files', status: 'disconnected' },
   ]);
+});
+
+// The managed connector finds each route's relay as a Unix socket beside it; Windows has none.
+test('a CMCP 4.25 managed connector is connected when its chosen route reaches this PC', { skip: process.platform === 'win32' }, async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cw-cmcp-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const name = 'cmcp-pc-0123abcd';
+  const servers: ProviderMcpServer[] = [{
+    provider: 'claude', name, scope: 'user', transport: 'stdio', command: 'must-never-be-started',
+    args: ['-u', path.join(root, name, 'connector.py'), 'serve', '--name', name],
+  }];
+  const policy = { key: 'machine-key', name, ssh: 'cmcp-ssh-0123abcd', web: 'windows-pc-files', primary: 'url', dual: false };
+  await mkdir(path.join(root, name), { recursive: true });
+  const writePolicy = (change: Record<string, unknown> = {}) => writeFile(path.join(root, name, 'connection-policy.json'), JSON.stringify({ ...policy, ...change }));
+  await writePolicy();
+
+  let machine: string | null = 'machine-key';
+  const relays: net.Server[] = [];
+  const listen = async (route: string) => {
+    await mkdir(path.join(root, route, 'relay'), { recursive: true });
+    const relay = net.createServer((client) => client.once('data', () => {
+      client.end(JSON.stringify({ ok: true, connected: true, pc: machine ? { machine } : null }) + '\n');
+    }));
+    await new Promise<void>((resolve) => relay.listen(path.join(root, route, 'relay', 'link.sock'), resolve));
+    relays.push(relay);
+  };
+  t.after(() => Promise.all(relays.map((relay) => new Promise((resolve) => relay.close(resolve)))));
+
+  // No relay yet, and an SDK cache claiming otherwise does not count.
+  assert.deepEqual(await resolveMcpConnections(servers, [{ name, status: 'connected' }]), [{ name, status: 'disconnected' }]);
+  // Only the SSH relay runs while the policy uses the URL route.
+  await listen('cmcp-ssh-0123abcd');
+  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'disconnected' }]);
+  await writePolicy({ dual: true });
+  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'connected' }]);
+  await writePolicy();
+  await listen('windows-pc-files');
+  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'connected' }]);
+  // A relay connected to another PC is not this connector's PC.
+  machine = 'another-pc';
+  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'disconnected' }]);
+  machine = null;
+  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'connecting' }]);
+  // A route name that would leave the CMCP folder is refused.
+  machine = 'machine-key';
+  await writePolicy({ web: '../windows-pc-files' });
+  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'disconnected' }]);
 });
 
 test('ordinary MCP connectors follow live SDK state and expose no configuration secrets', async () => {
