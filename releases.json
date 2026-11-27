@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.11",
+   "channel": "stable",
+   "published_at": "2026-11-27T09:58:14Z",
+   "notes": "\u66f4\u65b0\u5b8c\u6210\u540e\u81ea\u52a8\u5237\u65b0\u5230\u65b0\u7248\u672c\uff1b\u9002\u914d CMCP 4.25 \u7684\u8fde\u63a5\u72b6\u6001\uff0c\u5176\u4ed6\u8fde\u63a5\u5668\u672a\u8fd0\u884c\u65f6\u663e\u793a\u300c\u672a\u542f\u52a8\u300d\uff1b\u4fee\u590d\u83dc\u5355\u591a\u4f59\u7684\u6eda\u52a8\u6761\u3002",
+   "package": {
+    "name": "claudeweb-2.3.11-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.11/claudeweb-2.3.11-linux-x64.tar.xz",
+    "bytes": 114142772,
+    "sha256": "bfbf7ed5b2c278bbb14b4a708c67ab1ca0e42e21fc66025356bd551d49319987"
+   }
+  },
+  {
    "version": "2.3.10",
    "channel": "stable",
    "published_at": "2026-11-27T04:31:17Z",
@@ -314,5 +326,5 @@
    }
   }
  ],
- "generated_at": "2026-11-27T04:31:18Z"
+ "generated_at": "2026-11-27T09:58:14Z"
 }
