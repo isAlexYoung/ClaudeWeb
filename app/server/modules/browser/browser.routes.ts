@@ -24,6 +24,7 @@ export function createBrowserRouter(service: BrowserService): express.Router {
   router.post('/text-clipboard', reply((req) => service.text(req.body)));
   router.post('/image-clipboard', express.raw({ type: 'image/png', limit: 1024 * 1024 }),
     reply((req) => service.image(req.query.sid, req.query.op, Buffer.isBuffer(req.body) ? req.body : undefined)));
+  router.post('/open', reply((req) => service.open(req.body?.url)));
   router.post('/end', reply((req) => service.end(req.body?.sid)));
   return router;
 }

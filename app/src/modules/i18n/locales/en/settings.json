@@ -1074,8 +1074,12 @@
     "connectionLink": "Connection link",
     "copyConnectionLink": "Copy link",
     "openWorkspaceBrowser": "Open built-in browser",
-    "linkCopied": "Link copied. Open the built-in browser and paste it into the address bar.",
+    "linkCopied": "Link copied.",
     "copyLinkFailed": "Copy was blocked. Select the link above and copy it manually.",
-    "manualConnectionHint": "If the VPS cannot open a browser, copy this entry link and open it in the built-in browser. Use its Paste tool to transfer the link, then paste in the address bar. Complete authorization on the official site; this entry link is not a temporary OAuth URL."
+    "manualConnectionHint": "Links here open in the built-in browser on the server. To open one somewhere else, copy it with the button beside it. Complete authorization on the official site; this entry link is not a temporary OAuth URL.",
+    "linkCopiedShort": "Link copied",
+    "copyLinkBlocked": "Copy was blocked. The link is {{url}}",
+    "opensInBuiltInBrowser": "Opens in the built-in browser on the server: {{url}}",
+    "copyLinkTo": "Copy link: {{url}}"
   }
 }

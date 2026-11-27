@@ -21,6 +21,9 @@ const SID = /^[a-f0-9]{24,64}$/;
 const MIN_WIDTH = 640, MIN_HEIGHT = 480, MAX_WIDTH = 1600, MAX_HEIGHT = 1000;
 const DETACHED_KEEP_MS = 10 * 60_000;
 const ENDED_MEMORY = 32;
+// A link asked for before the browser runs becomes its first page if it starts soon after.
+const PENDING_URL_MS = 2 * 60_000;
+const URL_MAX = 2048;
 // Reserve before async X startup so browser and Desktop cannot choose the same display.
 const reservedDisplays = new Set<number>();
 const TEXT_MAX = 16384;
@@ -141,6 +144,7 @@ export function createGraphicalSessionService({ homeDirectory, chromiumPath, app
   const runDirectory = path.join(homeDirectory, '.cache', desktop ? 'claudeweb-desktop-runtime' : 'claudeweb-browser');
   const profileDirectory = path.join(homeDirectory, '.config', desktop ? 'claudeweb-desktop' : 'claudeweb-browser');
   let session: Session | null = null;
+  let pendingUrl: { url: string; at: number } | null = null;
   // Why recent sessions ended, so a page that lost its connection can say so.
   const ended = new Map<string, string>();
 
@@ -325,7 +329,7 @@ export function createGraphicalSessionService({ homeDirectory, chromiumPath, app
       ? ['--ozone-platform=x11', '--password-store=gnome-libsecret', '--disable-gpu']
       : [`--user-data-dir=${path.join(profileDirectory, 'chromium')}`, '--no-first-run', '--no-default-browser-check',
         '--disable-gpu', '--disable-component-update', '--password-store=basic', '--start-maximized',
-        '--window-position=0,0', `--window-size=${width},${height}`, 'chrome://newtab/'];
+        '--window-position=0,0', `--window-size=${width},${height}`, takePendingUrl() ?? 'chrome://newtab/'];
     const browser = startChild(current, chromium, args, false);
     current.chromium = browser;
     current.stage = 'browser_spawned';
@@ -421,6 +425,12 @@ export function createGraphicalSessionService({ homeDirectory, chromiumPath, app
     return targets.code === 0 ? targets.stdout.toString('utf8').split('\n').map((line) => line.trim()).filter(Boolean) : null;
   }
 
+  function takePendingUrl(): string | null {
+    const pending = pendingUrl;
+    pendingUrl = null;
+    return pending && Date.now() - pending.at < PENDING_URL_MS ? pending.url : null;
+  }
+
   async function clipboardStamp(current: Session): Promise<string | null> {
     const stamp = await run(PROGRAMS.xclip, ['-selection', 'clipboard', '-out', '-target', 'TIMESTAMP'], current.env, { timeoutMs: 250, maxBytes: 16 });
     return stamp.code === 0 ? stamp.stdout.toString('utf8').trim() : null;
@@ -504,6 +514,45 @@ export function createGraphicalSessionService({ homeDirectory, chromiumPath, app
       if (read.tooLarge) return jsonReply({ ok: false, code: 'TOO_LARGE' });
       if (read.code !== 0 || !read.stdout.subarray(0, 8).equals(PNG_MAGIC)) return jsonReply({ ok: false, code: 'UNAVAILABLE' });
       return { status: 200, headers: { 'content-type': 'image/png' }, body: read.stdout };
+    },
+
+    /**
+     * Opens a web page in the browser: in a new tab when it runs (Chromium hands the
+     * address to the running instance through its profile), otherwise as the first page
+     * of the browser the panel is about to start. Only http(s) addresses are accepted.
+     */
+    async open(value: unknown): Promise<GraphicalReply> {
+      if (desktop) throw new AppError('Only the browser opens links.', { code: 'INVALID_REQUEST', statusCode: 400 });
+      let url: URL;
+      try {
+        if (typeof value !== 'string' || value.length > URL_MAX) throw new Error('invalid');
+        url = new URL(value);
+      } catch {
+        throw new AppError('Choose an http or https link.', { code: 'INVALID_URL', statusCode: 400 });
+      }
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+        throw new AppError('Choose an http or https link.', { code: 'INVALID_URL', statusCode: 400 });
+      }
+      const current = session;
+      if (!current || current.state === 'stopping') {
+        pendingUrl = { url: url.href, at: Date.now() };
+        return jsonReply({ ok: true, opened: 'pending' });
+      }
+      try {
+        await current.ready;
+      } catch {
+        pendingUrl = { url: url.href, at: Date.now() };
+        return jsonReply({ ok: true, opened: 'pending' });
+      }
+      const chromium = findChromium();
+      // The browser may have been closed while it was starting; `stopping` is set then.
+      if (!chromium || session !== current || current.stopping) {
+        pendingUrl = { url: url.href, at: Date.now() };
+        return jsonReply({ ok: true, opened: 'pending' });
+      }
+      const handed = await run(chromium, [`--user-data-dir=${path.join(profileDirectory, 'chromium')}`, '--no-first-run',
+        '--no-default-browser-check', url.href], current.env, { timeoutMs: 10_000, maxBytes: 64 * 1024 });
+      return jsonReply({ ok: handed.code === 0, opened: handed.code === 0 ? 'tab' : 'failed' });
     },
 
     /** Ends the browser (the panel was closed while its connection was down). */

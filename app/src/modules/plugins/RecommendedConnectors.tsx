@@ -1,11 +1,14 @@
 import { useId, useState } from 'react';
-import { Copy, ExternalLink, Globe, Plus, X } from 'lucide-react';
+import { Copy, Globe, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import PluginLink from '@/modules/plugins/PluginLink';
+import { PluginLinkContext } from '@/modules/plugins/context/PluginLinkContext';
 import { Button, Dialog, DialogContent, DialogTitle, Input } from '@/shared/ui';
 import { copyTextToClipboard } from '@/shared/utils';
 
 const CONNECTORS_URL = 'https://claude.ai/customize/connectors';
+const CONNECTION_DOCS_URL = 'https://code.claude.com/docs/en/mcp#use-mcp-servers-from-claudeai';
 
 // These are account connectors, not git packages or arbitrary MCP URLs to install locally.
 const CONNECTORS = [
@@ -25,7 +28,7 @@ function ConnectorIcon({ id }: { id: typeof CONNECTORS[number]['id'] }) {
 }
 
 /** Used by the workspace extension manager to discover account connectors without claiming local installation. */
-export default function RecommendedConnectors({ query, onOpenBrowser }: { query: string; onOpenBrowser?: () => void }) {
+export default function RecommendedConnectors({ query, onOpenBrowser }: { query: string; onOpenBrowser?: (url?: string) => void }) {
   const { t } = useTranslation('settings');
   const titleId = useId();
   // A recommendation opens authorization guidance; only the provider can confirm a successful connection.
@@ -35,6 +38,8 @@ export default function RecommendedConnectors({ query, onOpenBrowser }: { query:
   const text = query.trim().toLocaleLowerCase();
   const visible = CONNECTORS.filter(item => `${item.name} ${item.provider} ${t(`extensions.recommended.${item.id}`)}`.toLocaleLowerCase().includes(text));
   if (!visible.length) return null;
+  // Links in the dialog open in the built-in browser; the dialog closes so the browser shows.
+  const openLink = onOpenBrowser ? (url: string) => { setSelected(null); onOpenBrowser(url); } : null;
 
   return <section aria-label={t('extensions.popular')} className="space-y-3 pt-5">
     <h2 className="text-base font-medium">{t('extensions.popular')}</h2>
@@ -51,6 +56,7 @@ export default function RecommendedConnectors({ query, onOpenBrowser }: { query:
     </div>
     <Dialog open={Boolean(selected)} onOpenChange={open => { if (!open) setSelected(null); }}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto" aria-labelledby={titleId}>
+        <PluginLinkContext.Provider value={openLink}>
         <DialogTitle id={titleId}>{t('extensions.connectName', { name: selected?.name })}</DialogTitle>
         <div className="flex items-center justify-between gap-3 border-b border-border/50 px-5 py-3">
           <h3 className="text-base font-medium">{t('extensions.connectName', { name: selected?.name })}</h3>
@@ -62,7 +68,7 @@ export default function RecommendedConnectors({ query, onOpenBrowser }: { query:
             <label className="block space-y-2"><span>{t('extensions.connectionLink')}</span><Input readOnly value={CONNECTORS_URL} onFocus={event => event.target.select()} /></label>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={async () => setCopyStatus(await copyTextToClipboard(CONNECTORS_URL) ? 'copied' : 'failed')}><Copy className="h-4 w-4" />{t('extensions.copyConnectionLink')}</Button>
-              {onOpenBrowser && <Button variant="outline" size="sm" onClick={() => { setSelected(null); onOpenBrowser(); }}><Globe className="h-4 w-4" />{t('extensions.openWorkspaceBrowser')}</Button>}
+              {openLink && <Button variant="outline" size="sm" onClick={() => openLink(CONNECTORS_URL)}><Globe className="h-4 w-4" />{t('extensions.openWorkspaceBrowser')}</Button>}
             </div>
             {copyStatus && <p role="status" className="text-xs text-muted-foreground">{t(copyStatus === 'copied' ? 'extensions.linkCopied' : 'extensions.copyLinkFailed')}</p>}
             <p className="text-xs leading-relaxed text-muted-foreground">{t('extensions.manualConnectionHint')}</p>
@@ -75,10 +81,11 @@ export default function RecommendedConnectors({ query, onOpenBrowser }: { query:
           <p className="text-xs leading-relaxed text-muted-foreground">{t('extensions.accountConnectorLimits')}</p>
           {selected?.id === 'microsoft' && <p className="text-xs leading-relaxed text-muted-foreground">{t('extensions.microsoftAccount')}</p>}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <a className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline" href="https://code.claude.com/docs/en/mcp#use-mcp-servers-from-claudeai" target="_blank" rel="noopener noreferrer">{t('extensions.connectionDocs')}<ExternalLink className="h-3.5 w-3.5" /></a>
-            <a className="inline-flex min-h-10 items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={CONNECTORS_URL} target="_blank" rel="noopener noreferrer">{t('extensions.openConnectors')}<ExternalLink className="h-4 w-4" /></a>
+            <PluginLink className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline" href={CONNECTION_DOCS_URL}>{t('extensions.connectionDocs')}</PluginLink>
+            <PluginLink className="inline-flex min-h-10 items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" iconClassName="h-4 w-4" href={CONNECTORS_URL}>{t('extensions.openConnectors')}</PluginLink>
           </div>
         </div>
+        </PluginLinkContext.Provider>
       </DialogContent>
     </Dialog>
   </section>;

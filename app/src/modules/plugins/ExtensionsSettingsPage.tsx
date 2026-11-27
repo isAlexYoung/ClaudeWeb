@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Loader2, Plus, RefreshCw, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -8,6 +8,7 @@ import { usePlugins } from '@/modules/plugins/context/PluginsContext';
 import PluginSettingsTab from '@/modules/plugins/PluginSettingsTab';
 import ExtensionCard from '@/modules/plugins/ExtensionCard';
 import RecommendedConnectors from '@/modules/plugins/RecommendedConnectors';
+import { PluginLinkContext } from '@/modules/plugins/context/PluginLinkContext';
 import { getPluginSlots } from '@/modules/plugins/pluginRuntime';
 import { useExtensionTransitions } from '@/modules/plugins/hooks/useExtensionTransitions';
 import { Button, Dialog, DialogContent, DialogTitle, Input } from '@/shared/ui';
@@ -17,8 +18,10 @@ const EMPTY_PROJECTS: McpProject[] = [];
 const KIND_ORDER = { plugin: 0, mcp: 1, skill: 2 };
 
 /** Used by Settings and the workspace PluginsPage to manage extensions with the same installers and actions. */
-export default function ExtensionsSettingsPage({ currentProjects = EMPTY_PROJECTS, showRecommendations = false, onOpenBrowser }: { currentProjects?: McpProject[]; showRecommendations?: boolean; onOpenBrowser?: () => void }) {
+export default function ExtensionsSettingsPage({ currentProjects = EMPTY_PROJECTS, showRecommendations = false, onOpenBrowser }: { currentProjects?: McpProject[]; showRecommendations?: boolean; onOpenBrowser?: (url?: string) => void }) {
   const { t } = useTranslation('settings');
+  // Outside links open in the built-in browser where this page can show it (the workspace Plugins page).
+  const openInBrowser = useCallback((url: string) => onOpenBrowser?.(url), [onOpenBrowser]);
   const custom = usePlugins();
   const mcp = useMcpServers({ selectedProvider: 'claude', currentProjects });
   const skills = useProviderSkills({ selectedProvider: 'claude', currentProjects });
@@ -150,6 +153,7 @@ export default function ExtensionsSettingsPage({ currentProjects = EMPTY_PROJECT
   };
 
   return (
+    <PluginLinkContext.Provider value={onOpenBrowser ? openInBrowser : null}>
     <div className="min-w-0 space-y-5" data-testid="extensions-settings-page">
       {view === 'list' ? <>
         <div className="flex flex-wrap items-center gap-2">
@@ -199,5 +203,6 @@ export default function ExtensionsSettingsPage({ currentProjects = EMPTY_PROJECT
       </div></DialogContent></Dialog>
       <Dialog open={Boolean(conflict)} onOpenChange={open => { if (!open) setConflict(null); }}><DialogContent><DialogTitle>{t('extensions.switchBackground')}</DialogTitle><div className="space-y-4 p-5"><p className="text-sm">{t('extensions.backgroundConflict', { name: conflict?.owner })}</p><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setConflict(null)}>{t('common:cancel')}</Button><Button onClick={() => { if (conflict) { void toggle(conflict.item, true, true); setConflict(null); } }}>{t('extensions.switchBackground')}</Button></div></div></DialogContent></Dialog>
     </div>
+    </PluginLinkContext.Provider>
   );
 }

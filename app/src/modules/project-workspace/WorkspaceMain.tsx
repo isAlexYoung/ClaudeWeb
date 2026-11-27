@@ -12,6 +12,7 @@ import type { AppTab, DirectoryRevealRequest, Project, ProjectSession, SessionEs
 import { useUiPreferences } from '@/shared/context/UiPreferencesContext';
 import { useViewMotion } from '@/shared/hooks/useViewMotion';
 import { isGeneratedFilePath } from '@/shared/utils';
+import { api } from '@/shared/api';
 import { useFileOpenResolver } from '@/modules/project-workspace/hooks/useFileOpenResolver';
 import { EditorSidebar, useEditorSidebar } from '@/modules/code-editor';
 import IntegratedWorkspaceHeader from '@/modules/project-workspace/IntegratedWorkspaceHeader';
@@ -442,7 +443,11 @@ function WorkspaceMain({
     return <div className="workspace-main flex h-full min-w-0 overflow-hidden">
       <PluginsPage currentProjects={projects} menuButton={isMobile ? <MobileMenuButton onMenuClick={onMenuClick} /> : null}
         browserMinimized={tools.minimized.browser}
-        onOpenBrowser={() => { tools.openBrowser(); setInspectorView('browser'); setInspectorOpen(true); }} />
+        onOpenBrowser={(url) => {
+          // The server opens the page in the running browser, or as the first page of the one starting now.
+          if (url) void api.browser.open(url).catch(() => undefined);
+          tools.openBrowser(); setInspectorView('browser'); setInspectorOpen(true);
+        }} />
       <WorkspaceInspectorDock mobile={isMobile} open={inspectorOpen && inspectorView === 'browser'} wide>
         <WorkspaceContextInspector view="browser" project={selectedProject} session={selectedSession} onBack={() => setInspectorOpen(false)} onFileOpen={handleFileOpen} />
       </WorkspaceInspectorDock>

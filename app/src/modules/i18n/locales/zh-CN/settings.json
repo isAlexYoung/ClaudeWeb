@@ -1067,8 +1067,12 @@
     "connectionLink": "连接入口链接",
     "copyConnectionLink": "复制链接",
     "openWorkspaceBrowser": "打开内置浏览器",
-    "linkCopied": "链接已复制，可在内置浏览器的地址栏粘贴打开。",
+    "linkCopied": "链接已复制。",
     "copyLinkFailed": "复制受限，请选中上方链接后手动复制。",
-    "manualConnectionHint": "VPS 无法自动打开浏览器时，可复制此入口，在内置浏览器中打开。先用浏览器的粘贴工具传入链接，再在地址栏粘贴。具体授权由官方页面发起，此入口不是临时 OAuth 链接。"
+    "manualConnectionHint": "这里的链接默认在服务器的内置浏览器中打开；想在别处打开，可用旁边的按钮复制链接。具体授权由官方页面发起，此入口不是临时 OAuth 链接。",
+    "linkCopiedShort": "链接已复制",
+    "copyLinkBlocked": "复制受限，链接是 {{url}}",
+    "opensInBuiltInBrowser": "在服务器的内置浏览器中打开：{{url}}",
+    "copyLinkTo": "复制链接：{{url}}"
   }
 }

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   BookOpen,
-  ExternalLink,
   GitBranch,
   Layers,
   Loader2,
@@ -17,6 +16,7 @@ import {
 
 import { usePlugins } from '@/modules/plugins/context/PluginsContext';
 import PluginIcon from '@/modules/plugins/PluginIcon';
+import PluginLink from '@/modules/plugins/PluginLink';
 import { getPluginSlots } from '@/modules/plugins/pluginRuntime';
 import type { Plugin, PluginRuntimeState } from '@/shared/types';
 
@@ -201,17 +201,16 @@ function PluginCard({
                   </span>
                 )}
                 {plugin.repoUrl && (
-                  <a
+                  <PluginLink
                     href={plugin.repoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    iconClassName="h-3 w-3"
                     className="inline-flex items-center gap-1 text-xs text-muted-foreground/60 transition-colors hover:text-foreground"
                   >
                     <GitBranch className="h-3 w-3" />
                     <span className="max-w-[200px] truncate">
                       {plugin.repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '')}
                     </span>
-                  </a>
+                  </PluginLink>
                 )}
               </div>
             </div>
@@ -558,7 +557,7 @@ export default function PluginSettingsTab({ installOnly = false, onInstalled }: 
         <button type="submit" disabled={installing || !gitUrl.trim()} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">{installing && <Loader2 className="h-4 w-4 animate-spin" />}{t('pluginSettings.installButton')}</button>
       </div>
       {installError && <p role="alert" className="text-sm text-destructive">{installError}</p>}
-      <a href={CUSTOM_PLUGINS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><BookOpen className="h-3.5 w-3.5" />{t('pluginSettings.customPlugins')}<ExternalLink className="h-3 w-3" /></a>
+      <PluginLink href={CUSTOM_PLUGINS_URL} iconClassName="h-3 w-3" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><BookOpen className="h-3.5 w-3.5" />{t('pluginSettings.customPlugins')}</PluginLink>
     </form>
   );
 
@@ -628,15 +627,14 @@ export default function PluginSettingsTab({ installOnly = false, onInstalled }: 
       </div>
 
       <div className="-mt-4 flex flex-wrap items-center justify-between gap-2">
-        <a
+        <PluginLink
           href={CUSTOM_PLUGINS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          iconClassName="h-3 w-3"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           <BookOpen className="h-3.5 w-3.5" />
-          {t('pluginSettings.customPlugins')} <ExternalLink className="h-3 w-3" />
-        </a>
+          {t('pluginSettings.customPlugins')}
+        </PluginLink>
         <span className="text-xs text-muted-foreground/70">
           {t('pluginSettings.securityWarning')}
         </span>

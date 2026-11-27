@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { createGraphicalSessionService } from '@/modules/graphical-session/index.js';
 import { AppError } from '@/shared/utils.js';
 
 import { createBrowserService } from '../browser.service.js';
@@ -77,5 +78,28 @@ test('a picture connection with a bad request is closed with 4400; without Chrom
   browser.relay(missing as never, new URL(`http://x/browser-ws?sid=${SID}&w=800&h=600`));
   for (let i = 0; i < 50 && !missing.closed; i += 1) await new Promise((resolve) => setTimeout(resolve, 10));
   assert.deepEqual(missing.closed, { code: 4503, reason: 'Browser unavailable' });
+  fs.rmSync(home, { recursive: true, force: true });
+});
+
+test('opening a link accepts only http(s) addresses', async () => {
+  const { home, browser } = service();
+  for (const url of [undefined, 42, '', 'javascript:alert(1)', 'file:///etc/passwd', 'chrome://settings', `https://example.com/${'a'.repeat(2100)}`]) {
+    await assert.rejects(browser.open(url), (error: unknown) => error instanceof AppError && error.code === 'INVALID_URL', String(url).slice(0, 40));
+  }
+  fs.rmSync(home, { recursive: true, force: true });
+});
+
+test('a link asked for before the browser runs waits to be its first page', async () => {
+  const { home, browser } = service();
+  const reply = await browser.open('https://claude.ai/customize/connectors');
+  assert.equal(reply.status, 200);
+  assert.deepEqual(JSON.parse(reply.body.toString('utf8')), { ok: true, opened: 'pending' });
+  fs.rmSync(home, { recursive: true, force: true });
+});
+
+test('Claude Desktop does not open links', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeweb-desktop-'));
+  const desktop = createGraphicalSessionService({ homeDirectory: home, application: 'claude-desktop' });
+  await assert.rejects(desktop.open('https://example.com'), (error: unknown) => error instanceof AppError && error.code === 'INVALID_REQUEST');
   fs.rmSync(home, { recursive: true, force: true });
 });

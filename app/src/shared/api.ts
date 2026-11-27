@@ -351,6 +351,8 @@ export const api = {
     writeImage: (sid: string, png: Blob, signal?: AbortSignal) => authenticatedFetch(`/api/browser/image-clipboard${query({ sid, op: 'write' })}`,
       { method: 'POST', body: png, headers: { 'Content-Type': 'image/png' }, signal }),
     end: (sid: string) => post('/api/browser/end', { sid }, { keepalive: true }),
+    /** Opens a page in the browser: a new tab, or the first page of the browser about to start. */
+    open: (url: string) => post('/api/browser/open', { url }),
   },
   desktop: {
     available: () => get('/api/claude-desktop/available'),

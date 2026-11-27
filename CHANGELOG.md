@@ -5,6 +5,11 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.12 - 2026-11-27 (stable)
+
+- Plugins: links on the Plugins page (the Claude connectors page and the Claude CLI connection guide in a recommended connector's dialog, a plugin's repository, the custom plugin guide) now open in the built-in browser on the server, which keeps your sign-ins there; ClaudeWeb opens the page in a new tab of the running browser, or as the first page of the browser it starts. Every such link has a copy button beside it to open it anywhere else. In Settings, where the built-in browser cannot be shown, links still open in a new tab of your own browser.
+- Connectors: CMCP connectors are named after the computer and the way it is reached, such as "windows-web" (the ClaudeWeb URL login), "windows-ssh" or "windows-web + ssh", instead of CMCP's internal name, which is shown on hover. Claude's tool names do not change. A standalone SSH connector from CMCP 4.24 is now checked through its relay too and shown as "ssh".
+
 ## 2.3.11 - 2026-11-27 (stable)
 
 - Settings > About: when an update finishes, the page now reloads into the new version. Before, the update section re-read its status in a loop while About was open, and that loop cancelled the pending reload as soon as the update finished, so the old release notes stayed, the version number changed only sometimes, and clicking Update again failed. If the server already runs a newer version than the open page (an update finished in another tab, for example), the old notes give way to "ClaudeWeb X is installed. Reload the page to use it." with a reload button, an offer for the installed version is no longer shown, and clicking Update while an update is already running follows that update instead of showing an error. The page you update from still runs the old code, so after updating from 2.3.10 reload once by hand if it does not reload on its own.
