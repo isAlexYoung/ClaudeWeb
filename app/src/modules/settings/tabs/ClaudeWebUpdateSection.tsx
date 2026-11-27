@@ -6,6 +6,7 @@ import SettingsRow from '@/modules/settings/SettingsRow';
 import SettingsSection from '@/modules/settings/SettingsSection';
 import { useClaudeWebUpdate } from '@/modules/settings/hooks/useClaudeWebUpdate';
 import { api } from '@/shared/api';
+import { APP_VERSION } from '@/shared/constants';
 import { Button } from '@/shared/ui';
 
 // Codes the root updater reports that have their own explanation; anything else shows the code.
@@ -15,22 +16,37 @@ const KNOWN_ERRORS = new Set([
   'CLAUDEWEB_PLATFORM_INCOMPATIBLE',
 ]);
 
+const RELEASE_VERSION = /^\d+\.\d+\.\d+$/;
+
 function megabytes(bytes: number) {
   return Math.max(1, Math.round(bytes / 1024 / 1024));
+}
+
+/** True when `version` is a later release than `than` (x.y.z, compared numerically). */
+function isNewer(version: string, than: string | null) {
+  if (!than || !RELEASE_VERSION.test(version) || !RELEASE_VERSION.test(than)) return true;
+  const a = version.split('.').map(Number);
+  const b = than.split('.').map(Number);
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) return a[index] > b[index];
+  }
+  return false;
 }
 
 type ClaudeWebUpdateSectionProps = {
   /** Replaced in tests; the page reloads once the new version answers. */
   reload?: () => void;
+  /** The version this page was built from (replaced in tests). */
+  pageVersion?: string;
 };
 
 /**
  * Rendered by AboutTab: the installed ClaudeWeb version and, when the root updater's socket
  * is there, a check for and install of a newer stable release.
  */
-export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectionProps) {
+export default function ClaudeWebUpdateSection({ reload, pageVersion = APP_VERSION }: ClaudeWebUpdateSectionProps) {
   const { t } = useTranslation('settings');
-  const { phase, status, offer, error, check, update } = useClaudeWebUpdate(reload);
+  const { phase, status, offer, error, check, update, reload: reloadPage } = useClaudeWebUpdate(reload);
   const [confirming, setConfirming] = useState(false);
   // Conversations running when the confirmation opened; null until known (or when it cannot be read).
   const [running, setRunning] = useState<number | null>(null);
@@ -46,8 +62,13 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
 
   if (phase === 'loading' || !status) return null;
   const installed = status.installed;
-  const next = offer?.newer.find((item) => item.compatible) ?? null;
-  const blocked = offer && !next ? offer.newer.find((item) => !item.compatible) ?? null : null;
+  // The server already runs another version than this page was built from (an update finished
+  // while the page stayed open): only a reload shows it, so offer that instead of the old notes.
+  const outdatedPage = Boolean(installed && RELEASE_VERSION.test(pageVersion) && installed !== pageVersion);
+  // An offer read before the update finished must not keep advertising what is now installed.
+  const newer = outdatedPage ? [] : offer?.newer.filter((item) => isNewer(item.version, installed)) ?? [];
+  const next = newer.find((item) => item.compatible) ?? null;
+  const blocked = offer && !next ? newer.find((item) => !item.compatible) ?? null : null;
   const busy = phase === 'checking' || phase === 'starting' || phase === 'updating' || phase === 'reloading';
   const progress = phase === 'reloading' ? 'reloading' : status.status.state;
 
@@ -66,7 +87,7 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
                   {phase === 'checking' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   {t('about.update.check')}
                 </Button>
-                {phase === 'ready' && offer && !next && !blocked && (
+                {phase === 'ready' && offer && !next && !blocked && !outdatedPage && (
                   <span role="status" className="text-xs text-muted-foreground">{t('about.update.upToDate')}</span>
                 )}
               </div>
@@ -78,6 +99,16 @@ export default function ClaudeWebUpdateSection({ reload }: ClaudeWebUpdateSectio
           <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground" role="status">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t(`about.update.progress.${phase === 'starting' ? 'queued' : progress}`, { version: status.status.version ?? '' })}
+          </div>
+        )}
+
+        {phase === 'ready' && outdatedPage && (
+          <div className="flex flex-wrap items-center justify-between gap-3 py-3" role="status">
+            <span className="text-sm text-foreground">{t('about.update.updated', { version: installed })}</span>
+            <Button size="sm" onClick={reloadPage} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              {t('about.update.reload')}
+            </Button>
           </div>
         )}
 

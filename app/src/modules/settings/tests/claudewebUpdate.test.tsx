@@ -105,6 +105,78 @@ test('follows the updater through the restart and reloads once the new version i
   }
 });
 
+test('with the default reload, an idle About tab reads the status once instead of in a loop', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    mocks.status.mockResolvedValue(json(status()));
+    render(<ClaudeWebUpdateSection />);
+    expect(await screen.findByText('1.0.0')).toBeTruthy();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(mocks.status).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('the reload survives the re-render the finished status causes', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    const reload = vi.fn();
+    mocks.status
+      .mockResolvedValueOnce(json(status({}, { state: 'restarting', version: '1.0.1', updated_at: Math.floor(Date.now() / 1000) })))
+      .mockResolvedValue(json(status({ installed: '1.0.1' }, { state: 'done', version: '1.0.1' })));
+    // A new function on every render, as an inline default used to be.
+    function Host() {
+      return <ClaudeWebUpdateSection reload={() => reload()} pageVersion="1.0.0" />;
+    }
+    render(<Host />);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(await screen.findByText('Update finished. Reloading…')).toBeTruthy();
+    await vi.advanceTimersByTimeAsync(1600);
+    expect(reload).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('once the server runs a newer version than the page, the old notes give way to a reload button', async () => {
+  const reload = vi.fn();
+  mocks.status.mockResolvedValue(json(status({ installed: '1.0.1' }, { state: 'done', version: '1.0.1' })));
+  mocks.check.mockResolvedValue(json(offer));
+  render(<ClaudeWebUpdateSection reload={reload} pageVersion="1.0.0" />);
+
+  expect(await screen.findByText('ClaudeWeb 1.0.1 is installed. Reload the page to use it.')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+  await waitFor(() => expect(mocks.check).toHaveBeenCalled());
+  expect(screen.queryByText('Faster start')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Update to 1.0.1' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Reload page' }));
+  expect(reload).toHaveBeenCalledTimes(1);
+});
+
+test('an offer for the version now installed is not shown again', async () => {
+  mocks.status.mockResolvedValue(json(status({ installed: '1.0.1' })));
+  mocks.check.mockResolvedValue(json(offer));
+  render(<ClaudeWebUpdateSection reload={vi.fn()} pageVersion="1.0.1" />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Check for updates' }));
+  expect(await screen.findByText('ClaudeWeb is up to date.')).toBeTruthy();
+  expect(screen.queryByText('Faster start')).toBeNull();
+});
+
+test('a second click while the update runs follows that update instead of failing', async () => {
+  mocks.status
+    .mockResolvedValueOnce(json(status()))
+    .mockResolvedValue(json(status({}, { state: 'downloading', version: '1.0.1', updated_at: Math.floor(Date.now() / 1000) })));
+  mocks.check.mockResolvedValue(json(offer));
+  mocks.update.mockResolvedValue(refusal('CLAUDEWEB_UPDATE_RUNNING'));
+  render(<ClaudeWebUpdateSection reload={vi.fn()} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Check for updates' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Update to 1.0.1' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Update to 1.0.1 now' }));
+  expect(await screen.findByText('Downloading 1.0.1…')).toBeTruthy();
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
 test('explains refusals, a version that needs a newer WebDesktop, and hides the check outside WebDesktop', async () => {
   mocks.status.mockResolvedValue(json(status()));
   mocks.check.mockResolvedValueOnce(json({ ...offer, newer: [{ ...offer.newer[0], compatible: false }] }));

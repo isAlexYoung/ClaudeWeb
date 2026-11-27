@@ -62,7 +62,11 @@ function FloatingPanel({ anchor, placement, className, label, children }: {
     const place = () => {
       const panel = panelRef.current;
       if (!panel) return;
-      setPosition(placePanel(anchor.getBoundingClientRect(), { width: panel.offsetWidth, height: panel.scrollHeight }, placement));
+      // scrollHeight leaves out the border while maxHeight (border-box) includes it; measuring
+      // without it made a panel pushed against the window's bottom edge 2px too short, so it
+      // showed a scrollbar for nothing.
+      const border = panel.offsetHeight - panel.clientHeight;
+      setPosition(placePanel(anchor.getBoundingClientRect(), { width: panel.offsetWidth, height: panel.scrollHeight + border }, placement));
     };
     place();
     // A resize (rotating a phone, the on-screen keyboard opening) moves the anchor; follow it rather than closing.

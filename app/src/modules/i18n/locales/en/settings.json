@@ -795,6 +795,8 @@
       "confirm": "ClaudeWeb restarts during the update, so conversations that are running now are interrupted. Your conversation history and settings are kept, and the database is backed up first.",
       "confirmButton": "Update to {{version}} now",
       "cancel": "Cancel",
+      "updated": "ClaudeWeb {{version}} is installed. Reload the page to use it.",
+      "reload": "Reload page",
       "progress": {
         "queued": "Starting the update to {{version}}…",
         "checking": "Checking the release…",
