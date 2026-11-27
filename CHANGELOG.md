@@ -5,6 +5,12 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.11 - 2026-11-27 (stable)
+
+- Settings > About: when an update finishes, the page now reloads into the new version. Before, the update section re-read its status in a loop while About was open, and that loop cancelled the pending reload as soon as the update finished, so the old release notes stayed, the version number changed only sometimes, and clicking Update again failed. If the server already runs a newer version than the open page (an update finished in another tab, for example), the old notes give way to "ClaudeWeb X is installed. Reload the page to use it." with a reload button, an offer for the installed version is no longer shown, and clicking Update while an update is already running follows that update instead of showing an error. The page you update from still runs the old code, so after updating from 2.3.10 reload once by hand if it does not reload on its own.
+- Connectors: CMCP 4.25's single connector per PC (`cmcp-pc-<id>`, which reaches the PC through the URL or SSH route chosen in CMCP) is shown as connected while its PC is reachable. Before, ClaudeWeb did not recognise it and showed "Disconnected" whenever no reply was running, even though the PC could be used. Other connectors now say "Not started" while no reply is running, because Claude starts them with each reply, instead of "Disconnected".
+- Menus: a submenu opened near the bottom of the window (Code's Recents sort menu, for example) no longer shows a scrollbar for content that fits.
+
 ## 2.3.10 - 2026-11-27 (stable)
 
 - Model menus: models the signed-in Claude account cannot use are shown greyed out and cannot be chosen, with the reason in place of the description. Fable is not included in Pro (or Free) subscriptions or in Team and Enterprise standard seats, but Claude Code still lists it for them; ClaudeWeb now reads the plan from the Claude login (`subscriptionType` and the account's `seatTier`) and marks every Fable model in the composer's model menu and the scheduled-task editor. A session or default saved on such a model falls back to the account's default instead of sending to it. Nothing is greyed out when chats run on an API key, a long-lived token or a cloud provider, or when the login names no plan.

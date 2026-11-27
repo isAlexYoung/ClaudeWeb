@@ -482,6 +482,7 @@
       "connected": "Connected",
       "disconnected": "Disconnected",
       "connecting": "Connecting",
+      "idle": "Not started",
       "detailsUnavailable": "Category details will appear when the running Claude CLI reports them.",
       "resize": "Resize right sidebar",
       "categories": {

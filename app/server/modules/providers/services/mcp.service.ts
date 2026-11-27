@@ -16,10 +16,11 @@ export const providerMcpService = {
     const scopes = await this.listProviderMcpServers(providerName, options);
     const effective = new Map([...scopes.user, ...scopes.project, ...scopes.local].map((server) => [server.name, server]));
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // Null: no running Claude process for this session, so ordinary servers are not started yet.
     const runtime = providerName === 'claude' ? await Promise.race([
       readClaudeMcpConnections(options.sessionId).catch(() => []),
       new Promise<[]>(resolve => { timer = setTimeout(() => resolve([]), 2000); }),
-    ]).finally(() => clearTimeout(timer)) : [];
+    ]).finally(() => clearTimeout(timer)) : null;
     return resolveMcpConnections([...effective.values()].filter(server => server.enabled !== false), runtime);
   },
   /**

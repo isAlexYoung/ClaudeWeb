@@ -877,7 +877,7 @@ export type ProviderMcpServer = {
 };
 
 /** Live connector state exposed by the inspector without credentials or configuration. */
-export type McpConnectionStatus = { name: string; status: 'connected' | 'disconnected' | 'connecting' };
+export type McpConnectionStatus = { name: string; status: 'connected' | 'disconnected' | 'connecting' | 'idle' };
 
 /**
  * Payload for create/update MCP server operations.

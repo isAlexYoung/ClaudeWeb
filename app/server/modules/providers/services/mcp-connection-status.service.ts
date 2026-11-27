@@ -102,10 +102,14 @@ async function readRelay(socketPath: string): Promise<{ name?: string; status: M
   } catch { return { status: 'disconnected' }; }
 }
 
-/** Used by providerMcpService; CMCP reflects PC reachability, other servers reflect the live session's SDK. */
+/**
+ * Used by providerMcpService; CMCP reflects PC reachability, other servers reflect the live
+ * session's SDK. `runtime` is null when no Claude process runs for the session: Claude starts
+ * ordinary servers with a reply, so they are reported as not started rather than disconnected.
+ */
 export async function resolveMcpConnections(
   servers: ProviderMcpServer[],
-  runtime: Array<{ name: string; status: string }>,
+  runtime: Array<{ name: string; status: string }> | null,
 ): Promise<McpConnectionStatus[]> {
   const relays = new Map<string, ReturnType<typeof readRelay>>();
   return Promise.all(servers.map(async (server) => {
@@ -121,6 +125,7 @@ export async function resolveMcpConnections(
       return { name: server.name, status: live.status === 'connecting' ? 'connecting'
         : live.name === server.name ? live.status : 'disconnected' };
     }
+    if (!runtime) return { name: server.name, status: 'idle' };
     const live = runtime.find((entry) => entry.name === server.name)?.status;
     return { name: server.name, status: live === 'connected' ? 'connected' : live === 'pending' ? 'connecting' : 'disconnected' };
   }));

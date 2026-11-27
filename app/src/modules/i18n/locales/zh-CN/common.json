@@ -368,6 +368,7 @@
       "connected": "已连接",
       "disconnected": "未连接",
       "connecting": "连接中",
+      "idle": "未启动",
       "detailsUnavailable": "分类明细将在 Claude CLI 返回数据后显示。",
       "resize": "调整右侧栏宽度",
       "categories": {

@@ -23,7 +23,7 @@ export function useConnectorStatus(workspacePath: string | undefined, sessionId:
         const collection: unknown = payload.data?.servers;
         if (!Array.isArray(collection)) throw new Error('Invalid MCP status response');
         const statuses = collection.filter((entry): entry is McpConnectionStatus => entry && typeof entry.name === 'string'
-          && ['connected', 'disconnected', 'connecting'].includes(entry.status));
+          && ['connected', 'disconnected', 'connecting', 'idle'].includes(entry.status));
         if (!cancelled) setSnapshot({ key, servers: statuses, error: false });
       } catch {
         if (!cancelled) setSnapshot({ key, servers: [], error: true });

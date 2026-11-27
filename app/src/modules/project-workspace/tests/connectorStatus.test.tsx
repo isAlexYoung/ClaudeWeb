@@ -28,6 +28,13 @@ test('live connectors refresh without reload and stop polling while collapsed or
   assert.deepEqual(view.result.current.servers, []);
 });
 
+test('a connector that is not started yet keeps its own status instead of being dropped', async () => {
+  harness.request.mockResolvedValue(response('docs', 'idle'));
+  const view = renderHook(() => useConnectorStatus('/repo', 's1', true));
+  await flush();
+  assert.deepEqual(view.result.current.servers, [{ name: 'docs', status: 'idle' }]);
+});
+
 test('navigation cancels the old lookup and ignores a late response from another session', async () => {
   let resolveOld!: (value: ReturnType<typeof response>) => void;
   harness.request.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; }))

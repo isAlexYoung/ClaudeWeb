@@ -105,10 +105,13 @@ type TokenBudget = {
 
 const activeSessions = new Map<string, ActiveSession>();
 
-/** Used by the provider MCP service to inspect an existing query without creating one. */
-export async function readClaudeMcpConnections(sessionId?: string): Promise<Array<{ name: string; status: string }>> {
+/**
+ * Used by the provider MCP service to inspect an existing query without creating one.
+ * Null when the session has no running Claude process, so nothing can be connected yet.
+ */
+export async function readClaudeMcpConnections(sessionId?: string): Promise<Array<{ name: string; status: string }> | null> {
   const instance = sessionId ? activeSessions.get(sessionId)?.instance : undefined;
-  if (!instance?.mcpServerStatus) return [];
+  if (!instance?.mcpServerStatus) return null;
   return instance.mcpServerStatus();
 }
 // Outstanding background tasks per live session, keyed like activeSessions. An

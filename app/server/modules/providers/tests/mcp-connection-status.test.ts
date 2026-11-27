@@ -100,6 +100,16 @@ test('a CMCP 4.25 managed connector is connected when its chosen route reaches t
   assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'disconnected' }]);
 });
 
+test('without a running Claude process ordinary connectors are not started, while CMCP still reports its PC', async () => {
+  const servers: ProviderMcpServer[] = [
+    { provider: 'claude', name: 'docs', scope: 'user', transport: 'http', url: 'https://example.test' },
+    cmcp('linux-pc-files', socketPath()),
+  ];
+  assert.deepEqual(await resolveMcpConnections(servers, null), [
+    { name: 'docs', status: 'idle' }, { name: 'linux-pc-files', status: 'disconnected' },
+  ]);
+});
+
 test('ordinary MCP connectors follow live SDK state and expose no configuration secrets', async () => {
   const servers = ['ready', 'waiting', 'failed', 'idle'].map((name): ProviderMcpServer => ({
     provider: 'claude', name, scope: 'user', transport: 'http', url: 'https://example.test', headers: { Authorization: 'secret' },

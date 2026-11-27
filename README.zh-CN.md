@@ -21,7 +21,7 @@
 
 ## 安装
 
-当前正式版为 **2.3.10**。在服务器上以 root 运行：
+当前正式版为 **2.3.11**。在服务器上以 root 运行：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.sh | bash
@@ -31,7 +31,7 @@ curl -fsSL https://raw.githubusercontent.com/isAlexYoung/ClaudeWeb/main/install.
 
 需要一台 amd64（x86_64）服务器，至少 **2 核 CPU、2 GB 内存**，以及你自己的 Claude 账号或 API 凭据。
 
-| 系统 | 2.3.10 |
+| 系统 | 2.3.11 |
 | --- | --- |
 | Debian 12 | 支持 |
 | Debian 13 | 支持 |

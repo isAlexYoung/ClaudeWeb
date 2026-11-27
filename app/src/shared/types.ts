@@ -490,7 +490,7 @@ type QuestionOption = {
 // ---------------------------
 
 /** Live connector state, shared by the provider API and workspace inspector. */
-export type McpConnectionStatus = { name: string; status: 'connected' | 'disconnected' | 'connecting' };
+export type McpConnectionStatus = { name: string; status: 'connected' | 'disconnected' | 'connecting' | 'idle' };
 
 //----------------- FILE PANEL NAVIGATION ------------
 
