@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.12",
+   "channel": "stable",
+   "published_at": "2026-11-27T12:18:09Z",
+   "notes": "\u63d2\u4ef6\u4e2d\u7684\u94fe\u63a5\u9ed8\u8ba4\u5728\u670d\u52a1\u5668\u7684\u5185\u7f6e\u6d4f\u89c8\u5668\u4e2d\u6253\u5f00\uff0c\u65c1\u8fb9\u65b0\u589e\u590d\u5236\u6309\u94ae\uff1bCMCP \u8fde\u63a5\u5668\u6309\u7535\u8111\u548c\u8fde\u63a5\u65b9\u5f0f\u663e\u793a\uff0c\u5982 windows-web\u3001windows-ssh\u3002",
+   "package": {
+    "name": "claudeweb-2.3.12-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.12/claudeweb-2.3.12-linux-x64.tar.xz",
+    "bytes": 114157488,
+    "sha256": "1e57fff720cc498ed744c875db32d91b4acfc9c1d9deacc84fa8885a25d9cac0"
+   }
+  },
+  {
    "version": "2.3.11",
    "channel": "stable",
    "published_at": "2026-11-27T09:58:14Z",
@@ -326,5 +338,5 @@
    }
   }
  ],
- "generated_at": "2026-11-27T09:58:14Z"
+ "generated_at": "2026-11-27T12:18:10Z"
 }
