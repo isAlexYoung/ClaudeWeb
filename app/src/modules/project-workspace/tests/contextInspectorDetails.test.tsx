@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { test, vi } from 'vitest';
 
-import type { ContextUsageDetails } from '@/shared/types';
+import type { ContextUsageDetails, McpConnectionStatus } from '@/shared/types';
 import WorkspaceContextInspector from '@/modules/project-workspace/WorkspaceContextInspector';
 import { WorkspaceToolsProvider } from '@/modules/project-workspace/context/WorkspaceToolsContext';
 import '@/modules/i18n';
 
-const harness = vi.hoisted(() => ({ details: null as ContextUsageDetails | null, usage: { used: 100, total: 1000 } }));
+const harness = vi.hoisted(() => ({ details: null as ContextUsageDetails | null, usage: { used: 100, total: 1000 }, servers: [] as McpConnectionStatus[] }));
+vi.mock('@/modules/project-workspace/hooks/useConnectorStatus', () => ({ useConnectorStatus: () => ({ servers: harness.servers, error: false }) }));
 vi.mock('@/shared/context/WorkspaceExperienceContext', () => ({ useWorkspaceExperience: () => ({ contextDetails: harness.details, contextUsage: harness.usage, mode: 'project' }) }));
 vi.mock('@/shared/context/UiPreferencesContext', () => ({ useUiPreferences: () => ({ chatMcpEnabled: false }) }));
 vi.mock('@/modules/file-tree', () => ({ FileTree: () => null }));
@@ -45,6 +46,25 @@ test('connectors collapse and reopen independently of the context disclosure', a
   assert.equal(connectors.getAttribute('aria-expanded'), 'true');
   assert.ok(view.container.querySelector('.workspace-connectors-disclosure'));
   assert.equal(view.getByRole('button', { name: /Context/ }).getAttribute('aria-expanded'), 'false');
+});
+
+test('CMCP connectors show the computer and route, with the configured name on hover', () => {
+  harness.servers = [
+    { name: 'cmcp-pc-cdb17040cecafd36', status: 'connected', platform: 'windows', routes: ['web'] },
+    { name: 'github', status: 'idle' },
+  ];
+  try {
+    const view = render(<WorkspaceContextInspector view="context" project={null} session={null} onBack={() => {}} onFileOpen={() => {}} />, { wrapper: WorkspaceToolsProvider });
+    fireEvent.click(view.getByRole('button', { name: 'Connectors' }));
+    const rows = [...view.container.querySelectorAll('.workspace-connector')];
+    assert.deepEqual(rows.map((row) => row.querySelector('div')?.firstChild?.textContent), ['windows-web', 'github']);
+    assert.equal(rows[0].getAttribute('title'), 'cmcp-pc-cdb17040cecafd36');
+    assert.equal(rows[0].querySelector('span')?.textContent, 'W');
+    assert.equal(rows[1].hasAttribute('title'), false);
+    assert.equal(rows[1].querySelector('small')?.textContent, 'Not started');
+  } finally {
+    harness.servers = [];
+  }
 });
 
 test('unknown usage keeps the capsule without a dash or a fabricated percentage', () => {

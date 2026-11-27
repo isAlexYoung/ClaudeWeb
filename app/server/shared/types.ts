@@ -877,7 +877,18 @@ export type ProviderMcpServer = {
 };
 
 /** Live connector state exposed by the inspector without credentials or configuration. */
-export type McpConnectionStatus = { name: string; status: 'connected' | 'disconnected' | 'connecting' | 'idle' };
+/** The kind of computer a CMCP connector reaches. */
+export type McpConnectorPlatform = 'windows' | 'linux' | 'mac';
+/** How CMCP reaches that computer: through the ClaudeWeb URL login or over SSH. */
+export type McpConnectorRoute = 'web' | 'ssh';
+export type McpConnectionStatus = {
+  name: string;
+  status: 'connected' | 'disconnected' | 'connecting' | 'idle';
+  /** CMCP only, when known. */
+  platform?: McpConnectorPlatform;
+  /** CMCP only: the routes connected now, or the one it would use while none is. */
+  routes?: McpConnectorRoute[];
+};
 
 /**
  * Payload for create/update MCP server operations.

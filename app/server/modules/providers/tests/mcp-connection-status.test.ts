@@ -36,7 +36,8 @@ test('one shared bridge reports only the actual Linux PC as connected, then refl
   try {
     const servers = [cmcp('windows-pc-files', socket), cmcp('linux-pc-files', socket)];
     assert.deepEqual(await resolveMcpConnections(servers, [{ name: 'windows-pc-files', status: 'connected' }]), [
-      { name: 'windows-pc-files', status: 'disconnected' }, { name: 'linux-pc-files', status: 'connected' },
+      { name: 'windows-pc-files', status: 'disconnected', platform: 'windows', routes: ['web'] },
+      { name: 'linux-pc-files', status: 'connected', platform: 'linux', routes: ['web'] },
     ]);
     assert.equal(handshakes, 1, 'one identity read per shared socket');
     connected = false;
@@ -49,7 +50,7 @@ test('one shared bridge reports only the actual Linux PC as connected, then refl
 test('an offline CMCP bridge cannot be marked online by cached SDK MCP configuration', async () => {
   const servers = [cmcp('linux-pc-files', socketPath())];
   assert.deepEqual(await resolveMcpConnections(servers, [{ name: 'linux-pc-files', status: 'connected' }]), [
-    { name: 'linux-pc-files', status: 'disconnected' },
+    { name: 'linux-pc-files', status: 'disconnected', platform: 'linux', routes: ['web'] },
   ]);
 });
 
@@ -80,20 +81,26 @@ test('a CMCP 4.25 managed connector is connected when its chosen route reaches t
   t.after(() => Promise.all(relays.map((relay) => new Promise((resolve) => relay.close(resolve)))));
 
   // No relay yet, and an SDK cache claiming otherwise does not count.
-  assert.deepEqual(await resolveMcpConnections(servers, [{ name, status: 'connected' }]), [{ name, status: 'disconnected' }]);
+  const route = (status: string, routes: string[]) => [{ name, status, platform: 'windows', routes }];
+  // While nothing is connected the primary route is named.
+  assert.deepEqual(await resolveMcpConnections(servers, [{ name, status: 'connected' }]), route('disconnected', ['web']));
+  await writePolicy({ primary: 'ssh' });
+  assert.deepEqual(await resolveMcpConnections(servers, []), route('disconnected', ['ssh']));
+  await writePolicy();
   // Only the SSH relay runs while the policy uses the URL route.
   await listen('cmcp-ssh-0123abcd');
-  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'disconnected' }]);
+  assert.deepEqual(await resolveMcpConnections(servers, []), route('disconnected', ['web']));
   await writePolicy({ dual: true });
-  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'connected' }]);
-  await writePolicy();
+  assert.deepEqual(await resolveMcpConnections(servers, []), route('connected', ['ssh']));
   await listen('windows-pc-files');
-  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'connected' }]);
+  assert.deepEqual(await resolveMcpConnections(servers, []), route('connected', ['web', 'ssh']));
+  await writePolicy();
+  assert.deepEqual(await resolveMcpConnections(servers, []), route('connected', ['web']));
   // A relay connected to another PC is not this connector's PC.
   machine = 'another-pc';
-  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'disconnected' }]);
+  assert.deepEqual(await resolveMcpConnections(servers, []), route('disconnected', ['web']));
   machine = null;
-  assert.deepEqual(await resolveMcpConnections(servers, []), [{ name, status: 'connecting' }]);
+  assert.deepEqual(await resolveMcpConnections(servers, []), route('connecting', ['web']));
   // A route name that would leave the CMCP folder is refused.
   machine = 'machine-key';
   await writePolicy({ web: '../windows-pc-files' });
@@ -106,7 +113,14 @@ test('without a running Claude process ordinary connectors are not started, whil
     cmcp('linux-pc-files', socketPath()),
   ];
   assert.deepEqual(await resolveMcpConnections(servers, null), [
-    { name: 'docs', status: 'idle' }, { name: 'linux-pc-files', status: 'disconnected' },
+    { name: 'docs', status: 'idle' }, { name: 'linux-pc-files', status: 'disconnected', platform: 'linux', routes: ['web'] },
+  ]);
+});
+
+test('a standalone CMCP 4.24 SSH connector is checked through its relay and named as SSH', async () => {
+  const servers = [cmcp('cmcp-ssh-0123abcd', socketPath())];
+  assert.deepEqual(await resolveMcpConnections(servers, [{ name: 'cmcp-ssh-0123abcd', status: 'connected' }]), [
+    { name: 'cmcp-ssh-0123abcd', status: 'disconnected', routes: ['ssh'] },
   ]);
 });
 

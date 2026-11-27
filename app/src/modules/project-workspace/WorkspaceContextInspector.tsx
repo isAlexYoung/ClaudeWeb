@@ -10,6 +10,7 @@ import { WorkspaceToolSlot, useWorkspaceTools } from '@/modules/project-workspac
 import { useViewMotion } from '@/shared/hooks/useViewMotion';
 import { MotionSurface } from '@/shared/ui';
 import { useConnectorStatus } from '@/modules/project-workspace/hooks/useConnectorStatus';
+import { connectorLabel } from '@/modules/project-workspace/utils/connectorLabel';
 import WorkspaceTaskList from '@/modules/project-workspace/WorkspaceTaskList';
 import { useWorkspaceExperience } from '@/shared/context/WorkspaceExperienceContext';
 import { useUiPreferences } from '@/shared/context/UiPreferencesContext';
@@ -194,12 +195,15 @@ export default function WorkspaceContextInspector({ view, project, session, onBa
           ? <p className="workspace-inspector-note" role="status">{t('workspace.inspector.connectorsUnavailable')}</p>
           : !servers.length
             ? <p className="workspace-inspector-note">{t('workspace.inspector.noConnectors')}</p>
-            : servers.map(({ name, status }) => (
-              <div className="workspace-connector" key={name}>
-                <span>{name.slice(0, 1).toUpperCase()}</span>
-                <div>{name}<small data-connection-status={status}>{t(`workspace.inspector.${status}`)}</small></div>
-              </div>
-            ))}
+            : servers.map((server) => {
+              const label = connectorLabel(server);
+              return (
+                <div className="workspace-connector" key={server.name} title={label === server.name ? undefined : server.name}>
+                  <span>{label.slice(0, 1).toUpperCase()}</span>
+                  <div>{label}<small data-connection-status={server.status}>{t(`workspace.inspector.${server.status}`)}</small></div>
+                </div>
+              );
+            })}
       </MotionSurface>
       <SideChatInspector sessionId={session?.id || null} />
       <ProjectMemoryInspector projectId={mode === 'project' ? project?.projectId || null : null} projectName={project?.displayName || ''} sessionId={session?.id || null} onFileOpen={onFileOpen} />
