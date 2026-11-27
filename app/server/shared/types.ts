@@ -70,6 +70,12 @@ export type AuthenticatedWebSocketRequest = IncomingMessage & {
 export type LLMProvider = 'claude';
 
 /**
+ * Why the signed-in account cannot use a model: its subscription does not
+ * include it (Pro), or its seat does not (a Team or Enterprise standard seat).
+ */
+export type ProviderModelUnavailableReason = 'subscription' | 'seat';
+
+/**
  * One selectable model row in a provider model catalog.
  */
 export type ProviderModelOption = {
@@ -77,6 +83,8 @@ export type ProviderModelOption = {
   label: string;
   /** Only advertised for model families supporting the SDK fast-mode setting. */
   supportsFastMode?: boolean;
+  /** Set when the account's plan cannot use this model; menus show it greyed out. */
+  unavailable?: ProviderModelUnavailableReason;
   description?: string;
   /** Stable SQLite row id used only by model-management actions. */
   recordId?: number;

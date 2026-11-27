@@ -192,22 +192,26 @@ type ScheduledTaskMenuItemProps = {
   /** Shows the check mark; leave undefined for an action that is never "selected". */
   selected?: boolean;
   danger?: boolean;
+  /** Greyed out and not selectable, e.g. a model the account's plan does not include. */
+  disabled?: boolean;
   onSelect: () => void;
 };
 
 /** One choice in a ScheduledTaskMenu: optional icon, label, description and a check mark when selected. */
-export function ScheduledTaskMenuItem({ label, description, icon, selected, danger, onSelect }: ScheduledTaskMenuItemProps) {
+export function ScheduledTaskMenuItem({ label, description, icon, selected, danger, disabled = false, onSelect }: ScheduledTaskMenuItemProps) {
   const panel = useContext(MenuPanelContext);
   return (
     <button
       type="button"
       role={selected === undefined ? 'menuitem' : 'menuitemradio'}
       aria-checked={selected === undefined ? undefined : selected}
+      aria-disabled={disabled || undefined}
+      disabled={disabled}
       className={`scheduled-task-menu-item ${danger ? 'danger' : ''}`}
       onMouseEnter={() => {
         if (panel?.activeSubmenuId !== null) panel?.setActiveSubmenuId(null);
       }}
-      onClick={onSelect}
+      onClick={disabled ? undefined : onSelect}
     >
       {icon && <span className="scheduled-task-menu-icon">{icon}</span>}
       <span className="scheduled-task-menu-text">

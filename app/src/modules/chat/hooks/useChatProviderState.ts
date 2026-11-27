@@ -667,7 +667,15 @@ export function useChatProviderState({ selectedSession, selectedProject: _select
 
   // The open session's model wins over the per-provider default, so switching
   // sessions shows (and sends) what each session actually runs with.
-  const currentProviderModel = sessionModel ?? providerModels[provider];
+  // A model the account's plan does not include (Fable on Pro or a standard
+  // seat) gives way to the catalog default, so a session or default saved on
+  // it before the plan changed neither shows it nor sends to it.
+  const requestedProviderModel = sessionModel ?? providerModels[provider];
+  const currentProviderModel = useMemo(() => {
+    const catalog = providerModelCatalog[provider];
+    const option = catalog?.OPTIONS.find((candidate) => candidate.value === requestedProviderModel);
+    return option?.unavailable && catalog?.DEFAULT ? catalog.DEFAULT : requestedProviderModel;
+  }, [provider, providerModelCatalog, requestedProviderModel]);
   const currentProviderEffortOptions = useMemo(() => {
     return getEffortOptionsForModel(provider, currentProviderModel);
   }, [currentProviderModel, getEffortOptionsForModel, provider]);

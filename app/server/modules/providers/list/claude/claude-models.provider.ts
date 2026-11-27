@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { readClaudeModelCatalog } from './claude-model-catalog.service.js';
 
 import { sessionsDb } from '@/modules/database/index.js';
 import type { IProviderModels } from '@/shared/interfaces.js';
@@ -13,6 +12,9 @@ import {
   isPlaceholderProviderModel,
   stripAnsiSequences,
 } from '@/shared/utils.js';
+
+import { readClaudeModelCatalog } from './claude-model-catalog.service.js';
+import { markPlanUnavailableModels, readClaudePlan } from './claude-plan.service.js';
 
 /**
  * Ultracode is not one of the SDK's reasoning-effort levels. Selecting it runs the turn at
@@ -282,7 +284,20 @@ const readClaudeSessionModelFromJsonl = async (
 };
 
 export class ClaudeProviderModels implements IProviderModels {
+  constructor(private readonly readPlan = () => readClaudePlan()) {}
+
+  /**
+   * The account's catalog with the models its plan cannot use marked. The CLI
+   * lists Fable for every subscription (a Pro account's catalog includes it),
+   * so the plan is read here, on every request rather than with the cached
+   * catalog, and a change of login shows on the next one.
+   */
   async getSupportedModels(): Promise<ProviderModelsDefinition> {
+    const [catalog, plan] = await Promise.all([this.readCatalog(), this.readPlan().catch(() => null)]);
+    return { ...catalog, OPTIONS: markPlanUnavailableModels(catalog.OPTIONS, plan) };
+  }
+
+  private async readCatalog(): Promise<ProviderModelsDefinition> {
     try {
       const models = await readClaudeModelCatalog();
       return { DEFAULT: 'default', OPTIONS: models.map(model => ({

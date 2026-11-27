@@ -111,6 +111,22 @@ function ComposerModelMenu({
     return sharedName(option) ? [sharedName(option), option.description].filter(Boolean).join(' · ') : option.description;
   };
   const otherModels = models.filter(option => !mainModels.includes(option));
+  // A model the account's plan does not include stays listed, greyed out, saying why.
+  const unavailableNote = (option: ProviderModelOption) => option.unavailable
+    ? t(`workspace.modelMenu.unavailable.${option.unavailable}`)
+    : undefined;
+  const modelRowProps = (option: ProviderModelOption) => ({
+    label: modelLabel(option),
+    description: unavailableNote(option) ?? modelDescription(option),
+    disabled: Boolean(option.unavailable),
+    title: unavailableNote(option),
+    isSelected: model === option.value,
+    onSelect: () => {
+      if (option.unavailable) return;
+      onSelectModel(option.value);
+      setIsOpen(false);
+    },
+  });
   const resolvedEffort = resolveModelEffort(selected, effort);
   const levelLabel = (value: string) => t(`workspace.modelMenu.levels.${value}`, { defaultValue: value });
   const effortLabel = resolvedEffort === DEFAULT_EFFORT_VALUE
@@ -159,16 +175,7 @@ function ComposerModelMenu({
               <p className="p-3 text-sm text-muted-foreground">{t('composer.loadingModels', { defaultValue: 'Loading models…' })}</p>
             )}
             {mainModels.map((option) => (
-              <ComposerMenuItem
-                key={option.value}
-                label={modelLabel(option)}
-                description={modelDescription(option)}
-                isSelected={model === option.value}
-                onSelect={() => {
-                  onSelectModel(option.value);
-                  setIsOpen(false);
-                }}
-              />
+              <ComposerMenuItem key={option.value} {...modelRowProps(option)} />
             ))}
 
             {effortOptions.length > 0 && (
@@ -201,8 +208,7 @@ function ComposerModelMenu({
           </div>
 
           {morePresence.isPresent && !effortOpen && <div {...morePresence.presenceProps} className="workspace-model-panel scrollbar-hide motion-surface motion-submenu" role="menu" aria-label={t('workspace.composer.moreModels')}>
-            {otherModels.map(option => <ComposerMenuItem key={option.value} label={modelLabel(option)} description={modelDescription(option)} isSelected={model === option.value}
-              onSelect={() => { onSelectModel(option.value); setIsOpen(false); }} />)}
+            {otherModels.map(option => <ComposerMenuItem key={option.value} {...modelRowProps(option)} />)}
           </div>}
           {effortPresence.isPresent && !moreOpen && (
             <div {...effortPresence.presenceProps} className="workspace-model-panel scrollbar-hide workspace-effort-panel motion-surface motion-submenu" role="menu" aria-label={t('workspace.modelMenu.effort')}>

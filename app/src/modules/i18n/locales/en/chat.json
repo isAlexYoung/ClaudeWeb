@@ -515,6 +515,10 @@
         "high": "High",
         "xhigh": "Extra high",
         "max": "Max"
+      },
+      "unavailable": {
+        "subscription": "Not included in your plan; needs Claude Max",
+        "seat": "Not available on a standard seat"
       }
     },
     "permissionModes": {

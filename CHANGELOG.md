@@ -5,6 +5,10 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.10 - 2026-11-27 (stable)
+
+- Model menus: models the signed-in Claude account cannot use are shown greyed out and cannot be chosen, with the reason in place of the description. Fable is not included in Pro (or Free) subscriptions or in Team and Enterprise standard seats, but Claude Code still lists it for them; ClaudeWeb now reads the plan from the Claude login (`subscriptionType` and the account's `seatTier`) and marks every Fable model in the composer's model menu and the scheduled-task editor. A session or default saved on such a model falls back to the account's default instead of sending to it. Nothing is greyed out when chats run on an API key, a long-lived token or a cloud provider, or when the login names no plan.
+
 ## 2.3.9 - 2026-11-26 (stable)
 
 - Usage limits: Claude Code's "You've hit your 5-hour limit · resets 9:20pm (Asia/Singapore)" reply (and the weekly and Opus variants) is now shown as a card with the limit, the reset time in your time zone and a live countdown. A checkbox on the card schedules a message for a minute after the reset that asks Claude to continue the previous task; it is an ordinary scheduled message, so it also shows above the composer, can be cancelled there or by unticking, and is sent by the server even if the page is closed. Once sent, the card says when. The usage-limit banner at the top of the conversation is gone.

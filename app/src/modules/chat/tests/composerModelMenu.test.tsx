@@ -135,3 +135,48 @@ test('switching from other models to effort never leaves three panels occupying 
   assert.equal(document.querySelectorAll('.workspace-model-panel').length, 2);
   assert.equal(document.querySelectorAll('.workspace-effort-panel').length, 1);
 });
+
+test('a model the plan does not include is listed greyed out with the reason and cannot be chosen', () => {
+  // A Pro account's catalog: the CLI lists Fable, the server marks it.
+  const models: ProviderModelOption[] = [
+    { value: 'default', label: 'Default (recommended)' },
+    { value: 'opus', label: 'Opus 5.5', description: 'Most capable for complex work' },
+    { value: 'fable', label: 'Fable 5.2', description: 'Hardest, longest-running tasks', unavailable: 'subscription' },
+    { value: 'sonnet', label: 'Sonnet 5.5' },
+    { value: 'haiku', label: 'Haiku 5.5' },
+    { value: 'claude-fable-5-1', label: 'Fable 5.1', unavailable: 'subscription' },
+    { value: 'claude-opus-5', label: 'Opus 5' },
+  ];
+  const chosen: string[] = [];
+  const view = render(<ComposerModelMenu effort="default" effortOptions={[]} onSelectEffort={() => {}} model="opus"
+    modelOptions={models} onSelectModel={value => { chosen.push(value); }} modelsLoading={false} />);
+  fireEvent.click(view.getByRole('button'));
+
+  const fable = view.getByRole('menuitemradio', { name: /Fable 5\.2/ }) as HTMLButtonElement;
+  assert.equal(fable.disabled, true);
+  assert.equal(fable.getAttribute('aria-disabled'), 'true');
+  assert.match(fable.textContent || '', /Not included in your plan; needs Claude Max/);
+  assert.doesNotMatch(fable.textContent || '', /Hardest/, 'the reason replaces the description');
+  fireEvent.click(fable);
+  assert.deepEqual(chosen, []);
+
+  // Older Fable versions under More models are greyed out too; the rest stay choosable.
+  fireEvent.click(view.getByRole('menuitem', { name: /More models/ }));
+  const olderFable = view.getByRole('menuitemradio', { name: /Fable 5\.1/ }) as HTMLButtonElement;
+  assert.equal(olderFable.disabled, true);
+  const olderOpus = view.getByRole('menuitemradio', { name: /^Opus 5$/ }) as HTMLButtonElement;
+  assert.equal(olderOpus.disabled, false);
+  fireEvent.click(olderOpus);
+  assert.deepEqual(chosen, ['claude-opus-5']);
+});
+
+test('a standard seat names the seat as the reason', () => {
+  const models: ProviderModelOption[] = [
+    { value: 'opus', label: 'Opus 5.5' },
+    { value: 'fable', label: 'Fable 5.2', unavailable: 'seat' },
+  ];
+  const view = render(<ComposerModelMenu effort="default" effortOptions={[]} onSelectEffort={() => {}} model="opus"
+    modelOptions={models} onSelectModel={() => {}} modelsLoading={false} />);
+  fireEvent.click(view.getByRole('button'));
+  assert.match(view.getByRole('menuitemradio', { name: /Fable/ }).textContent || '', /Not available on a standard seat/);
+});

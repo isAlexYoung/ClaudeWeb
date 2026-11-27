@@ -427,6 +427,10 @@
         "high": "高",
         "xhigh": "极高",
         "max": "最高"
+      },
+      "unavailable": {
+        "subscription": "当前订阅不可用，需要 Claude Max",
+        "seat": "标准席位不可用"
       }
     },
     "permissionModes": {

@@ -395,6 +395,12 @@
     },
     "composer": {
       "acceptSuggestion": "接受建議"
+    },
+    "modelMenu": {
+      "unavailable": {
+        "subscription": "目前訂閱無法使用，需要 Claude Max",
+        "seat": "標準席位無法使用"
+      }
     }
   },
   "regenerate": {

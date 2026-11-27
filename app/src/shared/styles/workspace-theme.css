@@ -545,6 +545,7 @@
 .scheduled-task-menu-divider { height: 1px; margin: 5px 6px; background: var(--workspace-line); }
 .scheduled-task-menu-item { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 9px; text-align: left; font-size: 14px; color: hsl(var(--popover-foreground)); }
 .scheduled-task-menu-item:hover, .scheduled-task-menu-item:focus-visible, .scheduled-task-menu-item.active { background: var(--workspace-hover); outline: none; }
+.scheduled-task-menu-item:disabled { opacity: .45; cursor: not-allowed; background: none; }
 .scheduled-task-menu-item > svg:last-child { margin-left: auto; align-self: center; }
 .scheduled-task-menu-icon { display: inline-flex; padding-top: 1px; color: hsl(var(--foreground) / .8); }
 .scheduled-task-menu-item.danger .scheduled-task-menu-icon { color: hsl(var(--destructive)); }

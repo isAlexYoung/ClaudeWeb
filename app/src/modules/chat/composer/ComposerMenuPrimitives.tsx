@@ -64,6 +64,8 @@ export function ComposerMenuItem({
   role = 'menuitemradio',
   trailing,
   className,
+  disabled = false,
+  title,
 }: {
   label: ReactNode;
   description?: ReactNode;
@@ -73,17 +75,24 @@ export function ComposerMenuItem({
   role?: 'menuitemradio' | 'menuitem';
   trailing?: ReactNode;
   className?: string;
+  /** Shown greyed out and not selectable, e.g. a model the account's plan does not include. */
+  disabled?: boolean;
+  title?: string;
 }) {
   return (
     <button
       type="button"
       role={role}
       aria-checked={role === 'menuitemradio' ? isSelected : undefined}
-      onClick={onSelect}
+      aria-disabled={disabled || undefined}
+      disabled={disabled}
+      title={title}
+      onClick={disabled ? undefined : onSelect}
       className={cn(
         'flex w-full items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors',
-        'hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
-        isSelected ? 'text-foreground' : 'text-foreground/90',
+        disabled
+          ? 'cursor-not-allowed text-foreground/40'
+          : cn('hover:bg-accent focus-visible:bg-accent focus-visible:outline-none', isSelected ? 'text-foreground' : 'text-foreground/90'),
         className,
       )}
     >
@@ -91,7 +100,7 @@ export function ComposerMenuItem({
       <span className="min-w-0 flex-1">
         <span className="block truncate leading-5">{label}</span>
         {description && (
-          <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">{description}</span>
+          <span className={cn('mt-0.5 block text-xs leading-4', disabled ? 'text-muted-foreground/70' : 'text-muted-foreground')}>{description}</span>
         )}
       </span>
       <span className={cn('mt-0.5 flex min-h-4 shrink-0 items-center justify-center', trailing ? 'min-w-4' : 'h-4 w-4')}>

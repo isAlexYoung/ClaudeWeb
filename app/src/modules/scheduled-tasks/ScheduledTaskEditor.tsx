@@ -162,6 +162,14 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
   const unlistedModel = model && !catalog.some((option) => option.value === model) ? model : null;
   const selectedModel = catalog.find((option) => option.value === model);
   const modelLabel = model ? (selectedModel ? modelName(selectedModel) : model) : t('scheduledTasks.editor.defaultModel');
+  // A model the account's plan does not include is listed greyed out, saying why, and cannot be picked.
+  const modelItemProps = (option: ProviderModelOption, close: () => void) => ({
+    label: modelName(option),
+    description: option.unavailable ? t(`chat:workspace.modelMenu.unavailable.${option.unavailable}`) : undefined,
+    disabled: Boolean(option.unavailable),
+    selected: model === option.value,
+    onSelect: () => { setModel(option.value); close(); },
+  });
 
   const buildSchedule = (): ScheduledTaskSchedule => {
     if (triggerKind === 'once') return { kind: 'once', at: new Date(onceAt).toISOString() };
@@ -278,7 +286,7 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
                       <>
                         <ScheduledTaskMenuItem label={t('scheduledTasks.editor.defaultModel')} selected={!model} onSelect={() => { setModel(''); close(); }} />
                         {primaryModels.map((option) => (
-                          <ScheduledTaskMenuItem key={option.value} label={modelName(option)} selected={model === option.value} onSelect={() => { setModel(option.value); close(); }} />
+                          <ScheduledTaskMenuItem key={option.value} {...modelItemProps(option, close)} />
                         ))}
                         {unlistedModel && (
                           <ScheduledTaskMenuItem label={unlistedModel} selected onSelect={close} />
@@ -288,7 +296,7 @@ export default function ScheduledTaskEditor({ open, task, onClose, onSaved, onSt
                             <ScheduledTaskMenuDivider />
                             <ScheduledTaskSubmenu label={t('scheduledTasks.editor.moreModels')}>
                               {moreModels.map((option) => (
-                                <ScheduledTaskMenuItem key={option.value} label={modelName(option)} selected={model === option.value} onSelect={() => { setModel(option.value); close(); }} />
+                                <ScheduledTaskMenuItem key={option.value} {...modelItemProps(option, close)} />
                               ))}
                             </ScheduledTaskSubmenu>
                           </>

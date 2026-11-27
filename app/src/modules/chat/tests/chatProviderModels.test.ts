@@ -18,6 +18,9 @@ const okJson = (data: unknown) => Promise.resolve({
   json: async () => data,
 });
 
+// The catalog the server answers with; a test sets it before rendering.
+const catalog = vi.hoisted(() => ({ models: null as unknown }));
+
 vi.mock('@/shared/api', () => ({
   api: {
     // The preference store PATCHes through api.user; it is stubbed rather than
@@ -27,7 +30,7 @@ vi.mock('@/shared/api', () => ({
       savePreferences: () => okJson({ success: true, preferences: {} }),
     },
     providers: {
-      models: () => okJson({ success: true, data: null }),
+      models: () => okJson({ success: true, data: catalog.models ? { models: catalog.models } : null }),
       capabilities: () => okJson({ success: true, data: null }),
       sessionActiveModel: () => okJson({ success: true, data: null }),
       setSessionActiveModel: () => okJson({ success: true, data: null }),
@@ -49,6 +52,7 @@ const renderProviderState = async () => {
 };
 
 beforeEach(() => {
+  catalog.models = null;
   localStorage.clear();
   // The preference store is a module-level singleton, so its in-memory copy
   // outlives localStorage.clear() and would leak one test's writes into the next.
@@ -117,4 +121,44 @@ test('the active provider’s model is what currentProviderModel reports', async
     assert.equal(result.current.provider, 'claude');
   });
   assert.equal(result.current.currentProviderModel, 'claude-active');
+});
+
+test('a saved model the plan does not include gives way to the catalog default', async () => {
+  localStorage.setItem('claude-model', 'fable');
+  catalog.models = {
+    DEFAULT: 'default',
+    OPTIONS: [
+      { value: 'default', label: 'Default (recommended)' },
+      { value: 'opus', label: 'Opus 5.5' },
+      { value: 'fable', label: 'Fable 5.2', unavailable: 'subscription' },
+    ],
+  };
+
+  const { result } = await renderProviderState();
+
+  await waitFor(() => {
+    assert.equal(result.current.currentProviderModelOptions.length, 3);
+  });
+  // The stored choice is kept (the plan may change back), but neither shown nor sent.
+  assert.equal(result.current.providerModels.claude, 'fable');
+  assert.equal(result.current.currentProviderModel, 'default');
+});
+
+test('a saved model the plan includes is used as it is', async () => {
+  localStorage.setItem('claude-model', 'opus');
+  catalog.models = {
+    DEFAULT: 'default',
+    OPTIONS: [
+      { value: 'default', label: 'Default (recommended)' },
+      { value: 'opus', label: 'Opus 5.5' },
+      { value: 'fable', label: 'Fable 5.2', unavailable: 'subscription' },
+    ],
+  };
+
+  const { result } = await renderProviderState();
+
+  await waitFor(() => {
+    assert.equal(result.current.currentProviderModelOptions.length, 3);
+  });
+  assert.equal(result.current.currentProviderModel, 'opus');
 });

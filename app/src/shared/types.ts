@@ -7,12 +7,20 @@ import type { NavigateFunction } from 'react-router-dom';
 /** Identifies which coding-agent CLI backs a session, project selection or model list. ClaudeWeb is Claude-only. */
 export type LLMProvider = 'claude';
 
+/**
+ * Why the signed-in account cannot use a model: its subscription does not
+ * include it (Pro), or its seat does not (a Team or Enterprise standard seat).
+ */
+export type ProviderModelUnavailableReason = 'subscription' | 'seat';
+
 /** One selectable model in a provider's model menu, including its optional reasoning-effort choices. */
 export type ProviderModelOption = {
   value: string;
   label: string;
   /** Whether the provider supports the SDK fast-mode setting for this model. */
   supportsFastMode?: boolean;
+  /** Set when the account's plan cannot use this model: shown greyed out and not selectable. */
+  unavailable?: ProviderModelUnavailableReason;
   description?: string;
   recordId?: number;
   isCustom?: boolean;
