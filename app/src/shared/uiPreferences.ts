@@ -18,6 +18,16 @@ export type UiPreferences = {
   promptSuggestionsEnabled: boolean;
   /** The card listing what a turn changed, under its last reply. */
   changeSummaryEnabled: boolean;
+  /** Clawd next to the greeting of a new Chat or Code conversation. */
+  clawdOnHome: boolean;
+  /** Clawd above a conversation's composer, acting out what Claude is doing. */
+  clawdAboveComposer: boolean;
+  /** A double click (or double tap) on Clawd switches to another animation. */
+  clawdDoubleClick: boolean;
+  /** Holiday greetings on the new-conversation page. */
+  clawdFestivals: boolean;
+  /** Clawd shows a still picture instead of animating. */
+  clawdStill: boolean;
 };
 
 export type UiPreferenceKey = keyof UiPreferences;
@@ -34,6 +44,11 @@ const DEFAULTS: UiPreferences = {
   chatMcpEnabled: false,
   promptSuggestionsEnabled: true,
   changeSummaryEnabled: true,
+  clawdOnHome: true,
+  clawdAboveComposer: true,
+  clawdDoubleClick: true,
+  clawdFestivals: true,
+  clawdStill: false,
 };
 
 const PREFERENCE_KEYS = Object.keys(DEFAULTS) as UiPreferenceKey[];

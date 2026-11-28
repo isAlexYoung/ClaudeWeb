@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/modules/auth';
+import { ClawdHeading } from '@/modules/clawd';
 import { useWorkspaceProfile } from '@/shared/workspacePreferences';
 import { DEFAULT_WORKSPACE_DISPLAY_NAME } from '@/shared/constants';
 
@@ -25,5 +26,5 @@ export function ChatHomeGreeting() {
   const weekday = new Intl.DateTimeFormat(i18n.resolvedLanguage || i18n.language, { weekday: 'long' }).format(greeting.date);
   const key = NAMED_GREETINGS.has(greeting.key) && !name ? `${greeting.key}Anonymous` : greeting.key;
 
-  return <h1 className="workspace-chat-greeting">{t(`workspace.greetings.${key}`, { name, weekday })}</h1>;
+  return <ClawdHeading mode="chat"><h1 className="workspace-chat-greeting">{t(`workspace.greetings.${key}`, { name, weekday })}</h1></ClawdHeading>;
 }

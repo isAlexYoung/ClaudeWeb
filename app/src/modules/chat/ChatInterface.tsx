@@ -43,6 +43,7 @@ import ChatTurnNavigator from '@/modules/chat/transcript/ChatTurnNavigator';
 import ChatComposer from '@/modules/chat/composer/ChatComposer';
 import PermissionRequestsBanner from '@/modules/chat/composer/PermissionRequestsBanner';
 import { ChatHomeGreeting } from '@/modules/chat/ChatHomeGreeting';
+import ComposerClawd from '@/modules/chat/clawd/ComposerClawd';
 import { usePromptSuggestion } from '@/modules/chat/hooks/usePromptSuggestion';
 import CommandResultModal from '@/modules/chat/modals/CommandResultModal';
 import { UsageLimitResumeContext } from '@/modules/chat/context/UsageLimitResumeContext';
@@ -127,7 +128,7 @@ function ChatInterface({
   onTranscriptScrollTop,
 }: ChatInterfaceProps) {
   const experience = useWorkspaceExperience();
-  const { chatMcpEnabled, promptSuggestionsEnabled = true } = useUiPreferences();
+  const { chatMcpEnabled, promptSuggestionsEnabled = true, clawdAboveComposer = true, clawdDoubleClick = true, clawdStill = false } = useUiPreferences();
   // Fast mode is one remembered choice for every conversation, as with Claude Code's /fast.
   // It costs more, so the model button shows it whenever it is on.
   const [fastMode, setFastMode] = useState(() => readUserPreference<boolean>('composerFastMode', false) === true);
@@ -683,6 +684,8 @@ function ChatInterface({
   // New Chat in chat mode centres the composer under a greeting, as in the approved layout.
   const isChatHome = experience.home && experience.mode === 'chat';
   const isCodeHome = experience.home && experience.mode === 'project';
+  // Clawd above the composer acts out the open conversation; the home pages have their own greeting.
+  const showComposerClawd = clawdAboveComposer && !isChatHome && !isCodeHome && !hideComposer && !compactLayout;
 
   if (!selectedProject) {
     if (isCodeHome) return <div className="workspace-chat workspace-code-home flex h-full min-h-0 flex-col">
@@ -710,7 +713,7 @@ function ChatInterface({
 
   return (
     <PermissionContext.Provider value={permissionContextValue}>
-      <div className={`workspace-chat flex h-full min-h-0 flex-col ${isChatHome ? 'workspace-chat-home' : ''} ${isCodeHome ? 'workspace-code-home' : ''} ${compactLayout ? 'workspace-chat-compact' : ''}`}>
+      <div className={`workspace-chat flex h-full min-h-0 flex-col ${isChatHome ? 'workspace-chat-home' : ''} ${isCodeHome ? 'workspace-code-home' : ''} ${compactLayout ? 'workspace-chat-compact' : ''} ${showComposerClawd ? 'workspace-chat-has-clawd' : ''}`}>
         {isChatHome && <ChatHomeGreeting key={experience.homeRequest} />}
         {isCodeHome && <div className="workspace-code-home-content">{homeContent}</div>}
         <MarkdownWorkspaceContext.Provider value={markdownWorkspaceValue}>
@@ -796,6 +799,22 @@ function ChatInterface({
         </MarkdownWorkspaceContext.Provider>
 
         <div className="relative flex-shrink-0">
+          {showComposerClawd && (
+            <div className="clawd-composer-dock" aria-hidden="true">
+              <div className="clawd-composer-lane">
+                <ComposerClawd
+                  conversationKey={`${selectedProject.projectId}:${selectedSession?.id || currentSessionId || 'draft'}`}
+                  isProcessing={isProcessing}
+                  isStopping={isStopping}
+                  pendingPermissions={pendingPermissionRequests.length}
+                  statusText={sessionActivity?.statusText ?? null}
+                  messages={chatMessages}
+                  still={clawdStill}
+                  doubleClick={clawdDoubleClick}
+                />
+              </div>
+            </div>
+          )}
           {searchNavigationStatus && <p role={searchNavigationStatus === 'loading' ? 'status' : 'alert'} className="mx-auto mb-2 max-w-[54.25rem] px-4 text-xs text-muted-foreground">{t(`searchNavigation.${searchNavigationStatus}`)}</p>}
           {isUserScrolledUp && chatMessages.length > 0 && (
             <div className="pointer-events-none absolute -top-11 left-0 right-0 z-20 flex justify-center">

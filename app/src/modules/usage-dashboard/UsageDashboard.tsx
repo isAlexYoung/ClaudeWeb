@@ -8,6 +8,7 @@ import type { UsageDashboardData, UsageDashboardRange } from '@/shared/types';
 import { useWorkspaceProfile } from '@/shared/workspacePreferences';
 import { QuotaDetails } from '@/shared/ui';
 import { useSubscriptionQuota } from '@/shared/context/SubscriptionQuotaContext';
+import { ClawdHeading } from '@/modules/clawd';
 import { UsageActivity, UsageModels } from '@/modules/usage-dashboard/UsageHistoryCharts';
 import '@/modules/usage-dashboard/usage-dashboard.css';
 
@@ -77,7 +78,7 @@ export function UsageDashboard() {
   ] : [];
   return (
     <div className="usage-home">
-      <h1 className="usage-greeting"><Sparkles aria-hidden="true" />{t(profile.displayName.trim() ? 'usageDashboard.greetingNamed' : 'usageDashboard.greeting', { name: profile.displayName.trim() })}</h1>
+      <ClawdHeading mode="code"><h1 className="usage-greeting"><Sparkles aria-hidden="true" />{t(profile.displayName.trim() ? 'usageDashboard.greetingNamed' : 'usageDashboard.greeting', { name: profile.displayName.trim() })}</h1></ClawdHeading>
       <section className="usage-dashboard" aria-label={t('usageDashboard.title')}>
         <div className="usage-toolbar">
           <div role="tablist" aria-label={t('usageDashboard.title')} ref={tabsRef} onKeyDown={(event) => {

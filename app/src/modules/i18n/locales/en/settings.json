@@ -237,6 +237,29 @@
       "normalDescription": "Replies and tool steps; Claude’s thinking is hidden.",
       "thinkingDescription": "Also shows Claude’s thinking.",
       "verboseDescription": "Also shows thinking and the raw parameters of each tool call."
+    },
+    "clawd": {
+      "title": "Clawd",
+      "onHome": {
+        "label": "Show on new conversations",
+        "description": "On a new Chat or Code conversation, Clawd says hello or marks a holiday. Click its bubble to put the suggestion in the message box."
+      },
+      "aboveComposer": {
+        "label": "Show above the message box",
+        "description": "Clawd acts out what Claude is doing: thinking, writing code, running commands, waiting for you to approve, celebrating when done."
+      },
+      "doubleClick": {
+        "label": "Double-click to switch",
+        "description": "Double-click (or double-tap) Clawd for another animation of the same state."
+      },
+      "festivals": {
+        "label": "Holiday greetings",
+        "description": "On Chinese and Western holidays, the new-conversation Clawd greets you for the day."
+      },
+      "still": {
+        "label": "Still picture",
+        "description": "Show a still picture instead of animating. Clawd is also still when the system's reduce-motion setting is on."
+      }
     }
   },
   "mcpForm": {

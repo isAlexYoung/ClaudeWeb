@@ -24,6 +24,15 @@ type TranscriptView = (typeof TRANSCRIPT_VIEWS)[number];
 
 const FONT_SELECT_CLASS = 'w-full touch-manipulation rounded-lg border border-input bg-card p-2.5 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary sm:w-48';
 
+// Clawd's switches, in the order they are shown; their text is under appearanceSettings.clawd.<key>.
+const CLAWD_TOGGLES = [
+  { key: 'onHome', preference: 'clawdOnHome' },
+  { key: 'aboveComposer', preference: 'clawdAboveComposer' },
+  { key: 'doubleClick', preference: 'clawdDoubleClick' },
+  { key: 'festivals', preference: 'clawdFestivals' },
+  { key: 'still', preference: 'clawdStill' },
+] as const;
+
 type AppearanceSettingsTabProps = {
   projectSortOrder: ProjectSortOrder;
   onProjectSortOrderChange: (value: ProjectSortOrder) => void;
@@ -124,6 +133,16 @@ export default function AppearanceSettingsTab({
               {TRANSCRIPT_VIEWS.map(view => <option key={view} value={view}>{t(`appearanceSettings.transcriptView.${view}`)}</option>)}
             </select>
           </SettingsRow>
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsSection title={t('appearanceSettings.clawd.title')}>
+        <SettingsCard>
+          {CLAWD_TOGGLES.map(({ key, preference }) => (
+            <SettingsRow key={key} label={t(`appearanceSettings.clawd.${key}.label`)} description={t(`appearanceSettings.clawd.${key}.description`)}>
+              <SettingsToggle checked={preferences[preference] ?? preference !== 'clawdStill'} onChange={value => setPreference(preference, value)} ariaLabel={t(`appearanceSettings.clawd.${key}.label`)} />
+            </SettingsRow>
+          ))}
         </SettingsCard>
       </SettingsSection>
 

@@ -11,6 +11,15 @@ Section 7 as the original work. See the LICENSE file.
 ClaudeWeb is not affiliated with Anthropic. "Claude" and "Claude Code" are
 trademarks of Anthropic, PBC.
 
+Clawd animations: app/public/clawd/ holds the 400 Clawd pixel animations of
+"Clawd 400" by 风花叶 (https://github.com/khiqwq/clawd-400), licensed under
+Creative Commons Attribution 4.0 International (CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/). ClaudeWeb redrew each original
+480x480 GIF as a strip of its 40x40 frames (app/scripts/build-clawd-assets.py);
+the drawings themselves are unchanged. Clawd 400 is unofficial fan art: the
+Clawd character and the Claude marks belong to Anthropic, and neither licence
+grants any right to them.
+
 The notice of the original work follows.
 
 --------------------------------------------------------------------------

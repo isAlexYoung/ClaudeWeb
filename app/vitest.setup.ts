@@ -12,6 +12,10 @@ afterEach(cleanup);
 // must not find the previous test's messages in it.
 afterEach(resetSessionCaches);
 
+// jsdom has no canvas: getContext logs "Not implemented" and returns null. Return the same null
+// quietly, so pages drawing on a canvas (Clawd, charts) do not flood every test's output.
+HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+
 // jsdom ships no `matchMedia`, and components that pick a layout from the
 // viewport call it during render. Report the desktop breakpoint, which is the
 // layout the sidebar row tests assert on.

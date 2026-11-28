@@ -801,5 +801,174 @@
     "gone": "This request is no longer waiting.",
     "failed": "The answer did not reach ClaudeWeb. Try again.",
     "note": "The password goes to sudo for this command only. It is not shown to Claude or stored. As root, `claudeweb sudo-password` shows it."
+  },
+  "clawd": {
+    "bubbleHint": "Click to put this in the message box",
+    "greetings": {
+      "newYear": {
+        "text": "Happy New Year! Shall we set a few goals for the year?",
+        "prompt": "Help me set a few goals for this year and break each one into small steps I can start on right away."
+      },
+      "valentine": {
+        "text": "Happy Valentine's Day! Want to plan a little surprise together?",
+        "prompt": "Give me a few low-budget, thoughtful Valentine's Day surprise ideas."
+      },
+      "aprilFools": {
+        "text": "Happy April Fools' Day! Shall we think up a harmless prank?",
+        "prompt": "Suggest a few harmless April Fools' pranks to play on friends or coworkers."
+      },
+      "easter": {
+        "text": "Happy Easter! Let's go egg hunting.",
+        "prompt": "Tell me where Easter eggs come from, and give me a few egg hunt ideas."
+      },
+      "mothersDay": {
+        "text": "Happy Mother's Day! Want to write something for your mom together?",
+        "prompt": "Help me write a Mother's Day message for my mom: sincere, not too sappy."
+      },
+      "fathersDay": {
+        "text": "Happy Father's Day! Want to write something for your dad together?",
+        "prompt": "Help me write a Father's Day message for my dad: sincere, not too sappy."
+      },
+      "halloween": {
+        "text": "Happy Halloween! Trick or treat! Need a costume idea?",
+        "prompt": "Give me a few creative Halloween costume ideas that are easy to put together."
+      },
+      "thanksgiving": {
+        "text": "Happy Thanksgiving! Is there someone you want to thank?",
+        "prompt": "Help me write a Thanksgiving thank-you note for someone who has always helped me."
+      },
+      "christmasEve": {
+        "text": "Merry Christmas Eve! Got your gifts ready?",
+        "prompt": "Give me some Christmas gift ideas, grouped by budget."
+      },
+      "christmas": {
+        "text": "Merry Christmas! Let's open the presents!",
+        "prompt": "Write a few Christmas greetings I can send to friends and coworkers."
+      },
+      "newYearsEve": {
+        "text": "Last day of the year! Shall we look back on it together?",
+        "prompt": "Help me look back on this year: outline a year in review with highlights, regrets and plans for next year."
+      },
+      "laborDay": {
+        "text": "Happy Labour Day! Take it easy today.",
+        "prompt": "Plan a relaxed holiday for me, nothing too packed."
+      },
+      "childrensDay": {
+        "text": "Happy Children's Day! Be a kid again today.",
+        "prompt": "Tell me a warm, funny fairy tale."
+      },
+      "nationalDay": {
+        "text": "Happy National Day! Where are you off to this holiday?",
+        "prompt": "Help me plan a trip for the National Day holiday, avoiding the crowds where I can."
+      },
+      "programmersDay": {
+        "text": "Happy 1024 Programmers' Day! No bugs today.",
+        "prompt": "Tell me a few jokes only programmers would get."
+      },
+      "chuxi": {
+        "text": "Happy Lunar New Year's Eve! Let's stay up to welcome the new year.",
+        "prompt": "Write a few New Year wishes for family and friends, each in a different style."
+      },
+      "springFestival": {
+        "text": "Happy Lunar New Year! Where's my red envelope?",
+        "prompt": "Write a few Lunar New Year greetings, some formal and some playful."
+      },
+      "lantern": {
+        "text": "Happy Lantern Festival! Let's solve some lantern riddles.",
+        "prompt": "Give me a few lantern riddles to solve. Don't tell me the answers yet."
+      },
+      "dragonBoat": {
+        "text": "Happy Dragon Boat Festival! Sweet or savory zongzi?",
+        "prompt": "Tell me the story of the Dragon Boat Festival and how it is celebrated in different places."
+      },
+      "qixi": {
+        "text": "Happy Qixi Festival! Remember to love yourself too.",
+        "prompt": "Write a gentle Qixi love note for me, not too cheesy."
+      },
+      "midAutumn": {
+        "text": "Happy Mid-Autumn Festival! The moon must be full tonight.",
+        "prompt": "Write a few Mid-Autumn greetings for my family and friends."
+      },
+      "chongyang": {
+        "text": "It's the Double Ninth Festival. Give your elders a call.",
+        "prompt": "Suggest a few things I could do for the elders in my family on the Double Ninth Festival."
+      },
+      "laba": {
+        "text": "Happy Laba Festival! Have a warm bowl of Laba porridge.",
+        "prompt": "Tell me how to make Laba porridge with ingredients I probably have at home."
+      },
+      "chatMorning": {
+        "text": "Good morning! What's first today? Shall we make a plan?",
+        "prompt": "Help me turn today's to-dos into a plan, ordered by priority."
+      },
+      "chatAfternoon": {
+        "text": "Good afternoon! Grab a tea. Anything you want to think through?",
+        "prompt": "I'd like to think something through: "
+      },
+      "chatEvening": {
+        "text": "Good evening! Shall we look back on today?",
+        "prompt": "Help me review today: what I did, what I learned and what I want to do tomorrow."
+      },
+      "chatNight": {
+        "text": "It's late. Still up? Tell me what's on your mind.",
+        "prompt": "I'm not ready to sleep yet. Let's talk about "
+      },
+      "chatIdea": {
+        "text": "Got an idea? Tell me about it.",
+        "prompt": "I have an idea. Help me see whether it works: "
+      },
+      "chatLearn": {
+        "text": "Want to learn something new? I'll explain it.",
+        "prompt": "Explain this to me in plain language: "
+      },
+      "chatWrite": {
+        "text": "Shall we write something together?",
+        "prompt": "Help me write something about: "
+      },
+      "chatHello": {
+        "text": "Hi there! What shall we talk about today?",
+        "prompt": "Let's talk about "
+      },
+      "codeMorning": {
+        "text": "Good morning! Which feature are we tackling today?",
+        "prompt": "Let's plan today's feature work. Start by checking where the project stands."
+      },
+      "codeAfternoon": {
+        "text": "Good afternoon! Shall we write some code together?",
+        "prompt": "I want to build a new feature: "
+      },
+      "codeEvening": {
+        "text": "Good evening! How many to-dos are left for today?",
+        "prompt": "List what's still unfinished in this project, ordered by priority."
+      },
+      "codeNight": {
+        "text": "Coding this late? Let's wrap this one up and rest.",
+        "prompt": "Help me wrap up: summarise today's changes and list what's left."
+      },
+      "codeBug": {
+        "text": "Got a bug to catch? Let's hunt it down.",
+        "prompt": "Help me track down this bug: "
+      },
+      "codeReview": {
+        "text": "Shall we review the code together?",
+        "prompt": "Review the recent changes in this project and point out problems and improvements."
+      },
+      "codeTests": {
+        "text": "All tests green? Shall we add a few?",
+        "prompt": "Check which tests this project is missing and add the most important ones first."
+      },
+      "codeRefactor": {
+        "text": "Any code that bugs you? Let's tidy it up.",
+        "prompt": "Find the parts of this project most worth refactoring and explain how you would change them."
+      },
+      "codeExplore": {
+        "text": "New to this project? Let me show you around.",
+        "prompt": "Walk me through this project's structure and main modules."
+      },
+      "codeHello": {
+        "text": "Hello, world! What are we building today?",
+        "prompt": "I want to build a new feature: "
+      }
+    }
   }
 }

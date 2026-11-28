@@ -39,6 +39,11 @@ test('a fresh install gets the documented defaults', () => {
     chatMcpEnabled: false,
     promptSuggestionsEnabled: true,
     changeSummaryEnabled: true,
+    clawdOnHome: true,
+    clawdAboveComposer: true,
+    clawdDoubleClick: true,
+    clawdFestivals: true,
+    clawdStill: false,
   });
 });
 

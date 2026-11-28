@@ -84,6 +84,14 @@ export function useUiPreferences(): UiPreferences {
   return preferences;
 }
 
+/**
+ * The UI preferences, or null outside a UiPreferencesProvider. For optional decoration (Clawd)
+ * that falls back to its defaults where a page is rendered on its own.
+ */
+export function useOptionalUiPreferences(): UiPreferences | null {
+  return useContext(UiPreferencesStateContext);
+}
+
 /** Stable setter, so writers never re-render on a preference change. */
 export function useSetUiPreference(): UiPreferenceActions['setPreference'] {
   const actions = useContext(UiPreferencesActionsContext);

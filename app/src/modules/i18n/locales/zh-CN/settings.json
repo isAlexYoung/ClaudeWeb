@@ -237,6 +237,29 @@
       "normalDescription": "显示回复和工具步骤，隐藏 Claude 的思考过程。",
       "thinkingDescription": "同时显示 Claude 的思考过程。",
       "verboseDescription": "同时显示思考过程和每次工具调用的原始参数。"
+    },
+    "clawd": {
+      "title": "Clawd",
+      "onHome": {
+        "label": "在新聊天页显示",
+        "description": "Chat 和 Code 的新对话页上，Clawd 会打招呼、送上节日问候，点它的气泡可以把建议填进输入框。"
+      },
+      "aboveComposer": {
+        "label": "在对话框上方显示",
+        "description": "Clawd 随 Claude 正在做的事换动作：思考、写代码、运行命令、等你确认、完成时庆祝。"
+      },
+      "doubleClick": {
+        "label": "双击切换动作",
+        "description": "双击（触屏上双击轻触）Clawd，换成同一状态下的另一个动作。"
+      },
+      "festivals": {
+        "label": "节日彩蛋",
+        "description": "中国和西方的节日里，新聊天页的 Clawd 换成节日问候。"
+      },
+      "still": {
+        "label": "静止显示",
+        "description": "只显示静止画面，不播放动画。系统开启「减少动态效果」时也会自动静止。"
+      }
     }
   },
   "mcpForm": {
