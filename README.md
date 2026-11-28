@@ -15,9 +15,23 @@
 
 English | [中文](README.zh-CN.md) | [Changelog](CHANGELOG.md)
 
-[Install](#install) · [Quick Start](#quick-start) · [Features](#features) · [Plugins](#plugins) · [FAQ](#faq) · [License](#license)
+[Screenshots](#screenshots) · [Install](#install) · [Quick Start](#quick-start) · [Features](#features) · [Plugins](#plugins) · [FAQ](#faq) · [License](#license)
 
 </div>
+
+## Screenshots
+
+ClaudeWeb runs on your own server; a computer and a phone open the same address in a browser, and the interface fits the screen.
+
+<p align="center">
+  <img src="doc/images/desktop-chat.png" alt="ClaudeWeb in a desktop browser: a new Chat conversation" width="74%" />
+  &nbsp;
+  <img src="doc/images/mobile-chat.jpg" alt="ClaudeWeb on a phone: a new Chat conversation" width="19%" />
+</p>
+
+- **Computer (left):** the sidebar holds New chat, Search, Artefacts, Scheduled tasks and Plugins, with your recent conversations below; the buttons at its top switch between Chat and Code. On the right of the top bar are ClaudeDesktop (the asterisk), the terminal, files, the built-in browser, more actions and the side panel. Under the message box you pick the model, the thinking effort and the permission mode.
+- **Phone (right):** the sidebar folds into the button at the top left, while the top bar tools and the message box stay the same, so you can send a message or change the model and permission mode with one hand.
+- A new conversation opens with a different greeting each time, such as "A moonlit conversation" or "What's on your mind?".
 
 ## Install
 
