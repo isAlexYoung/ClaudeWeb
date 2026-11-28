@@ -2,6 +2,18 @@
  "schema": 1,
  "releases": [
   {
+   "version": "2.3.13",
+   "channel": "stable",
+   "published_at": "2026-11-28T13:14:10Z",
+   "notes": "\u52a0\u5165 Clawd \u50cf\u7d20\u8868\u60c5\uff1a\u65b0\u804a\u5929\u9875\u6253\u62db\u547c\u548c\u8282\u65e5\u95ee\u5019\uff0c\u5bf9\u8bdd\u6846\u4e0a\u65b9\u968f Claude \u7684\u72b6\u6001\u6362\u52a8\u4f5c\uff0c\u53ef\u5728\u8bbe\u7f6e\u2192\u5916\u89c2\u4e2d\u5f00\u5173\u3002\u7d20\u6750\u6765\u81ea Clawd 400\uff08\u98ce\u82b1\u53f6\uff0cCC BY 4.0\uff09\u3002",
+   "package": {
+    "name": "claudeweb-2.3.13-linux-x64.tar.xz",
+    "url": "https://github.com/isAlexYoung/ClaudeWeb/releases/download/v2.3.13/claudeweb-2.3.13-linux-x64.tar.xz",
+    "bytes": 115208008,
+    "sha256": "8d41b3d13821a3259597516a4125064c77e6137b6d1756332024737a3613cebb"
+   }
+  },
+  {
    "version": "2.3.12",
    "channel": "stable",
    "published_at": "2026-11-27T12:18:09Z",
@@ -338,5 +350,5 @@
    }
   }
  ],
- "generated_at": "2026-11-27T12:18:10Z"
+ "generated_at": "2026-11-28T13:14:11Z"
 }
