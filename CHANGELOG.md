@@ -5,6 +5,10 @@ All notable changes to ClaudeWeb are listed here. Versions start at 2.0.0;
 
 ## Unreleased
 
+## 2.3.13 - 2026-11-28 (stable)
+
+- Clawd: the Claude Code mascot as pixel animations, from the 400 animations of "Clawd 400" by 风花叶 (CC BY 4.0, https://github.com/khiqwq/clawd-400; unofficial fan art, the character belongs to Anthropic). On a new Chat or Code conversation Clawd stands beside the heading and says hello for the time of day, marks Chinese and Western holidays (lunar festivals included), or offers something to do together; clicking its bubble puts that in the message box without sending it. Above a conversation's message box Clawd acts out what Claude is doing (thinking, writing, editing files, running commands, searching, waiting for a permission, compacting) and how the turn ended (celebrating, stopped, upset, or asleep at a usage limit). Double-click Clawd for another animation of the same state. Clawd cannot be selected or dragged, pauses when it is not visible, and is still when the system asks for reduced motion. Settings → Appearance → Clawd turns each part on or off: new conversations, above the message box, double-click switching, holiday greetings, and a still picture.
+
 ## 2.3.12 - 2026-11-27 (stable)
 
 - Plugins: links on the Plugins page (the Claude connectors page and the Claude CLI connection guide in a recommended connector's dialog, a plugin's repository, the custom plugin guide) now open in the built-in browser on the server, which keeps your sign-ins there; ClaudeWeb opens the page in a new tab of the running browser, or as the first page of the browser it starts. Every such link has a copy button beside it to open it anywhere else. In Settings, where the built-in browser cannot be shown, links still open in a new tab of your own browser.
